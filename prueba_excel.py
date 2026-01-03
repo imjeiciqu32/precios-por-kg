@@ -95,8 +95,8 @@ if not edited_df.equals(st.session_state.data):
     st.session_state.data = calcular_pkg(edited_df)
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
-
-# --- 6. GRÁFICO ACTUALIZADO CON MARCO Y LÍNEAS COMPLETAS ---
+   
+# --- 6. GRÁFICO ACTUALIZADO CON LÍNEAS CADA $5 ---
 if not st.session_state.data.empty:
     ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5}
     df_p = st.session_state.data.copy()
@@ -106,84 +106,89 @@ if not st.session_state.data.empty:
 
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.12, 0.88])
 
-    colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
-
-    # SOM (Superior)
+    # SOM (Líneas tenues)
     fig.add_trace(go.Scatter(
         x=df_p["Producto"], y=df_p["SOM (%)"], 
         mode="lines+markers", line=dict(color="#CCCCCC", width=1.5), 
         marker=dict(size=5, color="#AAAAAA")
     ), row=1, col=1)
 
+    # Etiquetas SOM (Negras con fondo gris)
     for i, row in df_p.iterrows():
         fig.add_annotation(
             x=i, y=row["SOM (%)"], text=f"<b>{row['SOM (%)']}%</b>", 
-            showarrow=False, yshift=15, font=dict(size=12, color="black"), 
-            bgcolor="#F0F0F0", bordercolor="#CCCCCC", borderwidth=1, row=1, col=1
+            showarrow=False, yshift=15, 
+            font=dict(size=13, color="black"), 
+            bgcolor="#E5E5E5", bordercolor="#CCCCCC", borderwidth=1, borderpad=4,
+            row=1, col=1
         )
 
-    # Barras de Precio
+    # Barras de Precio (Desembolso)
+    colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
     fig.add_trace(go.Bar(
-        x=df_p["Producto"], y=df_p["Precio ($)"],
+        x=df_p["Producto"], 
+        y=df_p["Precio ($)"],
         marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]],
         text=[f"<b>${int(p)}</b>" for p in df_p["Precio ($)"]], 
         textposition="outside",
-        textfont=dict(size=18, color="black")
+        textfont=dict(size=18, color="black") 
     ), row=2, col=1)
 
-    # Etiquetas $/Kg
+    # $/Kg (Azul acero para Barcel)
     for i, row in df_p.iterrows():
         fig.add_annotation(
-            x=i, y=2.5, text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
-            showarrow=False, font=dict(size=15, color="white" if row["Fabricante"]=="BARCEL" else "black"),
-            bgcolor="rgba(11, 60, 140, 0.85)" if row["Fabricante"]=="BARCEL" else "rgba(255, 255, 255, 0.85)",
-            bordercolor="#333", borderwidth=1, row=2, col=1
+            x=i, y=2.5, 
+            text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
+            showarrow=False, font=dict(size=16, color="white" if row["Fabricante"] == "BARCEL" else "black"),
+            bgcolor="rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)",
+            bordercolor="#444" if row["Fabricante"] != "BARCEL" else None, borderwidth=1,
+            row=2, col=1
         )
 
-    # LÍNEAS DIVISORIAS QUE CRUZAN TODO EL GRÁFICO (Incluyendo la primera)
-    ocasiones_unicas = df_p["Ocasión"].unique()
-    # Agregar línea al puro inicio (-0.5)
-    fig.add_shape(type="line", x0=-0.5, x1=-0.5, y0=-0.15, y1=1, xref="x2", yref="paper",
-                  line=dict(color="#444444", width=1.5))
-    
-    for cat in ocasiones_unicas:
+    # Divisiones verticales entre productos (Tenues)
+    for i in range(len(df_p) + 1):
+        fig.add_shape(
+            type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50,
+            xref="x2", yref="paper",
+            line=dict(color="#DDDDDD", width=1) 
+        )
+
+    # Ocasiones (Ajustadas un poco más abajo)
+    for cat in df_p["Ocasión"].unique():
         idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
         center = (idx_list[0] + idx_list[-1]) / 2
-        # Línea al final de cada categoría
-        fig.add_shape(type="line", x0=idx_list[-1] + 0.5, x1=idx_list[-1] + 0.5, 
-                      y0=-0.15, y1=1, xref="x2", yref="paper",
-                      line=dict(color="#444444", width=1.5))
         
-        # Texto de Ocasión y SOM Total
+        fig.add_vline(x=idx_list[-1] + 0.5, line_color="#DDDDDD", line_width=1.5, row=2, col=1)
+        
         fig.add_annotation(
-            x=center, y=-0.65, xref="x2", yref="paper",
-            text=f"<b>{cat}</b><br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>",
+            x=center, y=-0.60, 
+            xref="x2", yref="paper",
+            text=f"{cat}<br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>",
             showarrow=False, font=dict(size=16, color="black"), align="center"
         )
 
-    # CONFIGURACIÓN DE MARCO Y EJES
+    # Layout y Ejes (Líneas cada $5)
     fig.update_layout(
-        height=1100, width=1950, template="plotly_white", showlegend=False,
-        margin=dict(t=50, b=600, l=100, r=80)
+        height=1100, width=1950,
+        template="plotly_white", showlegend=False, 
+        margin=dict(t=50, b=550, l=100, r=80) 
     )
 
-    # Aplicar el marco (Border) a los subplots
-    fig.update_xaxes(showline=True, linewidth=2, linecolor='black', mirror=True)
-    fig.update_yaxes(showline=True, linewidth=2, linecolor='black', mirror=True)
-
-    # Personalización Eje Y (Precios)
     fig.update_yaxes(
-        showgrid=True, gridcolor="#E5E5E5", dtick=5,
-        tickprefix="$", tickfont=dict(size=17, color="black", font="Arial Black"),
+        showgrid=True, 
+        gridcolor="#F0F0F0", 
+        dtick=5,             
+        tickprefix="$",      
+        tickfont=dict(size=16, color="black"),
         row=2, col=1
     )
 
-    # Personalización Eje X
-    fig.update_xaxes(tickangle=-90, tickfont=dict(size=15, color="black"), row=2, col=1)
-    # Quitar ticks del SOM para limpieza
+    fig.update_xaxes(tickangle=-90, tickfont=dict(size=16, color="black"), row=2, col=1)
     fig.update_yaxes(showgrid=False, showticklabels=False, row=1, col=1)
 
     st.plotly_chart(fig, use_container_width=True)
+
+
 # --- 7. COMPARATIVAS ---
 st.divider()
 st.subheader("📈 Comparativas Index $/Kg")
