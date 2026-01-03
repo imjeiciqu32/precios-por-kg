@@ -96,7 +96,7 @@ if not edited_df.equals(st.session_state.data):
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
    
-# --- 6. GRÁFICO FINAL: MARCO ÚNICO GRIS Y SIN DIVISIONES INTERNAS ---
+# --- 6. GRÁFICO FINAL: LÍNEAS HASTA ARRIBA Y LÍNEA DE BITES ---
 if not st.session_state.data.empty:
     ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5}
     df_p = st.session_state.data.copy()
@@ -134,20 +134,26 @@ if not st.session_state.data.empty:
         textposition="outside", textfont=dict(size=18, color="black") 
     ), row=2, col=1)
 
-    # --- TUS DIVISIONES VERTICALES ENTRE PRODUCTOS (INTACTAS) ---
+    # --- TUS DIVISIONES VERTICALES AJUSTADAS (LLEGAN HASTA ARRIBA) ---
+    # Nota: y0=-0.15 para que cubra el área de nombres y y1=1 para que toque el techo
     for i in range(len(df_p) + 1):
         fig.add_shape(
-            type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50,
+            type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=1,
             xref="x2", yref="paper",
             line=dict(color="#DDDDDD", width=1) 
         )
 
-    # --- TUS OCASIONES (INTACTAS) ---
+    # --- TUS OCASIONES (CON LÍNEA DE BITES Y LÍNEAS LARGAS) ---
     for cat in df_p["Ocasión"].unique():
         idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
         center = (idx_list[0] + idx_list[-1]) / 2
         
-        fig.add_vline(x=idx_list[-1] + 0.5, line_color="#DDDDDD", line_width=1.5, row=2, col=1)
+        # Líneas de fin de categoría que llegan hasta arriba
+        fig.add_shape(
+            type="line", x0=idx_list[-1] + 0.5, x1=idx_list[-1] + 0.5, y0=-0.01, y1=1,
+            xref="x2", yref="paper",
+            line=dict(color="#DDDDDD", width=1.5)
+        )
         
         fig.add_annotation(
             x=center, y=-0.60, 
@@ -156,25 +162,24 @@ if not st.session_state.data.empty:
             showarrow=False, font=dict(size=16, color="black"), align="center"
         )
 
-    # --- MARCO ÚNICO GRIS (ABARCA TODO EL GRÁFICO) ---
+    # --- MARCO ÚNICO GRIS ---
     fig.add_shape(
         type="rect",
         xref="paper", yref="paper",
-        x0=0, y0=0, x1=1, y1=1, # De esquina a esquina
+        x0=0, y0=0, x1=1, y1=1,
         line=dict(color="#DDDDDD", width=2),
     )
 
-    # --- CONFIGURACIÓN DE EJES Y LIMPIEZA ---
+    # --- CONFIGURACIÓN DE EJES ---
     fig.update_layout(
         height=1100, width=1950, template="plotly_white", showlegend=False,
         margin=dict(t=50, b=600, l=100, r=80)
     )
 
-    # Quitamos todas las líneas de eje negras para que solo se vea el marco gris
     fig.update_xaxes(showline=False, zeroline=False)
     fig.update_yaxes(showline=False, zeroline=False)
 
-    # Eje Y: Restauramos cuadrícula tenue solo en la parte de barras
+    # Eje Y: Cuadrícula de barras
     fig.update_yaxes(
         showgrid=True, gridcolor="#F5F5F5", 
         dtick=5, tickprefix="$", 
@@ -182,7 +187,6 @@ if not st.session_state.data.empty:
         row=2, col=1
     )
     
-    # Eje X: Etiquetas de productos
     fig.update_xaxes(tickangle=-90, tickfont=dict(size=16, color="black"), row=2, col=1)
     fig.update_yaxes(showticklabels=False, row=1, col=1)
 
