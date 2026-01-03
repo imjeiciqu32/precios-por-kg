@@ -3,10 +3,11 @@ import pandas as pd
 import plotly.graph_objects as go
 import os
 
-# --- Configuración y Persistencia ---
-st.set_page_config(page_title="Price Ladder Pro v2", layout="wide")
+# --- Configuración Inicial ---
+st.set_page_config(page_title="Price Ladder Pro", layout="wide")
 DB_FILE = "historico_productos.csv"
 
+# Función para cargar datos con limpieza
 def load_data():
     if os.path.exists(DB_FILE):
         try:
@@ -22,106 +23,90 @@ def load_data():
 if "data" not in st.session_state:
     st.session_state.data = load_data()
 
-# --- INTERFAZ: CARGA DE DATOS ---
 st.title("📊 Escalera de Precios Avanzada")
 
-col_input1, col_input2 = st.columns([2, 1])
+# --- Sección de Carga (Excel/CSV) ---
+with st.expander("📂 Cargar desde Excel o CSV", expanded=False):
+    file = st.file_uploader("Sube tu archivo", type=["xlsx", "csv"])
+    if file:
+        try:
+            if file.name.endswith('.xlsx'):
+                # Intento de lectura con manejo de error de dependencia
+                try:
+                    df_new = pd.read_excel(file)
+                except ImportError:
+                    st.error("Falta la librería 'openpyxl'. Si estás en local, corre: pip install openpyxl")
+                    df_new = None
+            else:
+                df_new = pd.read_csv(file)
+            
+            if df_new is not None:
+                # Estandarizar columnas
+                df_new.columns = [c.strip() for c in df_new.columns]
+                st.session_state.data = pd.concat([st.session_state.data, df_new], ignore_index=True).drop_duplicates()
+                st.session_state.data.to_csv(DB_FILE, index=False)
+                st.success("✅ Datos integrados correctamente.")
+                st.rerun()
+        except Exception as e:
+            st.error(f"Error técnico: {e}")
 
-with col_input1:
-    with st.expander("📂 Cargar desde Excel", expanded=False):
-        uploaded_file = st.file_uploader("Sube tu archivo .xlsx o .csv", type=["xlsx", "csv"])
-        if uploaded_file:
-            try:
-                if uploaded_file.name.endswith('.xlsx'):
-                    new_data = pd.read_excel(uploaded_file)
-                else:
-                    new_data = pd.read_csv(uploaded_file)
-                
-                # Validar columnas mínimas necesarias
-                required = ["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)"]
-                if all(col in new_data.columns for col in required):
-                    new_data["Precio por Kg ($)"] = (new_data["Precio ($)"] / (new_data["Gramaje (g)"] / 1000)).round(0)
-                    st.session_state.data = pd.concat([st.session_state.data, new_data], ignore_index=True).drop_duplicates()
-                    st.session_state.data.to_csv(DB_FILE, index=False)
-                    st.success("✅ ¡Excel cargado con éxito!")
-                    st.rerun()
-                else:
-                    st.error(f"El Excel debe tener estas columnas: {required}")
-            except Exception as e:
-                st.error(f"Error al leer el archivo: {e}")
-
-with col_input2:
-    if st.button("🗑️ Borrar Todo el Historial"):
-        st.session_state.data = pd.DataFrame(columns=["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)", "Precio por Kg ($)"])
-        if os.path.exists(DB_FILE): os.remove(DB_FILE)
-        st.rerun()
-
-# --- GESTIÓN DE TABLA ---
-edited_df = st.data_editor(st.session_state.data, num_rows="dynamic", use_container_width=True)
-if not edited_df.equals(st.session_state.data):
-    st.session_state.data = edited_df
-    edited_df.to_csv(DB_FILE, index=False)
-    st.rerun()
-
-# --- GRÁFICO OPTIMIZADO ---
+# --- Gráfico de Escalera ---
 if not st.session_state.data.empty:
     df = st.session_state.data.copy()
+    
+    # Ordenar por Ocasión (Lógica de mercado) y Precio
     mapa_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5}
     df["Orden_Oca"] = df["Ocasión"].map(mapa_oca).fillna(99)
     df = df.sort_values(by=["Orden_Oca", "Precio ($)", "Precio por Kg ($)"])
 
-    colores_map = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
-    df["Color"] = df["Fabricante"].map(colores_map).fillna("#B0B0B0")
-
+    colores = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
+    
     fig = go.Figure()
 
-    # Barras principales
+    # Construcción de barras mezcladas
     fig.add_trace(go.Bar(
         x=[df["Ocasión"], df["Producto"]],
         y=df["Precio ($)"],
-        marker_color=df["Color"],
-        # Precios superiores en NEGRITA y más visibles
-        text=df["Precio ($)"].apply(lambda x: f"<b>${x}</b>"),
+        marker_color=[colores.get(f, "#B0B0B0") for f in df["Fabricante"]],
+        text=[f"<b>${p}</b>" for p in df["Precio ($)"]],
         textposition='outside',
-        textfont=dict(size=14), # Precio desembolso más grande
-        showlegend=False
+        textfont=dict(size=14, color="black"),
     ))
 
-    # Anotaciones de $/Kg (MÁS GRANDES y posicionadas)
+    # Anotaciones de Precio por Kg (Más grandes y claras)
     for i, row in df.iterrows():
         fig.add_annotation(
             x=[row["Ocasión"], row["Producto"]],
-            y=0,
-            yshift=25,
-            text=f"<b>${int(row['Precio por Kg ($)'])}</b>", # Negritas
+            y=row["Precio ($)"] * 0.1, # Posicionado en la base de la barra
+            text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
             showarrow=False,
             font=dict(
-                color="white" if row["Fabricante"]=="BARCEL" else "black", 
-                size=13 # Precio por kg un poquito más grande
+                size=13, # Un poco más grande como pediste
+                color="white" if row["Fabricante"] == "BARCEL" else "black"
             ),
-            bgcolor="rgba(255,255,255,0.3)" if row["Fabricante"]=="SABRITAS" else "rgba(0,0,0,0.1)"
+            bgcolor="rgba(0,0,0,0.4)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.5)"
         )
 
-    # Leyenda Manual
-    for fab, col in colores_map.items():
-        fig.add_trace(go.Bar(name=fab, x=[None], y=[None], marker_color=col))
-
-    # Ajustes de diseño para que las OCASIONES se vean bien
+    # Diseño para que se vean las Ocasiones (Eje X Multi-nivel)
     fig.update_layout(
-        title="Escalera de Precios Competitiva",
+        template="plotly_white",
+        height=700,
+        margin=dict(t=50, b=150, l=50, r=50),
         xaxis=dict(
             title=None,
-            tickangle=0, # Texto horizontal para legibilidad
             tickfont=dict(size=11),
-            groupwidgets=True, # Mantiene las ocasiones agrupadas visualmente
-            automargin=True
+            showgrid=True,
+            gridcolor="lightgrey"
         ),
-        yaxis=dict(title="Desembolso ($)", gridcolor="#f0f0f0", range=[0, df["Precio ($)"].max() * 1.2]),
-        plot_bgcolor="white",
-        height=700, # Aumentamos altura para dar aire a las etiquetas
-        margin=dict(t=80, b=150) # Más margen inferior para las etiquetas del eje X
+        yaxis=dict(title="Precio Desembolso ($)", showgrid=True, gridcolor="#f0f0f0"),
+        showlegend=False
     )
 
     st.plotly_chart(fig, use_container_width=True)
+    
+    # Tabla editable abajo para ajustes rápidos
+    st.subheader("📝 Editor de datos rápido")
+    st.data_editor(st.session_state.data, num_rows="dynamic", use_container_width=True)
+
 else:
-    st.info("Carga un Excel o añade productos para visualizar el gráfico.")
+    st.info("La base de datos está vacía. Sube un Excel o usa el editor.")
