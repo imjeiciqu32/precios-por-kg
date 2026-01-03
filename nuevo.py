@@ -96,7 +96,7 @@ if not edited_df.equals(st.session_state.data):
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
    
-# --- 6. GRÁFICO CORREGIDO: MARCO ÚNICO PERIMETRAL Y LÍNEAS DE Y RESTAURADAS ---
+# --- 6. GRÁFICO FINAL: MARCO ÚNICO GRIS Y SIN DIVISIONES INTERNAS ---
 if not st.session_state.data.empty:
     ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5}
     df_p = st.session_state.data.copy()
@@ -104,7 +104,6 @@ if not st.session_state.data.empty:
     df_p = df_p.sort_values(by=["O_Oca", "Precio ($)"]).reset_index(drop=True)
     som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-    # vertical_spacing en 0 para que visualmente sea un solo bloque
     fig = make_subplots(
         rows=2, cols=1, 
         shared_xaxes=True, 
@@ -135,16 +134,6 @@ if not st.session_state.data.empty:
         textposition="outside", textfont=dict(size=18, color="black") 
     ), row=2, col=1)
 
-    # --- $/Kg ---
-    for i, row in df_p.iterrows():
-        fig.add_annotation(
-            x=i, y=2.5, text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
-            showarrow=False, font=dict(size=16, color="white" if row["Fabricante"] == "BARCEL" else "black"),
-            bgcolor="rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)",
-            bordercolor="#444" if row["Fabricante"] != "BARCEL" else None, borderwidth=1,
-            row=2, col=1
-        )
-
     # --- TUS DIVISIONES VERTICALES ENTRE PRODUCTOS (INTACTAS) ---
     for i in range(len(df_p) + 1):
         fig.add_shape(
@@ -167,27 +156,34 @@ if not st.session_state.data.empty:
             showarrow=False, font=dict(size=16, color="black"), align="center"
         )
 
-    # --- CONFIGURACIÓN DE EJES Y MARCO UNIFICADO ---
+    # --- MARCO ÚNICO GRIS (ABARCA TODO EL GRÁFICO) ---
+    fig.add_shape(
+        type="rect",
+        xref="paper", yref="paper",
+        x0=0, y0=0, x1=1, y1=1, # De esquina a esquina
+        line=dict(color="#DDDDDD", width=2),
+    )
+
+    # --- CONFIGURACIÓN DE EJES Y LIMPIEZA ---
     fig.update_layout(
         height=1100, width=1950, template="plotly_white", showlegend=False,
         margin=dict(t=50, b=600, l=100, r=80)
     )
 
-    # Quitamos las líneas divisorias internas negras pero dejamos el marco exterior
-    # Row 1 (SOM) - Solo bordes superior, izquierdo y derecho
-    fig.update_yaxes(showgrid=False, showline=True, linecolor='black', linewidth=2, mirror=True, row=1, col=1)
-    
-    # Row 2 (Barras) - Restauramos las líneas horizontales (grid) que pediste
+    # Quitamos todas las líneas de eje negras para que solo se vea el marco gris
+    fig.update_xaxes(showline=False, zeroline=False)
+    fig.update_yaxes(showline=False, zeroline=False)
+
+    # Eje Y: Restauramos cuadrícula tenue solo en la parte de barras
     fig.update_yaxes(
-        showgrid=True, gridcolor="#F0F0F0", 
-        showline=True, linecolor='black', linewidth=2, mirror=True,
+        showgrid=True, gridcolor="#F5F5F5", 
         dtick=5, tickprefix="$", 
         tickfont=dict(size=16, color="black"),
         row=2, col=1
     )
-
-    # Ajustes Eje X (Asegura que el marco cierre abajo)
-    fig.update_xaxes(showline=True, linecolor='black', linewidth=2, mirror=True, tickangle=-90, tickfont=dict(size=16, color="black"), row=2, col=1)
+    
+    # Eje X: Etiquetas de productos
+    fig.update_xaxes(tickangle=-90, tickfont=dict(size=16, color="black"), row=2, col=1)
     fig.update_yaxes(showticklabels=False, row=1, col=1)
 
     st.plotly_chart(fig, use_container_width=True)
