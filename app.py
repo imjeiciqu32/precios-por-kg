@@ -104,7 +104,7 @@ if not st.session_state.data.empty:
     df_p["O_Oca"] = df_p["Ocasión"].str.upper().map(ord_oca).fillna(99)
     df_p = df_p.sort_values(by=["O_Oca", "Precio ($)"]).reset_index(drop=True)
 
-    # Cálculo de SOM por Ocasión para las sumas inferiores
+    # Suma de SOM por Ocasión
     som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.05, row_heights=[0.3, 0.7])
@@ -118,20 +118,19 @@ if not st.session_state.data.empty:
         marker=dict(size=4, color="#424242")
     ), row=1, col=1)
 
-    # ETIQUETAS SOM (QUITADAS LAS NEGRITAS)
+    # Etiquetas SOM (SIN NEGRITAS)
     for i, row in df_p.iterrows():
         fig.add_annotation(
             x=i, y=row["SOM (%)"],
-            text=f"{row['SOM (%)']}%", # Sin <b>
-            showarrow=False,
-            yshift=15,
+            text=f"{row['SOM (%)']}%", 
+            showarrow=False, yshift=15,
             font=dict(size=18, color="black"),
             bgcolor="rgba(224, 224, 224, 0.8)",
             bordercolor="#BDBDBD", borderwidth=1,
             row=1, col=1
         )
 
-    # Barras de Precio (SE MANTIENEN LAS NEGRITAS EN PRECIO)
+    # Barras de Precio
     colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
     fig.add_trace(go.Bar(
         x=df_p["Producto"], 
@@ -142,7 +141,7 @@ if not st.session_state.data.empty:
         textfont=dict(size=18, color="black")
     ), row=2, col=1)
 
-    # Etiquetas $/Kg (INDEX) - SE MANTIENEN DENTRO DE LAS BARRAS
+    # Etiquetas $/Kg (INDEX DENTRO DE BARRAS)
     for i, row in df_p.iterrows():
         fig.add_annotation(
             x=i, y=2.5,
@@ -153,35 +152,33 @@ if not st.session_state.data.empty:
             row=2, col=1
         )
 
-    # --- SUMAS DE SOM POR OCASIÓN (DEBAJO DE LOS NOMBRES) ---
-    categorias_ordenadas = df_p["Ocasión"].unique()
-    for cat in categorias_ordenadas:
+    # Sumas SOM por ocasión abajo
+    categorias = df_p["Ocasión"].unique()
+    for cat in categorias:
         indices = df_p.index[df_p["Ocasión"] == cat].tolist()
         center_x = (indices[0] + indices[-1]) / 2
         
-        # Anotación debajo de la categoría
         fig.add_annotation(
-            x=center_x, y=-0.22, # Posición en el área del eje X
+            x=center_x, y=-0.25, 
             xref="x2", yref="paper",
             text=f"{cat}<br><b>{som_por_ocasion[cat]:.1f}%</b>",
             showarrow=False,
             font=dict(size=14, color="black"),
             align="center"
         )
-        # Línea divisoria vertical entre ocasiones
         fig.add_vline(x=indices[-1] + 0.5, line_width=1, line_color="#E0E0E0", row=2, col=1)
 
-    # AJUSTES DE DISEÑO
+    # Layout y márgenes
     fig.update_layout(
-        height=850, # Aumentado para que quepa todo
+        height=850, 
         template="plotly_white", 
         showlegend=False, 
-        margin=dict(t=50, b=180, l=50, r=50) # Margen inferior amplio
+        margin=dict(t=50, b=200, l=50, r=50)
     )
     
     fig.update_yaxes(showgrid=False, showticklabels=False, row=1, col=1, range=[0, df_p["SOM (%)"].max() * 2.5])
     
-    # Eje X con nombres SIN negritas y letra más clara
+    # Eje X sin negritas
     fig.update_xaxes(
         tickfont=dict(size=13, color="#333333", family="Arial"), 
         row=2, col=1
@@ -189,7 +186,7 @@ if not st.session_state.data.empty:
     
     st.plotly_chart(fig, use_container_width=True)
 
-    # --- 7. MULTI-INDEX ---
+    # --- 7. COMPARATIVAS INDEX ---
     st.divider()
     st.subheader("📈 Comparativas Index $/Kg")
     
@@ -219,4 +216,4 @@ if not st.session_state.data.empty:
                                 </div>
                             </div>
                         </div>
-                    """, unsafe_allow_html=True)True)
+                    """, unsafe_allow_html=True)
