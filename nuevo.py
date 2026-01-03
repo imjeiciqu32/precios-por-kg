@@ -185,19 +185,32 @@ if not st.session_state.data.empty:
         line=dict(color="#DDDDDD", width=2),
     )
 
-    # --- CONFIGURACIÓN FINAL (SUBE LA COMPARATIVA) ---
+    # --- CONFIGURACIÓN FINAL ---
     fig.update_layout(
-        height=950, width=1950, template="plotly_white", showlegend=False,
-        margin=dict(t=50, b=450, l=100, r=80) # b=150 elimina el hueco blanco
+        height=950, 
+        width=1950, 
+        template="plotly_white", 
+        showlegend=False,
+        # Cambiamos l=100 por l=40 para pegar el eje a la izquierda
+        margin=dict(t=50, b=400, l=40, r=40) 
     )
+    # --- AJUSTE DE EJES ---
+   fig.update_xaxes(showline=False, zeroline=False)
+   fig.update_yaxes(showline=False, zeroline=False)
 
-    fig.update_xaxes(showline=False, zeroline=False)
-    fig.update_yaxes(showline=False, zeroline=False)
-    fig.update_yaxes(showgrid=True, gridcolor="#F5F5F5", dtick=5, tickprefix="$", row=2, col=1)
-    fig.update_xaxes(tickangle=-90, tickfont=dict(size=16, color="black"), row=2, col=1)
-    fig.update_yaxes(showticklabels=False, row=1, col=1)
+   # ESTA ES LA LÍNEA CLAVE: Añadimos automargin=False
+   fig.update_yaxes(
+       showgrid=True, 
+       gridcolor="#F5F5F5", 
+       dtick=5, 
+       tickprefix="$", 
+       automargin=False,  # <--- Agrega esto para pegar el eje a la izquierda
+       row=2, col=1  
+   )
 
-    st.plotly_chart(fig, use_container_width=True)
+   fig.update_xaxes(tickangle=-90, tickfont=dict(size=16, color="black"), row=2, col=1)
+   fig.update_yaxes(showticklabels=False, row=1, col=1)
+   st.plotly_chart(fig, use_container_width=True)
 # --- 7. COMPARATIVAS ---
 st.divider()
 st.subheader("📈 Comparativas Index $/Kg")
