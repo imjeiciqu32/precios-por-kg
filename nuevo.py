@@ -95,8 +95,7 @@ if not edited_df.equals(st.session_state.data):
     st.session_state.data = calcular_pkg(edited_df)
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
-   
-# --- 6. GRÁFICO FINAL: LÍNEAS HASTA ARRIBA Y LÍNEA DE BITES ---
+# --- 6. GRÁFICO CORREGIDO: LÍNEAS DE OCASIÓN LARGAS Y PRODUCTOS CORTAS ---
 if not st.session_state.data.empty:
     ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5}
     df_p = st.session_state.data.copy()
@@ -134,27 +133,36 @@ if not st.session_state.data.empty:
         textposition="outside", textfont=dict(size=18, color="black") 
     ), row=2, col=1)
 
-    # --- TUS DIVISIONES VERTICALES AJUSTADAS (LLEGAN HASTA ARRIBA) ---
-    # Nota: y0=-0.15 para que cubra el área de nombres y y1=1 para que toque el techo
+    # --- DIVISIONES VERTICALES ENTRE PRODUCTOS (CORTAS - ABAJO) ---
     for i in range(len(df_p) + 1):
         fig.add_shape(
-            type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=1,
+            type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50, # Regresamos a tu medida original
             xref="x2", yref="paper",
             line=dict(color="#DDDDDD", width=1) 
         )
 
-    # --- TUS OCASIONES (CON LÍNEA DE BITES Y LÍNEAS LARGAS) ---
-    for cat in df_p["Ocasión"].unique():
+    # --- DIVISIONES DE OCASIÓN (LARGAS - HASTA ARRIBA) ---
+    ocasiones = df_p["Ocasión"].unique()
+    
+    # Línea inicial de BITES (Larga)
+    fig.add_shape(
+        type="line", x0=-0.5, x1=-0.5, y0=-0.01, y1=1,
+        xref="x2", yref="paper",
+        line=dict(color="#DDDDDD", width=1.5)
+    )
+
+    for cat in ocasiones:
         idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
         center = (idx_list[0] + idx_list[-1]) / 2
         
-        # Líneas de fin de categoría que llegan hasta arriba
+        # Líneas divisorias de categoría (Largas hasta el marco superior)
         fig.add_shape(
             type="line", x0=idx_list[-1] + 0.5, x1=idx_list[-1] + 0.5, y0=-0.01, y1=1,
             xref="x2", yref="paper",
             line=dict(color="#DDDDDD", width=1.5)
         )
         
+        # Texto de Ocasión
         fig.add_annotation(
             x=center, y=-0.60, 
             xref="x2", yref="paper",
@@ -164,8 +172,7 @@ if not st.session_state.data.empty:
 
     # --- MARCO ÚNICO GRIS ---
     fig.add_shape(
-        type="rect",
-        xref="paper", yref="paper",
+        type="rect", xref="paper", yref="paper",
         x0=0, y0=0, x1=1, y1=1,
         line=dict(color="#DDDDDD", width=2),
     )
@@ -179,11 +186,10 @@ if not st.session_state.data.empty:
     fig.update_xaxes(showline=False, zeroline=False)
     fig.update_yaxes(showline=False, zeroline=False)
 
-    # Eje Y: Cuadrícula de barras
+    # Eje Y: Cuadrícula tenue
     fig.update_yaxes(
         showgrid=True, gridcolor="#F5F5F5", 
-        dtick=5, tickprefix="$", 
-        tickfont=dict(size=16, color="black"),
+        dtick=5, tickprefix="$", tickfont=dict(size=16, color="black"),
         row=2, col=1
     )
     
