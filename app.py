@@ -34,11 +34,11 @@ PLANTILLAS = {
         {"Producto": "FRITOS 170G", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 40.0, "Gramaje (g)": 170, "SOM (%)": 0.1},
         {"Producto": "TAKIS 200G", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 45.0, "Gramaje (g)": 200, "SOM (%)": 0.2},
         {"Producto": "DORITOS 245G", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 56.0, "Gramaje (g)": 245, "SOM (%)": 0.3}
-    ],
-    "Escalera Super - Familiar": [
+   ],
+   "Escalera Super - Familiar": [
         {"Producto": "TAKIS 200G", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 45.0, "Gramaje (g)": 200, "SOM (%)": 1.2},
         {"Producto": "DORITOS 245G", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 56.0, "Gramaje (g)": 245, "SOM (%)": 3.2}
-    ]
+   ]
 }
 
 def calcular_pkg(df):
@@ -108,12 +108,12 @@ if not st.session_state.data.empty:
     df_p["O_Oca"] = df_p["Ocasión"].str.upper().map(ord_oca).fillna(99)
     df_p = df_p.sort_values(by=["O_Oca", "Precio ($)"])
 
-    # --- NUEVO: Cálculo de SOM por Ocasión ---
+    # --- Cálculo de SOM por Ocasión ---
     som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.05, row_heights=[0.3, 0.7])
 
-    # Línea SOM (Sin negritas en las etiquetas)
+    # Línea SOM (Sin negritas)
     fig.add_trace(go.Scatter(
         x=[df_p["Ocasión"], df_p["Producto"]], 
         y=df_p["SOM (%)"], 
@@ -126,7 +126,7 @@ if not st.session_state.data.empty:
         row = df_p.iloc[i]
         fig.add_annotation(
             x=i, y=row["SOM (%)"],
-            text=f"{row['SOM (%)']}%", # Texto normal, sin <b>
+            text=f"{row['SOM (%)']}%", 
             showarrow=False,
             yshift=15,
             font=dict(size=18, color="black"),
@@ -158,36 +158,37 @@ if not st.session_state.data.empty:
             row=2, col=1
         )
 
-    # --- NUEVO: Anotaciones de peso total por Ocasión ---
-    # Esto coloca el total de SOM debajo de cada categoría
-    categorias = df_p["Ocasión"].unique()
-    for cat in categorias:
-        # Encontrar la posición central de la categoría en el eje X
-        indices = df_p[df_p["Ocasión"] == cat].index
-        pos_x = df_p.index.get_loc(indices[len(indices)//2])
+    # --- Anotaciones de peso total por Ocasión ---
+    # Posicionamos el total debajo de los nombres de las categorías
+    categorias_unicas = df_p["Ocasión"].unique()
+    for cat in categorias_unicas:
+        # Buscamos la posición central de los productos en esa categoría
+        indices = df_p.index[df_p["Ocasión"] == cat].tolist()
+        df_indices = [df_p.index.get_loc(idx) for idx in indices]
+        pos_x_central = sum(df_indices) / len(df_indices)
         
         fig.add_annotation(
-            x=pos_x, y=-0.15, # Posición relativa debajo del eje X
+            x=pos_x_central, y=-0.22, # Ajustado para que no choque con los nombres
             xref="x2", yref="paper",
-            text=f"Total SOM: {som_por_ocasion[cat]:.1st}%",
+            text=f"<b>Total SOM: {som_por_ocasion[cat]:.1f}%</b>", # Corregido de .1st a .1f
             showarrow=False,
-            font=dict(size=14, color="#616161", family="Arial"),
+            font=dict(size=14, color="#424242", family="Arial"),
             row=2, col=1
         )
 
-    # Ajustes finales de layout y tipografía
+    # Ajustes finales de layout
     fig.update_layout(
-        height=800, # Aumenté un poco la altura total
+        height=850, # Un poco más alto para que quepa todo el texto inferior
         template="plotly_white", 
         showlegend=False, 
-        margin=dict(t=30, b=150) # Más espacio abajo para que los nombres respiren
+        margin=dict(t=50, b=180, l=50, r=50) # Margen inferior amplio para las etiquetas
     )
     
     fig.update_yaxes(showgrid=False, showticklabels=False, row=1, col=1, range=[0, df_p["SOM (%)"].max() * 2.5])
     
-    # Eje X con letra normal (sin negritas) y un tamaño más equilibrado
+    # Eje X sin negritas
     fig.update_xaxes(
-        tickfont=dict(size=13, color="black", family="Arial"), 
+        tickfont=dict(size=12, color="black", family="Arial"), 
         row=2, col=1
     )
     
