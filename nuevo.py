@@ -115,7 +115,7 @@ if not st.session_state.data.empty:
         x=df_p["Producto"], 
         y=df_p["SOM (%)"], 
         mode="lines+markers+text", # Añadimos text aquí
-        line=dict(color="#EEEEEE", width=1.5), 
+        line=dict(color="#888888", width=1.5), 
         marker=dict(size=25, color="#F5F5F5", symbol="square"), # Marcador grande de fondo
         text=[f"<b>{row['SOM (%)']}%</b>" for _, row in df_p.iterrows()],
         textposition="middle center", # Centrado absoluto
