@@ -50,6 +50,8 @@ if "data" not in st.session_state:
     else:
         st.session_state.data = pd.DataFrame(columns=["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)", "Precio por Kg ($)", "SOM (%)"])
 
+df_p = st.session_state.data.copy()
+
 # --- 3. BARRA LATERAL ---
 st.sidebar.header("📁 Gestión")
 nombre_plantilla = st.sidebar.selectbox("Cargar Plantilla:", ["-- Seleccionar --"] + list(PLANTILLAS.keys()))
@@ -93,8 +95,8 @@ if not edited_df.equals(st.session_state.data):
     st.session_state.data = calcular_pkg(edited_df)
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
-
-# --- 6. GRÁFICO ACTUALIZADO ---
+   
+# --- 6. GRÁFICO ACTUALIZADO (AJUSTE DE LÍNEAS Y MARCO) ---
 if not st.session_state.data.empty:
     ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5}
     df_p = st.session_state.data.copy()
@@ -104,44 +106,49 @@ if not st.session_state.data.empty:
 
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.12, 0.88])
 
-    colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
-
-    # SOM (Superior)
+    # SOM (Líneas tenues)
     fig.add_trace(go.Scatter(
         x=df_p["Producto"], y=df_p["SOM (%)"], 
         mode="lines+markers", line=dict(color="#CCCCCC", width=1.5), 
         marker=dict(size=5, color="#AAAAAA")
     ), row=1, col=1)
 
+    # Etiquetas SOM
     for i, row in df_p.iterrows():
         fig.add_annotation(
             x=i, y=row["SOM (%)"], text=f"<b>{row['SOM (%)']}%</b>", 
-            showarrow=False, yshift=15, font=dict(size=12, color="black"), 
-            bgcolor="#F0F0F0", bordercolor="#CCCCCC", borderwidth=1, row=1, col=1
+            showarrow=False, yshift=15, 
+            font=dict(size=13, color="black"), 
+            bgcolor="#E5E5E5", bordercolor="#CCCCCC", borderwidth=1, borderpad=4,
+            row=1, col=1
         )
 
     # Barras de Precio
+    colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
     fig.add_trace(go.Bar(
-        x=df_p["Producto"], y=df_p["Precio ($)"],
+        x=df_p["Producto"], 
+        y=df_p["Precio ($)"],
         marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]],
         text=[f"<b>${int(p)}</b>" for p in df_p["Precio ($)"]], 
         textposition="outside",
-        textfont=dict(size=18, color="black")
+        textfont=dict(size=18, color="black") 
     ), row=2, col=1)
 
-    # Etiquetas $/Kg
+    # $/Kg Etiquetas
     for i, row in df_p.iterrows():
         fig.add_annotation(
-            x=i, y=2.5, text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
-            showarrow=False, font=dict(size=15, color="white" if row["Fabricante"]=="BARCEL" else "black"),
-            bgcolor="rgba(11, 60, 140, 0.85)" if row["Fabricante"]=="BARCEL" else "rgba(255, 255, 255, 0.85)",
-            bordercolor="#333", borderwidth=1, row=2, col=1
+            x=i, y=2.5, 
+            text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
+            showarrow=False, font=dict(size=16, color="white" if row["Fabricante"] == "BARCEL" else "black"),
+            bgcolor="rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)",
+            bordercolor="#444" if row["Fabricante"] != "BARCEL" else None, borderwidth=1,
+            row=2, col=1
         )
 
-    # LÍNEAS DIVISORIAS Y OCASIONES
+    # --- AJUSTE SOLICITADO: LÍNEAS DIVISORIAS QUE CRUZAN TODO ---
     ocasiones_unicas = df_p["Ocasión"].unique()
     
-    # 1. Línea inicial (BITES)
+    # 1. Primera línea (antes de BITES)
     fig.add_shape(type="line", x0=-0.5, x1=-0.5, y0=-0.15, y1=1, xref="x2", yref="paper",
                   line=dict(color="#444444", width=2))
     
@@ -149,43 +156,42 @@ if not st.session_state.data.empty:
         idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
         center = (idx_list[0] + idx_list[-1]) / 2
         
-        # 2. Líneas divisorias que cruzan todo el gráfico
+        # 2. Líneas divisorias al final de cada ocasión (cruzan todo)
         fig.add_shape(type="line", x0=idx_list[-1] + 0.5, x1=idx_list[-1] + 0.5, 
                       y0=-0.15, y1=1, xref="x2", yref="paper",
                       line=dict(color="#444444", width=2))
         
-        # 3. Etiquetas de Ocasión y SOM Total
+        # 3. Etiquetas de Ocasión
         fig.add_annotation(
-            x=center, y=-0.65, xref="x2", yref="paper",
+            x=center, y=-0.65, 
+            xref="x2", yref="paper",
             text=f"<b>{cat}</b><br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>",
             showarrow=False, font=dict(size=16, color="black"), align="center"
         )
 
-    # --- 7. CONFIGURACIÓN DE MARCO Y EJES (CORRECCIÓN DE ERROR) ---
+    # --- AJUSTE SOLICITADO: MARCO PERIMETRAL ---
     fig.update_layout(
-        height=1100, width=1950, template="plotly_white", showlegend=False,
-        margin=dict(t=50, b=600, l=100, r=80)
+        height=1100, width=1950,
+        template="plotly_white", showlegend=False, 
+        margin=dict(t=50, b=600, l=100, r=80) 
     )
 
-    # Aplicar marco exterior (negro y sólido)
+    # Esto crea el marco negro en ambos subplots
     fig.update_xaxes(showline=True, linewidth=2, linecolor='black', mirror=True)
     fig.update_yaxes(showline=True, linewidth=2, linecolor='black', mirror=True)
 
-    # Eje Y (Fila 2 - Precios) - SE ELIMINÓ 'font' DENTRO DE 'tickfont' PARA EVITAR EL ERROR
+    # Resto de formatos de ejes (sin cambios)
     fig.update_yaxes(
-        showgrid=True, gridcolor="#E5E5E5", dtick=5,
-        tickprefix="$", 
-        tickfont=dict(size=17, color="black"),
+        showgrid=True, gridcolor="#F0F0F0", dtick=5,                
+        tickprefix="$", tickfont=dict(size=16, color="black"),
         row=2, col=1
     )
-
-    # Eje X
-    fig.update_xaxes(tickangle=-90, tickfont=dict(size=15, color="black"), row=2, col=1)
+    fig.update_xaxes(tickangle=-90, tickfont=dict(size=16, color="black"), row=2, col=1)
     fig.update_yaxes(showgrid=False, showticklabels=False, row=1, col=1)
 
     st.plotly_chart(fig, use_container_width=True)
 
-# --- 8. COMPARATIVAS ---
+# --- 7. COMPARATIVAS ---
 st.divider()
 st.subheader("📈 Comparativas Index $/Kg")
 barcel_list = df_p[df_p["Fabricante"]=="BARCEL"]["Producto"].unique() if not df_p.empty else []
@@ -198,15 +204,39 @@ if len(barcel_list) > 0 and len(comp_list) > 0:
             with st.container(border=True):
                 p_b = st.selectbox(f"Barcel", barcel_list, key=f"sb{i}", label_visibility="collapsed")
                 p_c = st.selectbox(f"Comp.", comp_list, key=f"sc{i}", label_visibility="collapsed")
+                
                 val_b = df_p[df_p["Producto"]==p_b]["Precio por Kg ($)"].values[0]
                 val_c = df_p[df_p["Producto"]==p_c]["Precio por Kg ($)"].values[0]
                 index_val = int((val_b / val_c) * 100)
+                
                 color_index = "#0B3C8C" if index_val <= 100 else "#D32F2F"
+                
                 st.markdown(f"""
-                    <div style="background-color: #f8f9fa; padding: 15px 10px; border-radius: 10px; border-top: 5px solid {color_index}; text-align: center; max-width: 200px; margin: 10px auto; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
-                        <div style="font-size: 0.9rem; font-weight: bold; color: #333; margin-bottom: 8px; line-height: 1.2;">
+                    <div style="
+                        background-color: #f8f9fa; 
+                        padding: 15px 10px; 
+                        border-radius: 10px; 
+                        border-top: 5px solid {color_index}; 
+                        text-align: center;
+                        max-width: 200px; 
+                        margin: 10px auto;
+                        box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+                    ">
+                        <div style="
+                            font-size: 0.9rem; 
+                            font-weight: bold; 
+                            color: #333; 
+                            margin-bottom: 8px;
+                            line-height: 1.2;
+                        ">
                             {p_b} <br> <span style="color: #888; font-size: 0.7rem;">vs</span> <br> {p_c}
                         </div>
-                        <div style="font-size: 2.2rem; font-weight: 900; color: {color_index};">{index_val}</div>
+                        <div style="
+                            font-size: 2.2rem; 
+                            font-weight: 900; 
+                            color: {color_index};
+                        ">
+                            {index_val}
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
