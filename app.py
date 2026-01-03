@@ -109,7 +109,7 @@ if not st.session_state.data.empty:
             text=f"<b>{row['SOM (%)']}%</b>",
             showarrow=False,
             yshift=15, # Eleva la etiqueta sobre el punto
-            font=dict(size=12, color="black"),
+            font=dict(size=20, color="black"),
             bgcolor="#E0E0E0", # Fondo gris
             bordercolor="#BDBDBD", borderwidth=1,
             row=1, col=1
@@ -123,7 +123,7 @@ if not st.session_state.data.empty:
         marker_color=[colors.get(str(f).upper(), "#B0B0B0") for f in df_p["Fabricante"]],
         text=[f"<b>${p}</b>" for p in df_p["Precio ($)"]], 
         textposition='outside',
-        textfont=dict(size=15, color="black")
+        textfont=dict(size=20, color="black")
     ), row=2, col=1)
 
     # Etiquetas $/Kg en la base
@@ -133,7 +133,7 @@ if not st.session_state.data.empty:
             x=i, y=2.5,
             text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
             showarrow=False,
-            font=dict(size=13, color="white" if row['Fabricante']=="BARCEL" else "black"),
+            font=dict(size=18, color="white" if row['Fabricante']=="BARCEL" else "black"),
             bgcolor="rgba(0,0,0,0.6)" if row['Fabricante']=="BARCEL" else "rgba(255,255,255,0.7)",
             row=2, col=1
         )
