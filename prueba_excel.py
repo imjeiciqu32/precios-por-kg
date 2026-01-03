@@ -123,13 +123,15 @@ if not st.session_state.data.empty:
             row=1, col=1
         )
 
-    # Barras de Precio
-    colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
+    # Barras de Precio (Desembolso)
     fig.add_trace(go.Bar(
-        x=df_p["Producto"], y=df_p["Precio ($)"],
+        x=df_p["Producto"], 
+        y=df_p["Precio ($)"],
         marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]],
-        text=[f"<b>${p}</b>" for p in df_p["Precio ($)"]], textposition="outside",
-        textfont=dict(size=18)
+        # int(p) quita los decimales y 'color: black' cambia el gris por negro
+        text=[f"<b>${int(p)}</b>" for p in df_p["Precio ($)"]], 
+        textposition="outside",
+        textfont=dict(size=18, color="black") 
     ), row=2, col=1)
 
     # $/Kg (Azul acero para Barcel)
@@ -159,7 +161,7 @@ if not st.session_state.data.empty:
         fig.add_vline(x=idx_list[-1] + 0.5, line_color="#DDDDDD", line_width=1.5, row=2, col=1)
         
         fig.add_annotation(
-            x=center, y=-0.55, # Bajamos de -0.42 a -0.55 para dar más espacio
+            x=center, y=-0.60, # Bajamos de -0.42 a -0.55 para dar más espacio
             xref="x2", yref="paper",
             text=f"{cat}<br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>",
             showarrow=False, font=dict(size=16, color="black"), align="center"
@@ -174,8 +176,10 @@ if not st.session_state.data.empty:
 
     fig.update_yaxes(
         showgrid=True, 
-        gridcolor="#F0F0F0", # Gris muy tenue para las líneas de $5
-        dtick=5,             # <--- ESTO CREA LA DIVISIÓN CADA $5
+        gridcolor="#F0F0F0", 
+        dtick=5,             
+        tickprefix="$",      # Agrega el signo de pesos antes del número
+        tickfont=dict(size=16, color="black"), # Hace los números más grandes y negros
         row=2, col=1
     )
 
