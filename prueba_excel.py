@@ -89,15 +89,15 @@ if not st.session_state.data.empty:
         go.Scatter(
             x=[df_plot["Ocasión"], df_plot["Producto"]],
             y=df_plot["SOM (%)"],
-            mode="lines+markers",
+            mode="lines+markers", # Mantenemos markers para que la línea se conecte bien
             line=dict(color="#D3D3D3", width=1.5),
-            marker=dict(size=8, color="#444"),
+            marker=dict(size=1, color="#D3D3D3"), # Hacemos el punto casi invisible
             hoverinfo="skip"
         ),
         row=1, col=1
     )
 
-    # Etiquetas SOM: Fondo gris, letra negra, bordes
+    # Etiquetas SOM: CENTRADAS en el punto para taparlo
     for i in range(len(df_plot)):
         row = df_plot.iloc[i]
         fig.add_annotation(
@@ -105,12 +105,15 @@ if not st.session_state.data.empty:
             y=row["SOM (%)"],
             text=f"<b>{row['SOM (%)']}%</b>",
             showarrow=False,
-            yshift=15, # Separación del punto
+            # --- AJUSTES DE POSICIÓN ---
+            yshift=0,          # Centrado exacto en la coordenada Y
+            xshift=0,          # Centrado exacto en la coordenada X
+            # ---------------------------
             font=dict(size=12, color="black"),
-            bgcolor="#F0F0F0", # Gris claro
+            bgcolor="#F0F0F0", # Fondo gris del cuadrito
             bordercolor="#BDBDBD",
             borderwidth=1,
-            borderpad=3,
+            borderpad=4,       # Un poco más de aire dentro del cuadro
             row=1, col=1
         )
 
