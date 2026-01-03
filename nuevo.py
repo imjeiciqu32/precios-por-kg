@@ -188,7 +188,7 @@ if not st.session_state.data.empty:
     # --- CONFIGURACIÓN FINAL (SUBE LA COMPARATIVA) ---
     fig.update_layout(
         height=950, width=1950, template="plotly_white", showlegend=False,
-        margin=dict(t=50, b=500, l=100, r=80) # b=150 elimina el hueco blanco
+        margin=dict(t=50, b=450, l=100, r=80) # b=150 elimina el hueco blanco
     )
 
     fig.update_xaxes(showline=False, zeroline=False)
