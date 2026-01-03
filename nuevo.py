@@ -126,7 +126,7 @@ if not st.session_state.data.empty:
         ), 
         text=[f"<b>{row['SOM (%)']}%</b>" for _, row in df_p.iterrows()],
         textposition="middle center", 
-        textfont=dict(size=11, color="black"),
+        textfont=dict(size=13, color="black"),
     ), row=1, col=1)
 
     # --- BARRAS DE PRECIO ---
