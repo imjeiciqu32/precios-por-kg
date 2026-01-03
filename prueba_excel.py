@@ -143,7 +143,7 @@ if not st.session_state.data.empty:
             x=i, y=2.5, 
             text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
             showarrow=False, font=dict(size=16, color="white" if row["Fabricante"] == "BARCEL" else "black"),
-            bgcolor="rgba(0,0,0,0.7)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)",
+            bgcolor="rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)",
             bordercolor="#444" if row["Fabricante"] != "BARCEL" else None, borderwidth=1,
             row=2, col=1
         )
@@ -153,7 +153,7 @@ if not st.session_state.data.empty:
         fig.add_shape(
             type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.38, 
             xref="x2", yref="paper",
-            line=dict(color="#F8F8F8", width=1) 
+            line=dict(color="#DDDDDD", width=1) 
         )
 
     # Ocasiones (Espaciado ajustado para juntar título y suma)
