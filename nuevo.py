@@ -95,7 +95,9 @@ if not edited_df.equals(st.session_state.data):
     st.session_state.data = calcular_pkg(edited_df)
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
-# --- 6. GRÁFICO FINAL: ETIQUETAS SOM CENTRADAS Y MARCO GRIS ---
+
+
+# --- 6. GRÁFICO FINAL: INTEGRACIÓN COMPLETA ---
 if not st.session_state.data.empty:
     ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5}
     df_p = st.session_state.data.copy()
@@ -110,17 +112,17 @@ if not st.session_state.data.empty:
         row_heights=[0.12, 0.88]
     )
 
-    # --- SOM (UNIFICADO: Cuadro gris que tapa la línea) ---
+    # --- SOM (Cuadro gris unificado) ---
     fig.add_trace(go.Scatter(
         x=df_p["Producto"], 
         y=df_p["SOM (%)"], 
         mode="lines+markers+text", 
         line=dict(color="#BBBBBB", width=1.5), 
         marker=dict(
-            size=30,                # Tamaño del cuadro
-            color="#E5E5E5",       # Fondo gris (tomado de tu segundo código)
-            symbol="square",        # Forma de cuadro
-            line=dict(color="#CCCCCC", width=1) # Borde del cuadro
+            size=30, 
+            color="#E5E5E5", 
+            symbol="square", 
+            line=dict(color="#CCCCCC", width=1)
         ), 
         text=[f"<b>{row['SOM (%)']}%</b>" for _, row in df_p.iterrows()],
         textposition="middle center", 
@@ -135,6 +137,17 @@ if not st.session_state.data.empty:
         text=[f"<b>${int(p)}</b>" for p in df_p["Precio ($)"]], 
         textposition="outside", textfont=dict(size=18, color="black") 
     ), row=2, col=1)
+
+    # --- TU BLOQUE $/KG (REINSTALADO) ---
+    for i, row in df_p.iterrows():
+        fig.add_annotation(
+            x=i, y=2.5, 
+            text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
+            showarrow=False, font=dict(size=16, color="white" if row["Fabricante"] == "BARCEL" else "black"),
+            bgcolor="rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)",
+            bordercolor="#444" if row["Fabricante"] != "BARCEL" else None, borderwidth=1,
+            row=2, col=1
+        )
 
     # --- DIVISIONES VERTICALES PRODUCTOS (CORTAS) ---
     for i in range(len(df_p) + 1):
@@ -158,8 +171,9 @@ if not st.session_state.data.empty:
             line=dict(color="#DDDDDD", width=1.5)
         )
         
+        # Ajustamos 'y' de -0.60 a -0.22 para acercar el texto al gráfico
         fig.add_annotation(
-            x=center, y=-0.60, xref="x2", yref="paper",
+            x=center, y=-0.22, xref="x2", yref="paper",
             text=f"{cat}<br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>",
             showarrow=False, font=dict(size=16, color="black"), align="center"
         )
@@ -171,10 +185,10 @@ if not st.session_state.data.empty:
         line=dict(color="#DDDDDD", width=2),
     )
 
-    # --- CONFIGURACIÓN FINAL ---
+    # --- CONFIGURACIÓN FINAL (SUBE LA COMPARATIVA) ---
     fig.update_layout(
-        height=1100, width=1950, template="plotly_white", showlegend=False,
-        margin=dict(t=50, b=500, l=100, r=80)
+        height=950, width=1950, template="plotly_white", showlegend=False,
+        margin=dict(t=50, b=150, l=100, r=80) # b=150 elimina el hueco blanco
     )
 
     fig.update_xaxes(showline=False, zeroline=False)
