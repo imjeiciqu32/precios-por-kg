@@ -109,15 +109,15 @@ if not st.session_state.data.empty:
     # SOM (Líneas ultra tenues)
     fig.add_trace(go.Scatter(
         x=df_p["Producto"], y=df_p["SOM (%)"], 
-        mode="lines+markers", line=dict(color="#F5F5F5", width=1), 
-        marker=dict(size=4, color="#DDDDDD")
+        mode="lines+markers", line=dict(color="#CCCCCC", width=1), 
+        marker=dict(size=4, color="#AAAAAA")
     ), row=1, col=1)
 
     for i, row in df_p.iterrows():
         fig.add_annotation(
             x=i, y=row["SOM (%)"], text=f"{row['SOM (%)']}%", 
             showarrow=False, yshift=10, 
-            font=dict(size=11, color="#BBBBBB"), 
+            font=dict(size=14, color="black"), 
             bgcolor="rgba(255, 255, 255, 0.5)",
             row=1, col=1
         )
