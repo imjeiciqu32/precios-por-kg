@@ -5,7 +5,7 @@ from plotly.subplots import make_subplots
 import os
 
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Price Ladder & SOM Analysis", layout="wide")
+st.set_page_config(page_title="Price Ladder", layout="wide")
 DB_FILE = "historico_productos.csv"
 
 # --- 2. FUNCIONES DE DATOS ---
@@ -32,7 +32,7 @@ def load_data():
 if "data" not in st.session_state:
     st.session_state.data = load_data()
 
-st.title("📊 Análisis de Escalera y Participación (SOM)")
+st.title("📊 Escaleras de Precio Dinámicas")
 
 # --- 3. ENTRADA DE DATOS (FORMULARIO) ---
 with st.expander("➕ Agregar Producto Nuevo", expanded=False):
@@ -130,16 +130,20 @@ if not st.session_state.data.empty:
         row=2, col=1
     )
 
-    # Etiquetas $/Kg dentro de las barras
+    # Etiquetas $/Kg centradas y ALINEADAS EN LA BASE
     for i in range(len(df_plot)):
         row = df_plot.iloc[i]
         fig.add_annotation(
             x=i,
-            y=row["Precio ($)"] * 0.15, # Posición baja dentro de la barra
+            # Cambiamos el cálculo por un valor FIJO (ejemplo: 2.5) 
+            # para que todas las cajas se alineen horizontalmente
+            y=2.5, 
             text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
             showarrow=False,
             font=dict(size=16, color="white" if str(row["Fabricante"]).upper() == "BARCEL" else "black"),
             bgcolor="rgba(0,0,0,0.3)" if str(row["Fabricante"]).upper() == "BARCEL" else "rgba(255,255,255,0.4)",
+            # Añadimos un pequeño margen interno para que se vea más profesional
+            borderpad=4,
             row=2, col=1
         )
 
