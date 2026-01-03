@@ -96,7 +96,7 @@ if not edited_df.equals(st.session_state.data):
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
    
-# --- 6. GRÁFICO CORREGIDO: SIN LÍNEAS HORIZONTALES INTERMEDIAS Y CON TUS DIVISIONES ORIGINALES ---
+# --- 6. GRÁFICO CORREGIDO: MARCO ÚNICO PERIMETRAL Y LÍNEAS DE Y RESTAURADAS ---
 if not st.session_state.data.empty:
     ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5}
     df_p = st.session_state.data.copy()
@@ -104,7 +104,7 @@ if not st.session_state.data.empty:
     df_p = df_p.sort_values(by=["O_Oca", "Precio ($)"]).reset_index(drop=True)
     som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-    # Mantenemos shared_xaxes y vertical_spacing en 0 para que no haya líneas ni huecos en medio
+    # vertical_spacing en 0 para que visualmente sea un solo bloque
     fig = make_subplots(
         rows=2, cols=1, 
         shared_xaxes=True, 
@@ -135,6 +135,7 @@ if not st.session_state.data.empty:
         textposition="outside", textfont=dict(size=18, color="black") 
     ), row=2, col=1)
 
+    # --- $/Kg ---
     for i, row in df_p.iterrows():
         fig.add_annotation(
             x=i, y=2.5, text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
@@ -144,7 +145,7 @@ if not st.session_state.data.empty:
             row=2, col=1
         )
 
-    # --- TUS DIVISIONES VERTICALES ENTRE PRODUCTOS (SIN CAMBIOS) ---
+    # --- TUS DIVISIONES VERTICALES ENTRE PRODUCTOS (INTACTAS) ---
     for i in range(len(df_p) + 1):
         fig.add_shape(
             type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50,
@@ -152,7 +153,7 @@ if not st.session_state.data.empty:
             line=dict(color="#DDDDDD", width=1) 
         )
 
-    # --- TUS OCASIONES (SIN CAMBIOS) ---
+    # --- TUS OCASIONES (INTACTAS) ---
     for cat in df_p["Ocasión"].unique():
         idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
         center = (idx_list[0] + idx_list[-1]) / 2
@@ -166,27 +167,27 @@ if not st.session_state.data.empty:
             showarrow=False, font=dict(size=16, color="black"), align="center"
         )
 
-    # --- CONFIGURACIÓN FINAL: MARCO EXTERIOR Y LIMPIEZA ---
+    # --- CONFIGURACIÓN DE EJES Y MARCO UNIFICADO ---
     fig.update_layout(
         height=1100, width=1950, template="plotly_white", showlegend=False,
         margin=dict(t=50, b=600, l=100, r=80)
     )
 
-    # Marco exterior negro (Recuadro perimetral)
-    fig.update_xaxes(showline=True, linewidth=2, linecolor='black', mirror=True)
-    fig.update_yaxes(showline=True, linewidth=2, linecolor='black', mirror=True)
-
-    # Eje Y: Quitamos todas las líneas de cuadrícula para que no se vea nada horizontal entre gráficas
-    fig.update_yaxes(showgrid=False, row=1, col=1) # Limpia el SOM
+    # Quitamos las líneas divisorias internas negras pero dejamos el marco exterior
+    # Row 1 (SOM) - Solo bordes superior, izquierdo y derecho
+    fig.update_yaxes(showgrid=False, showline=True, linecolor='black', linewidth=2, mirror=True, row=1, col=1)
+    
+    # Row 2 (Barras) - Restauramos las líneas horizontales (grid) que pediste
     fig.update_yaxes(
-        showgrid=False, # Quitamos cuadrícula horizontal aquí también
+        showgrid=True, gridcolor="#F0F0F0", 
+        showline=True, linecolor='black', linewidth=2, mirror=True,
         dtick=5, tickprefix="$", 
         tickfont=dict(size=16, color="black"),
         row=2, col=1
     )
 
-    # Eje X
-    fig.update_xaxes(tickangle=-90, tickfont=dict(size=16, color="black"), row=2, col=1)
+    # Ajustes Eje X (Asegura que el marco cierre abajo)
+    fig.update_xaxes(showline=True, linecolor='black', linewidth=2, mirror=True, tickangle=-90, tickfont=dict(size=16, color="black"), row=2, col=1)
     fig.update_yaxes(showticklabels=False, row=1, col=1)
 
     st.plotly_chart(fig, use_container_width=True)
