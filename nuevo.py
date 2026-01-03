@@ -173,7 +173,7 @@ if not st.session_state.data.empty:
         
         # Ajustamos 'y' de -0.60 a -0.22 para acercar el texto al gráfico
         fig.add_annotation(
-            x=center, y=-0.45, xref="x2", yref="paper",
+            x=center, y=-0.60, xref="x2", yref="paper",
             text=f"{cat}<br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>",
             showarrow=False, font=dict(size=16, color="black"), align="center"
         )
