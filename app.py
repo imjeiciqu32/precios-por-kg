@@ -34,10 +34,6 @@ PLANTILLAS = {
         {"Producto": "FRITOS 170G", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 40.0, "Gramaje (g)": 170, "SOM (%)": 0.1},
         {"Producto": "TAKIS 200G", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 45.0, "Gramaje (g)": 200, "SOM (%)": 0.2},
         {"Producto": "DORITOS 245G", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 56.0, "Gramaje (g)": 245, "SOM (%)": 0.3}
-   ],
-   "Escalera Super - Familiar": [
-        {"Producto": "TAKIS 200G", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 45.0, "Gramaje (g)": 200, "SOM (%)": 1.2},
-        {"Producto": "DORITOS 245G", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 56.0, "Gramaje (g)": 245, "SOM (%)": 3.2}
    ]
 }
 
@@ -54,46 +50,9 @@ if "data" not in st.session_state:
     else:
         st.session_state.data = pd.DataFrame(columns=["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)", "Precio por Kg ($)", "SOM (%)"])
 
-# --- 3. BARRA LATERAL ---
-st.sidebar.header("📁 Gestión")
-nombre_plantilla = st.sidebar.selectbox("Cargar Plantilla:", ["-- Seleccionar --"] + list(PLANTILLAS.keys()))
+st.title("📊 Análisis de Escalera y Participación (SOM)")
 
-if st.sidebar.button("Cargar Escalera"):
-    if nombre_plantilla != "-- Seleccionar --":
-        nuevos_datos = pd.DataFrame(PLANTILLAS[nombre_plantilla])
-        st.session_state.data = calcular_pkg(nuevos_datos)
-        st.session_state.data.to_csv(DB_FILE, index=False)
-        st.rerun()
-
-if st.sidebar.button("🗑️ Reset"):
-    if os.path.exists(DB_FILE): os.remove(DB_FILE)
-    st.session_state.data = pd.DataFrame(columns=["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)", "Precio por Kg ($)", "SOM (%)"])
-    st.rerun()
-
-st.title("📊 ESCALERAS DE PRECIO DINÁMICAS")
-
-# --- 4. FORMULARIO AGREGAR SKU ---
-with st.expander("➕ Agregar nuevo producto manualmente", expanded=False):
-    with st.form("nuevo_sku_form", clear_on_submit=True):
-        c1, c2, c3 = st.columns(3)
-        f_nom = c1.text_input("Nombre del Producto").upper()
-        f_fab = c2.selectbox("Fabricante", ["BARCEL", "SABRITAS", "OTROS"])
-        f_oca = c3.selectbox("Ocasión", ["BITES", "INDIVIDUAL", "HAMBRE", "COMPARTIR", "FAMILIAR"])
-        
-        c4, c5, c6 = st.columns(3)
-        f_pre = c4.number_input("Precio ($)", min_value=0.0, step=0.5)
-        f_gra = c5.number_input("Gramaje (g)", min_value=1.0, step=1.0)
-        f_som = c6.number_input("SOM (%)", min_value=0.0, max_value=100.0, step=0.1)
-        
-        if st.form_submit_button("Añadir a la lista"):
-            nuevo_sku = pd.DataFrame([{"Producto": f_nom, "Fabricante": f_fab, "Ocasión": f_oca, 
-                                       "Precio ($)": f_pre, "Gramaje (g)": f_gra, "SOM (%)": f_som}])
-            st.session_state.data = pd.concat([st.session_state.data, nuevo_sku], ignore_index=True)
-            st.session_state.data = calcular_pkg(st.session_state.data)
-            st.session_state.data.to_csv(DB_FILE, index=False)
-            st.rerun()
-
-# --- 5. EDITOR ---
+# --- EDITOR DE DATOS ---
 st.subheader("📝 Tabla de Datos")
 edited_df = st.data_editor(st.session_state.data, num_rows="dynamic", use_container_width=True)
 if not edited_df.equals(st.session_state.data):
@@ -101,94 +60,95 @@ if not edited_df.equals(st.session_state.data):
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
 
-# --- 6. GRÁFICO ACTUALIZADO ---
+# --- 6. LÓGICA DEL GRÁFICO ---
 if not st.session_state.data.empty:
     df_p = st.session_state.data.copy()
     ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5}
     df_p["O_Oca"] = df_p["Ocasión"].str.upper().map(ord_oca).fillna(99)
-    df_p = df_p.sort_values(by=["O_Oca", "Precio ($)"])
+    df_p = df_p.sort_values(by=["O_Oca", "Precio ($)"]).reset_index(drop=True)
 
-    # --- Cálculo de SOM por Ocasión ---
+    # Cálculo de SOM por Ocasión
     som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.05, row_heights=[0.3, 0.7])
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.08, row_heights=[0.3, 0.7])
 
-    # Línea SOM (Sin negritas)
+    # 1. LÍNEA SOM (Etiquetas normales)
     fig.add_trace(go.Scatter(
-        x=[df_p["Ocasión"], df_p["Producto"]], 
+        x=df_p["Producto"], 
         y=df_p["SOM (%)"], 
         mode="lines+markers",
         line=dict(color="#D3D3D3", width=2),
-        marker=dict(size=4, color="#424242")
+        marker=dict(size=6, color="#424242")
     ), row=1, col=1)
 
-    for i in range(len(df_p)):
-        row = df_p.iloc[i]
+    for i, row in df_p.iterrows():
         fig.add_annotation(
             x=i, y=row["SOM (%)"],
             text=f"{row['SOM (%)']}%", 
-            showarrow=False,
-            yshift=15,
-            font=dict(size=18, color="black"),
-            bgcolor="rgba(224, 224, 224, 0.8)",
-            bordercolor="#BDBDBD", borderwidth=1,
+            showarrow=False, yshift=15,
+            font=dict(size=12, color="black"),
             row=1, col=1
         )
 
-    # Barras de Precio
+    # 2. BARRAS DE PRECIO
     colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
     fig.add_trace(go.Bar(
-        x=[df_p["Ocasión"], df_p["Producto"]], 
+        x=df_p["Producto"], 
         y=df_p["Precio ($)"],
         marker_color=[colors.get(str(f).upper(), "#B0B0B0") for f in df_p["Fabricante"]],
         text=[f"<b>${p}</b>" for p in df_p["Precio ($)"]], 
         textposition='outside',
-        textfont=dict(size=18, color="black")
+        textfont=dict(size=14, color="black")
     ), row=2, col=1)
 
-    # Etiquetas $/Kg
-    for i in range(len(df_p)):
-        row = df_p.iloc[i]
+    # 3. INDEX ($/KG) DENTRO DE LAS BARRAS
+    for i, row in df_p.iterrows():
         fig.add_annotation(
-            x=i, y=2.5,
+            x=i, y=row["Precio ($)"] * 0.15, # Lo pone en la base de la barra
             text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
             showarrow=False,
-            font=dict(size=16, color="white" if row['Fabricante']=="BARCEL" else "black"),
-            bgcolor="rgba(0,0,0,0.6)" if row['Fabricante']=="BARCEL" else "rgba(255,255,255,0.7)",
+            font=dict(size=12, color="white" if row['Fabricante']=="BARCEL" else "black"),
+            bgcolor="rgba(0,0,0,0.5)" if row['Fabricante']=="BARCEL" else "rgba(255,255,255,0.6)",
             row=2, col=1
         )
 
-    # --- Anotaciones de peso total por Ocasión ---
-    # Posicionamos el total debajo de los nombres de las categorías
+    # 4. OCASIONES Y SUMA SOM (ESTILO EXCEL)
     categorias_unicas = df_p["Ocasión"].unique()
+    last_idx = -0.5
     for cat in categorias_unicas:
-        # Buscamos la posición central de los productos en esa categoría
         indices = df_p.index[df_p["Ocasión"] == cat].tolist()
-        df_indices = [df_p.index.get_loc(idx) for idx in indices]
-        pos_x_central = sum(df_indices) / len(df_indices)
+        start_idx = indices[0]
+        end_idx = indices[-1]
+        center_idx = (start_idx + end_idx) / 2
         
+        # Nombre de Ocasión y % debajo
         fig.add_annotation(
-            x=pos_x_central, y=-0.22, # Ajustado para que no choque con los nombres
+            x=center_idx, y=-0.25, 
             xref="x2", yref="paper",
-            text=f"<b>Total SOM: {som_por_ocasion[cat]:.1f}%</b>", # Corregido de .1st a .1f
+            text=f"{cat}<br><b>{som_por_ocasion[cat]:.1f}%</b>",
             showarrow=False,
-            font=dict(size=14, color="#424242", family="Arial"),
-            row=2, col=1
+            font=dict(size=13, color="black"),
+            align="center"
         )
+        
+        # Línea divisoria vertical
+        fig.add_vline(x=end_idx + 0.5, line_width=1, line_color="#D3D3D3", row=2, col=1)
 
-    # Ajustes finales de layout
+    # CONFIGURACIÓN FINAL
     fig.update_layout(
-        height=850, # Un poco más alto para que quepa todo el texto inferior
-        template="plotly_white", 
-        showlegend=False, 
-        margin=dict(t=50, b=180, l=50, r=50) # Margen inferior amplio para las etiquetas
+        height=850,
+        margin=dict(t=50, b=200, l=60, r=60),
+        template="plotly_white",
+        showlegend=False
     )
     
-    fig.update_yaxes(showgrid=False, showticklabels=False, row=1, col=1, range=[0, df_p["SOM (%)"].max() * 2.5])
+    fig.update_yaxes(showgrid=True, gridcolor="#F0F0F0", row=2, col=1, title="Precio ($)")
+    fig.update_yaxes(showticklabels=False, row=1, col=1, range=[0, df_p["SOM (%)"].max() * 1.5])
     
-    # Eje X sin negritas
+    # Eje X sin negritas para los productos
     fig.update_xaxes(
-        tickfont=dict(size=12, color="black", family="Arial"), 
+        tickangle=-90,
+        tickfont=dict(size=11, color="#444444", family="Arial"),
         row=2, col=1
     )
     
