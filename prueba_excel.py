@@ -113,12 +113,18 @@ if not st.session_state.data.empty:
         marker=dict(size=4, color="#AAAAAA")
     ), row=1, col=1)
 
+    # --- AJUSTE: ETIQUETAS SOM NEGRAS CON FONDO GRIS ---
     for i, row in df_p.iterrows():
         fig.add_annotation(
-            x=i, y=row["SOM (%)"], text=f"{row['SOM (%)']}%", 
-            showarrow=False, yshift=10, 
-            font=dict(size=14, color="black"), 
-            bgcolor="rgba(255, 255, 255, 0.5)",
+            x=i, y=row["SOM (%)"], 
+            text=f"<b>{row['SOM (%)']}%</b>", 
+            showarrow=False, 
+            yshift=15, 
+            font=dict(size=14, color="black"), # Letra negra y clara
+            bgcolor="#E5E5E5",                 # <--- FONDO GRIS (puedes usar "lightgray")
+            bordercolor="#CCCCCC",             # Un borde sutil para que resalte más
+            borderwidth=1,
+            borderpad=4,                       # Espaciado interno para que no quede apretado
             row=1, col=1
         )
 
