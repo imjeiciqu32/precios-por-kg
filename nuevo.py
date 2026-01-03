@@ -185,32 +185,48 @@ if not st.session_state.data.empty:
         line=dict(color="#DDDDDD", width=2),
     )
 
-    # --- CONFIGURACIÓN FINAL ---
+ # --- CONFIGURACIÓN FINAL DEL LAYOUT ---
     fig.update_layout(
         height=950, 
         width=1950, 
         template="plotly_white", 
         showlegend=False,
-        # Cambiamos l=100 por l=40 para pegar el eje a la izquierda
-        margin=dict(t=50, b=400, l=40, r=40) 
+        # l=40 pega el eje a la izquierda. b=400 da espacio a las etiquetas de ocasión.
+        margin=dict(t=50, b=400, l=40, r=40),
+        # Esto asegura que el subgráfico ocupe todo el espacio lateral disponible
+        xaxis2=dict(anchor="y2"),
+        yaxis2=dict(anchor="x2")
     )
-    # --- AJUSTE DE EJES ---
-   fig.update_xaxes(showline=False, zeroline=False)
-   fig.update_yaxes(showline=False, zeroline=False)
 
-   # ESTA ES LA LÍNEA CLAVE: Añadimos automargin=False
-   fig.update_yaxes(
-       showgrid=True, 
-       gridcolor="#F5F5F5", 
-       dtick=5, 
-       tickprefix="$", 
-       automargin=False,  # <--- Agrega esto para pegar el eje a la izquierda
-       row=2, col=1  
-   )
+    # --- AJUSTE DE EJES (FILA 1: SOM) ---
+    fig.update_yaxes(showticklabels=False, showline=False, zeroline=False, row=1, col=1)
+    fig.update_xaxes(showline=False, zeroline=False, row=1, col=1)
 
-   fig.update_xaxes(tickangle=-90, tickfont=dict(size=16, color="black"), row=2, col=1)
-   fig.update_yaxes(showticklabels=False, row=1, col=1)
-   st.plotly_chart(fig, use_container_width=True)
+    # --- AJUSTE DE EJES (FILA 2: PRECIOS) ---
+    fig.update_yaxes(
+        showgrid=True, 
+        gridcolor="#F5F5F5", 
+        dtick=5, 
+        tickprefix="$", 
+        tickfont=dict(size=14, color="black"),
+        showline=False, 
+        zeroline=False,
+        # CLAVE: automargin=False elimina el "colchón" de espacio a la izquierda
+        automargin=False, 
+        row=2, col=1
+    )
+
+    fig.update_xaxes(
+        tickangle=-90, 
+        tickfont=dict(size=16, color="black"), 
+        showline=False, 
+        zeroline=False,
+        row=2, col=1
+    )
+
+    # --- RENDERIZADO EN STREAMLIT ---
+    st.plotly_chart(fig, use_container_width=True)
+   
 # --- 7. COMPARATIVAS ---
 st.divider()
 st.subheader("📈 Comparativas Index $/Kg")
