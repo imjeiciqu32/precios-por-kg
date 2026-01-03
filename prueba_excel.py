@@ -124,11 +124,11 @@ if not st.session_state.data.empty:
         )
 
     # Barras de Precio (Desembolso)
+    colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
     fig.add_trace(go.Bar(
         x=df_p["Producto"], 
         y=df_p["Precio ($)"],
         marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]],
-        # int(p) quita los decimales y 'color: black' cambia el gris por negro
         text=[f"<b>${int(p)}</b>" for p in df_p["Precio ($)"]], 
         textposition="outside",
         textfont=dict(size=18, color="black") 
@@ -148,7 +148,7 @@ if not st.session_state.data.empty:
     # Divisiones verticales entre productos (Tenues)
     for i in range(len(df_p) + 1):
         fig.add_shape(
-            type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50, # Aumentamos y1 para que baje la línea divisoria
+            type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50,
             xref="x2", yref="paper",
             line=dict(color="#DDDDDD", width=1) 
         )
@@ -161,7 +161,7 @@ if not st.session_state.data.empty:
         fig.add_vline(x=idx_list[-1] + 0.5, line_color="#DDDDDD", line_width=1.5, row=2, col=1)
         
         fig.add_annotation(
-            x=center, y=-0.60, # Bajamos de -0.42 a -0.55 para dar más espacio
+            x=center, y=-0.60, 
             xref="x2", yref="paper",
             text=f"{cat}<br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>",
             showarrow=False, font=dict(size=16, color="black"), align="center"
@@ -171,15 +171,15 @@ if not st.session_state.data.empty:
     fig.update_layout(
         height=1100, width=1950,
         template="plotly_white", showlegend=False, 
-        margin=dict(t=50, b=550, l=80, r=80) # Aumentamos margen inferior para las etiquetas bajadas
+        margin=dict(t=50, b=550, l=100, r=80) 
     )
 
     fig.update_yaxes(
         showgrid=True, 
         gridcolor="#F0F0F0", 
         dtick=5,             
-        tickprefix="$",      # Agrega el signo de pesos antes del número
-        tickfont=dict(size=16, color="black"), # Hace los números más grandes y negros
+        tickprefix="$",      
+        tickfont=dict(size=16, color="black"),
         row=2, col=1
     )
 
@@ -195,7 +195,6 @@ barcel_list = df_p[df_p["Fabricante"]=="BARCEL"]["Producto"].unique() if not df_
 comp_list = df_p[df_p["Fabricante"]!="BARCEL"]["Producto"].unique() if not df_p.empty else []
 
 if len(barcel_list) > 0 and len(comp_list) > 0:
-    # Usamos columnas para organizar, pero el CSS interno controlará el ancho real
     idx_cols = st.columns(4)
     for i in range(4):
         with idx_cols[i]:
@@ -207,10 +206,8 @@ if len(barcel_list) > 0 and len(comp_list) > 0:
                 val_c = df_p[df_p["Producto"]==p_c]["Precio por Kg ($)"].values[0]
                 index_val = int((val_b / val_c) * 100)
                 
-                # Color dinámico: Azul si es competitivo (<=100), Rojo si es caro (>100)
                 color_index = "#0B3C8C" if index_val <= 100 else "#D32F2F"
                 
-                # HTML Personalizado para la tarjeta
                 st.markdown(f"""
                     <div style="
                         background-color: #f8f9fa; 
