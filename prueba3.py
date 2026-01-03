@@ -1,126 +1,209 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import os
 
-# --- Configuración y Persistencia ---
-st.set_page_config(page_title="Price Ladder Pro", layout="wide")
+# --- 1. CONFIGURACIÓN ---
+st.set_page_config(page_title="Price Ladder Expert Pro", layout="wide")
 DB_FILE = "historico_productos.csv"
 
-def load_data():
-    if os.path.exists(DB_FILE):
-        try:
-            df = pd.read_csv(DB_FILE)
-            # Limpieza profunda: Convertir a numérico y llenar vacíos con 0
-            df["Precio ($)"] = pd.to_numeric(df["Precio ($)"], errors='coerce').fillna(0)
-            df["Precio por Kg ($)"] = pd.to_numeric(df["Precio por Kg ($)"], errors='coerce').fillna(0)
-            return df
-        except:
-            return pd.DataFrame(columns=["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)", "Precio por Kg ($)"])
-    return pd.DataFrame(columns=["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)", "Precio por Kg ($)"])
+# --- 2. REPOSITORIO DE PLANTILLAS ---
+PLANTILLAS = {
+   "DT - MAÍZ": [
+        {"Producto": "MINI TAKIS 35G", "Fabricante": "BARCEL", "Ocasión": "BITES", "Precio ($)": 10.0, "Gramaje (g)": 35, "SOM (%)": 0.7},
+        {"Producto": "DORITOS 41G", "Fabricante": "SABRITAS", "Ocasión": "BITES", "Precio ($)": 15.0, "Gramaje (g)": 41, "SOM (%)": 0.7},
+        {"Producto": "CHURRUMAIS 70G", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 17.0, "Gramaje (g)": 70, "SOM (%)": 1.9},
+        {"Producto": "TOSTACHOS 75G", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 18.0, "Gramaje (g)": 75, "SOM (%)": 0.7},
+        {"Producto": "RUNNERS 72G", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 18.0, "Gramaje (g)": 72, "SOM (%)": 4.7},
+        {"Producto": "FRITOS 70G", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 18.0, "Gramaje (g)": 70, "SOM (%)": 8.1},
+        {"Producto": "CHIPOTLES 65G", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 18.0, "Gramaje (g)": 65, "SOM (%)": 1.4},
+        {"Producto": "RANCHERITOS 58G", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 18.0, "Gramaje (g)": 58, "SOM (%)": 3.9},
+        {"Producto": "TAKIS 70G", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 70, "SOM (%)": 13.8},
+        {"Producto": "DORITOS DINAMITA 70G", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 70, "SOM (%)": 9.0},
+        {"Producto": "TOSTITOS 62G", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 62, "SOM (%)": 6.7},
+        {"Producto": "DORITOS 58G", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 58, "SOM (%)": 22.4},
+        {"Producto": "DORITOS DINAMITA 120G", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 25.0, "Gramaje (g)": 120, "SOM (%)": 0.6},
+        {"Producto": "TOSTITOS 110G", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 25.0, "Gramaje (g)": 110, "SOM (%)": 0.0},
+        {"Producto": "DORITOS 100G", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 25.0, "Gramaje (g)": 100, "SOM (%)": 3.6},
+        {"Producto": "DORITOS NACHO 146G", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 40.0, "Gramaje (g)": 146, "SOM (%)": 0.9},
+        {"Producto": "RANCHERITOS 145G", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 40.0, "Gramaje (g)": 145, "SOM (%)": 0.2},
+        {"Producto": "RUNNERS 200G", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 40.0, "Gramaje (g)": 200, "SOM (%)": 0.0},
+        {"Producto": "CHURRUMAIS 185G", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 40.0, "Gramaje (g)": 185, "SOM (%)": 0.1},
+        {"Producto": "TOSTITOS 175G", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 40.0, "Gramaje (g)": 175, "SOM (%)": 0.7},
+        {"Producto": "FRITOS 170G", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 40.0, "Gramaje (g)": 170, "SOM (%)": 0.1},
+        {"Producto": "TAKIS 200G", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 45.0, "Gramaje (g)": 200, "SOM (%)": 0.2},
+        {"Producto": "DORITOS 245G", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 56.0, "Gramaje (g)": 245, "SOM (%)": 0.3}
+   ]
+}
+
+def calcular_pkg(df):
+    df["Precio ($)"] = pd.to_numeric(df["Precio ($)"], errors='coerce').fillna(0)
+    df["Gramaje (g)"] = pd.to_numeric(df["Gramaje (g)"], errors='coerce').fillna(1).replace(0, 1)
+    df["SOM (%)"] = pd.to_numeric(df["SOM (%)"], errors='coerce').fillna(0)
+    df["Precio por Kg ($)"] = (df["Precio ($)"] / (df["Gramaje (g)"] / 1000)).round(0)
+    return df
 
 if "data" not in st.session_state:
-    st.session_state.data = load_data()
+    if os.path.exists(DB_FILE):
+        st.session_state.data = calcular_pkg(pd.read_csv(DB_FILE))
+    else:
+        st.session_state.data = pd.DataFrame(columns=["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)", "Precio por Kg ($)", "SOM (%)"])
 
-# --- Formulario ---
-st.title("📊 Escalera de Precios Multimarca")
-with st.expander("➕ Añadir o Editar SKUs", expanded=False):
-    with st.form("form_registro", clear_on_submit=True):
-        c1, c2, c3, c4, c5 = st.columns(5)
-        prod = c1.text_input("Producto (ej: Takis 70g)")
-        fab = c2.selectbox("Fabricante", ["SABRITAS", "BARCEL", "OTROS"])
-        oca = c3.selectbox("Ocasión", ["BITES", "INDIVIDUAL", "HAMBRE", "COMPARTIR", "FAMILIAR"])
-        pre = c4.number_input("Precio ($)", min_value=0.0)
-        gra = c5.number_input("Gramaje (g)", min_value=1.0)
-        
-        if st.form_submit_button("Guardar"):
-            if prod:
-                pkg = round(pre / (gra / 1000), 0)
-                nuevo = pd.DataFrame([{
-                    "Producto": prod.upper().strip(), 
-                    "Fabricante": fab, 
-                    "Ocasión": oca, 
-                    "Precio ($)": pre, 
-                    "Gramaje (g)": gra, 
-                    "Precio por Kg ($)": pkg
-                }])
-                st.session_state.data = pd.concat([st.session_state.data, nuevo], ignore_index=True)
-                st.session_state.data.to_csv(DB_FILE, index=False)
-                st.rerun()
+df_p = st.session_state.data.copy()
 
-# --- Tabla de Gestión ---
-# Al editar la tabla, nos aseguramos de que los cálculos se mantengan
-edited_df = st.data_editor(st.session_state.data, num_rows="dynamic", use_container_width=True)
-if not edited_df.equals(st.session_state.data):
-    # Recalcular Precio por Kg si el usuario cambió Precio o Gramaje en la tabla
-    edited_df["Precio ($)"] = pd.to_numeric(edited_df["Precio ($)"], errors='coerce').fillna(0)
-    edited_df["Gramaje (g)"] = pd.to_numeric(edited_df["Gramaje (g)"], errors='coerce').fillna(1)
-    edited_df["Precio por Kg ($)"] = (edited_df["Precio ($)"] / (edited_df["Gramaje (g)"] / 1000)).round(0)
-    
-    st.session_state.data = edited_df
-    edited_df.to_csv(DB_FILE, index=False)
+# --- 3. BARRA LATERAL ---
+st.sidebar.header("📁 Gestión")
+nombre_plantilla = st.sidebar.selectbox("Cargar Plantilla:", ["-- Seleccionar --"] + list(PLANTILLAS.keys()))
+
+if st.sidebar.button("Cargar Escalera"):
+    if nombre_plantilla != "-- Seleccionar --":
+        nuevos_datos = pd.DataFrame(PLANTILLAS[nombre_plantilla])
+        st.session_state.data = calcular_pkg(nuevos_datos)
+        st.session_state.data.to_csv(DB_FILE, index=False)
+        st.rerun()
+
+if st.sidebar.button("🗑️ Reset"):
+    if os.path.exists(DB_FILE): os.remove(DB_FILE)
+    st.session_state.data = pd.DataFrame(columns=["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)", "Precio por Kg ($)", "SOM (%)"])
     st.rerun()
 
-# --- GRÁFICO ---
+st.title("📊 ESCALERAS DE PRECIO DINÁMICAS")
+
+# --- 4. FORMULARIO ---
+with st.expander("➕ Agregar nuevo producto manualmente", expanded=False):
+    with st.form("nuevo_sku_form", clear_on_submit=True):
+        c1, c2, c3 = st.columns(3)
+        f_nom = c1.text_input("Nombre del Producto").upper()
+        f_fab = c2.selectbox("Fabricante", ["BARCEL", "SABRITAS", "OTROS"])
+        f_oca = c3.selectbox("Ocasión", ["BITES", "INDIVIDUAL", "HAMBRE", "COMPARTIR", "FAMILIAR"])
+        c4, c5, c6 = st.columns(3)
+        f_pre = c4.number_input("Precio ($)", min_value=0.0, step=0.5)
+        f_gra = c5.number_input("Gramaje (g)", min_value=1.0, step=1.0)
+        f_som = c6.number_input("SOM (%)", min_value=0.0, max_value=100.0, step=0.1)
+        if st.form_submit_button("Añadir a la lista"):
+            nuevo_sku = pd.DataFrame([{"Producto": f_nom, "Fabricante": f_fab, "Ocasión": f_oca, "Precio ($)": f_pre, "Gramaje (g)": f_gra, "SOM (%)": f_som}])
+            st.session_state.data = pd.concat([st.session_state.data, nuevo_sku], ignore_index=True)
+            st.session_state.data = calcular_pkg(st.session_state.data)
+            st.session_state.data.to_csv(DB_FILE, index=False)
+            st.rerun()
+
+# --- 5. EDITOR ---
+st.subheader("📝 Tabla de Datos")
+edited_df = st.data_editor(st.session_state.data, num_rows="dynamic", use_container_width=True)
+if not edited_df.equals(st.session_state.data):
+    st.session_state.data = calcular_pkg(edited_df)
+    st.session_state.data.to_csv(DB_FILE, index=False)
+    st.rerun()
+
+# --- 6. GRÁFICO (REDISEÑADO) ---
 if not st.session_state.data.empty:
-    df = st.session_state.data.copy()
-    
-    # 1. Orden lógico
-    mapa_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5}
-    df["Orden_Oca"] = df["Ocasión"].map(mapa_oca)
-    
-    # 2. Ordenar: Ocasión -> Precio -> Precio/kg (Mezclando fabricantes)
-    df = df.sort_values(by=["Orden_Oca", "Precio ($)", "Precio por Kg ($)"], ascending=[True, True, True])
+    ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5}
+    df_p = st.session_state.data.copy()
+    df_p["O_Oca"] = df_p["Ocasión"].str.upper().map(ord_oca).fillna(99)
+    df_p = df_p.sort_values(by=["O_Oca", "Precio ($)"]).reset_index(drop=True)
+    som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-    # 3. Colores
-    colores_map = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
-    df["Color"] = df["Fabricante"].map(colores_map).fillna("#B0B0B0")
+    # SOM ultra chaparro (0.12) y Barras grandes (0.88)
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.12, 0.88])
 
-    fig = go.Figure()
+    # Gráfica SOM (Normal, sin negritas, fondo gris)
+    fig.add_trace(go.Scatter(
+        x=df_p["Producto"], y=df_p["SOM (%)"], 
+        mode="lines+markers", line=dict(color="#CCCCCC", width=2),
+        marker=dict(size=4, color="#666666")
+    ), row=1, col=1)
 
-    # Traza principal de barras
-    fig.add_trace(go.Bar(
-        x=[df["Ocasión"], df["Producto"]],
-        y=df["Precio ($)"],
-        marker_color=df["Color"],
-        text=df["Precio ($)"].apply(lambda x: f"${x}"),
-        textposition='outside',
-        showlegend=False
-    ))
-
-    # Leyenda Manual
-    for fab, col in colores_map.items():
-        fig.add_trace(go.Bar(name=fab, x=[None], y=[None], marker_color=col))
-
-    # 4. Anotaciones de Precio/Kg con validación para evitar el TypeError
-    for i, row in df.iterrows():
-        try:
-            val_kg = int(row['Precio por Kg ($)'])
-        except:
-            val_kg = 0
-            
+    for i, row in df_p.iterrows():
         fig.add_annotation(
-            x=[row["Ocasión"], row["Producto"]],
-            y=0,
-            yshift=15,
-            text=f"<b>${val_kg}</b>",
-            showarrow=False,
-            font=dict(color="white" if row["Fabricante"]=="BARCEL" else "black", size=10),
-            bgcolor="rgba(255,255,255,0.2)" if row["Fabricante"]=="SABRITAS" else None
+            x=i, y=row["SOM (%)"], text=f"{row['SOM (%)']}%", 
+            showarrow=False, yshift=12, 
+            font=dict(size=13, color="black"), 
+            bgcolor="rgba(235, 235, 235, 0.9)", bordercolor="#BBBBBB", borderwidth=1,
+            row=1, col=1
         )
 
+    # Barras de Precio (Negrita en el precio de arriba)
+    colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
+    fig.add_trace(go.Bar(
+        x=df_p["Producto"], y=df_p["Precio ($)"],
+        marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]],
+        text=[f"<b>${p}</b>" for p in df_p["Precio ($)"]], textposition="outside",
+        textfont=dict(size=18)
+    ), row=2, col=1)
+
+    # Etiquetas $/Kg alineadas (Negrita)
+    for i, row in df_p.iterrows():
+        fig.add_annotation(
+            x=i, y=2.5, 
+            text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
+            showarrow=False, font=dict(size=16, color="white" if row["Fabricante"] == "BARCEL" else "black"),
+            bgcolor="rgba(0,0,0,0.7)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)",
+            bordercolor="#444" if row["Fabricante"] != "BARCEL" else None, borderwidth=1,
+            row=2, col=1
+        )
+
+    # DIVISIONES ENTRE PRODUCTOS (Solo en el área de nombres)
+    for i in range(len(df_p) + 1):
+        fig.add_shape(
+            type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.38, 
+            xref="x2", yref="paper",
+            line=dict(color="#DDDDDD", width=1)
+        )
+
+    # SUMAS DE OCASIÓN (Texto normal, separado)
+    for cat in df_p["Ocasión"].unique():
+        idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
+        center = (idx_list[0] + idx_list[-1]) / 2
+        
+        # Divisor de Ocasión grueso
+        fig.add_vline(x=idx_list[-1] + 0.5, line_color="#333333", line_width=2, row=2, col=1)
+        
+        # Etiqueta Ocasión y % (Normal, sin negritas, espacio extra)
+        fig.add_annotation(
+            x=center, y=-0.44, xref="x2", yref="paper",
+            text=f"{cat}<br><br><span style='font-size:17px;'>{som_por_ocasion[cat]:.1f}%</span>",
+            showarrow=False, font=dict(size=16, color="black"), align="center"
+        )
+
+    # CONFIGURACIÓN DE TAMAÑO Y EJES (Letra normal en productos)
     fig.update_layout(
-        title="Escalera de Precios: Desembolso y $/Kg",
-        xaxis=dict(title=None),
-        yaxis=dict(title="Precio Desembolso ($)", showgrid=True, gridcolor="#f0f0f0"),
-        plot_bgcolor="white",
-        height=600,
-        margin=dict(t=80, b=120)
+        height=1100, width=1700, 
+        template="plotly_white", showlegend=False, 
+        margin=dict(t=50, b=450, l=80, r=80) 
     )
+
+    fig.update_xaxes(
+        tickangle=-90, 
+        tickfont=dict(size=16, color="black", family="Arial"), 
+        row=2, col=1
+    )
+
+    fig.update_yaxes(showgrid=False, showticklabels=False, row=1, col=1)
+    fig.update_yaxes(gridcolor="#F0F0F0", row=2, col=1)
 
     st.plotly_chart(fig, use_container_width=True)
 
-    csv = df.to_csv(index=False).encode('utf-8')
-    st.download_button("📂 Descargar Excel (CSV)", csv, "escalera.csv", "text/csv")
-else:
-    st.info("Añade productos para ver la escalera de precios.")
+# --- 7. COMPARATIVAS ---
+st.divider()
+st.subheader("📈 Comparativas Index $/Kg")
+barcel_list = df_p[df_p["Fabricante"]=="BARCEL"]["Producto"].unique() if not df_p.empty else []
+comp_list = df_p[df_p["Fabricante"]!="BARCEL"]["Producto"].unique() if not df_p.empty else []
+
+if len(barcel_list) > 0 and len(comp_list) > 0:
+    idx_cols = st.columns(4)
+    for i in range(4):
+        with idx_cols[i]:
+            with st.container(border=True):
+                p_b = st.selectbox(f"Barcel", barcel_list, key=f"sb{i}", label_visibility="collapsed")
+                p_c = st.selectbox(f"Comp.", comp_list, key=f"sc{i}", label_visibility="collapsed")
+                val_b = df_p[df_p["Producto"]==p_b]["Precio por Kg ($)"].values[0]
+                val_c = df_p[df_p["Producto"]==p_c]["Precio por Kg ($)"].values[0]
+                index_val = int((val_b / val_c) * 100)
+                color_index = "#0B3C8C" if index_val <= 100 else "#D32F2F"
+                st.markdown(f"""
+                    <div style="background-color: #f8f9fa; padding: 10px; border-radius: 8px; border-top: 4px solid {color_index}; text-align: center;">
+                        <div style="font-size: 0.7rem; font-weight: bold; color: #555;">{p_b} vs {p_c}</div>
+                        <div style="font-size: 1.8rem; font-weight: 900; color: {color_index};">{index_val}</div>
+                    </div>
+                """, unsafe_allow_html=True)
