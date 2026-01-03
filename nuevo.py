@@ -110,15 +110,20 @@ if not st.session_state.data.empty:
         row_heights=[0.12, 0.88]
     )
 
-    # --- SOM (Ajuste de etiquetas centradas) ---
+    # --- SOM (UNIFICADO: Cuadro gris que tapa la línea) ---
     fig.add_trace(go.Scatter(
         x=df_p["Producto"], 
         y=df_p["SOM (%)"], 
-        mode="lines+markers+text", # Añadimos text aquí
+        mode="lines+markers+text", 
         line=dict(color="#BBBBBB", width=1.5), 
-        marker=dict(size=25, color="#F5F5F5", symbol="square"), # Marcador grande de fondo
+        marker=dict(
+            size=30,                # Tamaño del cuadro
+            color="#E5E5E5",       # Fondo gris (tomado de tu segundo código)
+            symbol="square",        # Forma de cuadro
+            line=dict(color="#CCCCCC", width=1) # Borde del cuadro
+        ), 
         text=[f"<b>{row['SOM (%)']}%</b>" for _, row in df_p.iterrows()],
-        textposition="middle center", # Centrado absoluto
+        textposition="middle center", 
         textfont=dict(size=11, color="black"),
     ), row=1, col=1)
 
