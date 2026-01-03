@@ -101,16 +101,19 @@ if not edited_df.equals(st.session_state.data):
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
 
-# --- 6. GRÁFICO ---
+# --- 6. GRÁFICO ACTUALIZADO ---
 if not st.session_state.data.empty:
     df_p = st.session_state.data.copy()
     ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5}
     df_p["O_Oca"] = df_p["Ocasión"].str.upper().map(ord_oca).fillna(99)
     df_p = df_p.sort_values(by=["O_Oca", "Precio ($)"])
 
+    # --- NUEVO: Cálculo de SOM por Ocasión ---
+    som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
+
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.05, row_heights=[0.3, 0.7])
 
-    # Línea SOM
+    # Línea SOM (Sin negritas en las etiquetas)
     fig.add_trace(go.Scatter(
         x=[df_p["Ocasión"], df_p["Producto"]], 
         y=df_p["SOM (%)"], 
@@ -119,16 +122,15 @@ if not st.session_state.data.empty:
         marker=dict(size=4, color="#424242")
     ), row=1, col=1)
 
-    # ETIQUETAS SOM
     for i in range(len(df_p)):
         row = df_p.iloc[i]
         fig.add_annotation(
             x=i, y=row["SOM (%)"],
-            text=f"<b>{row['SOM (%)']}%</b>",
+            text=f"{row['SOM (%)']}%", # Texto normal, sin <b>
             showarrow=False,
             yshift=15,
-            font=dict(size=20, color="black"),
-            bgcolor="#E0E0E0",
+            font=dict(size=18, color="black"),
+            bgcolor="rgba(224, 224, 224, 0.8)",
             bordercolor="#BDBDBD", borderwidth=1,
             row=1, col=1
         )
@@ -141,7 +143,7 @@ if not st.session_state.data.empty:
         marker_color=[colors.get(str(f).upper(), "#B0B0B0") for f in df_p["Fabricante"]],
         text=[f"<b>${p}</b>" for p in df_p["Precio ($)"]], 
         textposition='outside',
-        textfont=dict(size=20, color="black")
+        textfont=dict(size=18, color="black")
     ), row=2, col=1)
 
     # Etiquetas $/Kg
@@ -151,57 +153,42 @@ if not st.session_state.data.empty:
             x=i, y=2.5,
             text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
             showarrow=False,
-            font=dict(size=18, color="white" if row['Fabricante']=="BARCEL" else "black"),
+            font=dict(size=16, color="white" if row['Fabricante']=="BARCEL" else "black"),
             bgcolor="rgba(0,0,0,0.6)" if row['Fabricante']=="BARCEL" else "rgba(255,255,255,0.7)",
             row=2, col=1
         )
 
-    # --- AJUSTES DE LETRA GRANDE EN EJE X ---
+    # --- NUEVO: Anotaciones de peso total por Ocasión ---
+    # Esto coloca el total de SOM debajo de cada categoría
+    categorias = df_p["Ocasión"].unique()
+    for cat in categorias:
+        # Encontrar la posición central de la categoría en el eje X
+        indices = df_p[df_p["Ocasión"] == cat].index
+        pos_x = df_p.index.get_loc(indices[len(indices)//2])
+        
+        fig.add_annotation(
+            x=pos_x, y=-0.15, # Posición relativa debajo del eje X
+            xref="x2", yref="paper",
+            text=f"Total SOM: {som_por_ocasion[cat]:.1st}%",
+            showarrow=False,
+            font=dict(size=14, color="#616161", family="Arial"),
+            row=2, col=1
+        )
+
+    # Ajustes finales de layout y tipografía
     fig.update_layout(
-        height=750, 
+        height=800, # Aumenté un poco la altura total
         template="plotly_white", 
         showlegend=False, 
-        margin=dict(t=30, b=100) # Más margen abajo para las letras grandes
+        margin=dict(t=30, b=150) # Más espacio abajo para que los nombres respiren
     )
     
-    fig.update_yaxes(showgrid=False, showticklabels=False, row=1, col=1, range=[0, df_p["SOM (%)"].max() * 2.2])
+    fig.update_yaxes(showgrid=False, showticklabels=False, row=1, col=1, range=[0, df_p["SOM (%)"].max() * 2.5])
     
-    # Aquí es donde se hace la magia de la letra grande
+    # Eje X con letra normal (sin negritas) y un tamaño más equilibrado
     fig.update_xaxes(
-        tickfont=dict(size=16, color="black", family="Arial Black"), 
+        tickfont=dict(size=13, color="black", family="Arial"), 
         row=2, col=1
     )
     
     st.plotly_chart(fig, use_container_width=True)
-
-    # --- 7. MULTI-INDEX ---
-    st.divider()
-    st.subheader("📈 Comparativas Index $/Kg")
-    
-    barcel_list = df_p[df_p["Fabricante"]=="BARCEL"]["Producto"].unique()
-    comp_list = df_p[df_p["Fabricante"]!="BARCEL"]["Producto"].unique()
-
-    if len(barcel_list) > 0 and len(comp_list) > 0:
-        idx_cols = st.columns(4)
-        for i in range(4):
-            with idx_cols[i]:
-                with st.container(border=True):
-                    p_b = st.selectbox(f"Barcel", barcel_list, key=f"sb{i}", label_visibility="collapsed")
-                    p_c = st.selectbox(f"Comp.", comp_list, key=f"sc{i}", label_visibility="collapsed")
-                    val_b = df_p[df_p["Producto"]==p_b]["Precio por Kg ($)"].values[0]
-                    val_c = df_p[df_p["Producto"]==p_c]["Precio por Kg ($)"].values[0]
-                    index_val = int((val_b / val_c) * 100)
-                    color_index = "#0B3C8C" if index_val <= 100 else "#D32F2F"
-                    
-                    st.markdown(f"""
-                        <div style="background-color: #f8f9fa; padding: 10px; border-radius: 8px; border-top: 4px solid {color_index};">
-                            <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
-                                <div style="font-size: 0.7rem; font-weight: bold; color: #555;">{p_b} vs {p_c}</div>
-                                <div style="font-size: 1.8rem; font-weight: 900; color: {color_index};">{index_val}</div>
-                                <div style="display: flex; justify-content: space-between; width: 100%; border-top: 1px solid #ddd; pt: 5px;">
-                                    <span style="font-size: 0.8rem; color: #0B3C8C;"><b>${val_b}</b></span>
-                                    <span style="font-size: 0.8rem; color: #F5C400;"><b>${val_c}</b></span>
-                                </div>
-                            </div>
-                        </div>
-                    """, unsafe_allow_html=True)
