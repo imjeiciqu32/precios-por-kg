@@ -104,7 +104,13 @@ if not st.session_state.data.empty:
     df_p = df_p.sort_values(by=["O_Oca", "Precio ($)"]).reset_index(drop=True)
     som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.0, row_heights=[0.12, 0.88])
+    # Se define vertical_spacing aquí para evitar el ValueError
+    fig = make_subplots(
+        rows=2, cols=1, 
+        shared_xaxes=True, 
+        vertical_spacing=0.02, # Espacio mínimo entre SOM y Barras
+        row_heights=[0.12, 0.88]
+    )
 
     # SOM
     fig.add_trace(go.Scatter(
@@ -139,15 +145,15 @@ if not st.session_state.data.empty:
             row=2, col=1
         )
 
-    # --- LÍNEAS DIVISORIAS ENTRE PRODUCTOS (Gris tenue) ---
+    # --- LÍNEAS DIVISORIAS ENTRE PRODUCTOS (Gris muy tenue) ---
     for i in range(len(df_p) + 1):
         fig.add_shape(
             type="line", x0=i-0.5, x1=i-0.5, y0=0, y1=1,
             xref="x2", yref="paper",
-            line=dict(color="#EEEEEE", width=1) 
+            line=dict(color="#F0F0F0", width=1) 
         )
 
-    # --- LÍNEAS DE OCASIÓN (Cruzan todo, Gris Tenue pero más marcado que las de producto) ---
+    # --- LÍNEAS DE OCASIÓN (Cruzan todo, Gris Tenue Medio) ---
     ocasiones_unicas = df_p["Ocasión"].unique()
     
     # Línea inicial (Cierra BITES a la izquierda)
@@ -158,12 +164,12 @@ if not st.session_state.data.empty:
         idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
         center = (idx_list[0] + idx_list[-1]) / 2
         
-        # Líneas al final de cada ocasión
+        # Líneas al final de cada ocasión (Cruzan todo)
         fig.add_shape(type="line", x0=idx_list[-1] + 0.5, x1=idx_list[-1] + 0.5, 
                       y0=-0.15, y1=1, xref="x2", yref="paper",
                       line=dict(color="#BBBBBB", width=2))
         
-        # Etiquetas de Ocasión y SOM Total
+        # Etiquetas de Ocasión
         fig.add_annotation(
             x=center, y=-0.65, xref="x2", yref="paper",
             text=f"<b>{cat}</b><br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>",
@@ -173,26 +179,23 @@ if not st.session_state.data.empty:
     # --- CONFIGURACIÓN DE MARCO Y EJES ---
     fig.update_layout(
         height=1100, width=1950, template="plotly_white", showlegend=False,
-        margin=dict(t=50, b=600, l=100, r=80),
-        vertical_spacing=0 # Elimina el espacio blanco horizontal entre los dos gráficos
+        margin=dict(t=50, b=600, l=100, r=80)
     )
 
-    # Marco exterior negro
+    # Aplicar Marco Exterior Negro
     fig.update_xaxes(showline=True, linewidth=2, linecolor='black', mirror=True)
     fig.update_yaxes(showline=True, linewidth=2, linecolor='black', mirror=True)
 
-    # Eje Y Precios
+    # Eje Y Precios (Eliminamos líneas horizontales del SOM)
     fig.update_yaxes(
         showgrid=True, gridcolor="#F5F5F5", dtick=5,                
         tickprefix="$", tickfont=dict(size=16, color="black"),
         row=2, col=1
     )
+    fig.update_yaxes(showgrid=False, showticklabels=False, row=1, col=1)
 
     # Eje X Productos
     fig.update_xaxes(tickangle=-90, tickfont=dict(size=16, color="black"), row=2, col=1)
-    
-    # Limpieza de Eje SOM (sin etiquetas ni líneas horizontales de cuadrícula)
-    fig.update_yaxes(showgrid=False, showticklabels=False, row=1, col=1)
 
     st.plotly_chart(fig, use_container_width=True)
 
