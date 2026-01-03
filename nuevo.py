@@ -205,7 +205,7 @@ if not st.session_state.data.empty:
     # --- AJUSTE DE EJES (FILA 2: PRECIOS) ---
     fig.update_yaxes(
         showgrid=True, 
-        gridcolor="##DCDCDC", 
+        gridcolor="#DCDCDC", 
         dtick=5, 
         tickprefix="$", 
         tickfont=dict(size=14, color="black"),
