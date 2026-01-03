@@ -95,7 +95,7 @@ if not edited_df.equals(st.session_state.data):
     st.session_state.data = calcular_pkg(edited_df)
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
-# --- 6. GRÁFICO CORREGIDO: LÍNEAS DE OCASIÓN LARGAS Y PRODUCTOS CORTAS ---
+# --- 6. GRÁFICO FINAL: ETIQUETAS SOM CENTRADAS Y MARCO GRIS ---
 if not st.session_state.data.empty:
     ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5}
     df_p = st.session_state.data.copy()
@@ -110,19 +110,17 @@ if not st.session_state.data.empty:
         row_heights=[0.12, 0.88]
     )
 
-    # --- SOM ---
+    # --- SOM (Ajuste de etiquetas centradas) ---
     fig.add_trace(go.Scatter(
-        x=df_p["Producto"], y=df_p["SOM (%)"], 
-        mode="lines+markers", line=dict(color="#CCCCCC", width=1.5), 
-        marker=dict(size=5, color="#AAAAAA")
+        x=df_p["Producto"], 
+        y=df_p["SOM (%)"], 
+        mode="lines+markers+text", # Añadimos text aquí
+        line=dict(color="#EEEEEE", width=1.5), 
+        marker=dict(size=25, color="#F5F5F5", symbol="square"), # Marcador grande de fondo
+        text=[f"<b>{row['SOM (%)']}%</b>" for _, row in df_p.iterrows()],
+        textposition="middle center", # Centrado absoluto
+        textfont=dict(size=11, color="black"),
     ), row=1, col=1)
-
-    for i, row in df_p.iterrows():
-        fig.add_annotation(
-            x=i, y=row["SOM (%)"], text=f"<b>{row['SOM (%)']}%</b>", 
-            showarrow=False, yshift=15, font=dict(size=13, color="black"), 
-            bgcolor="#E5E5E5", bordercolor="#CCCCCC", borderwidth=1, row=1, col=1
-        )
 
     # --- BARRAS DE PRECIO ---
     colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
@@ -133,39 +131,30 @@ if not st.session_state.data.empty:
         textposition="outside", textfont=dict(size=18, color="black") 
     ), row=2, col=1)
 
-    # --- DIVISIONES VERTICALES ENTRE PRODUCTOS (CORTAS - ABAJO) ---
+    # --- DIVISIONES VERTICALES PRODUCTOS (CORTAS) ---
     for i in range(len(df_p) + 1):
         fig.add_shape(
-            type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50, # Regresamos a tu medida original
+            type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50,
             xref="x2", yref="paper",
             line=dict(color="#DDDDDD", width=1) 
         )
 
-    # --- DIVISIONES DE OCASIÓN (LARGAS - HASTA ARRIBA) ---
-    ocasiones = df_p["Ocasión"].unique()
-    
-    # Línea inicial de BITES (Larga)
-    fig.add_shape(
-        type="line", x0=-0.5, x1=-0.5, y0=-0.01, y1=1,
-        xref="x2", yref="paper",
-        line=dict(color="#DDDDDD", width=1.5)
-    )
+    # --- DIVISIONES OCASIÓN (LARGAS HASTA ARRIBA + LÍNEA BITES) ---
+    fig.add_shape(type="line", x0=-0.5, x1=-0.5, y0=-0.01, y1=1, xref="x2", yref="paper",
+                  line=dict(color="#DDDDDD", width=1.5))
 
-    for cat in ocasiones:
+    for cat in df_p["Ocasión"].unique():
         idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
         center = (idx_list[0] + idx_list[-1]) / 2
         
-        # Líneas divisorias de categoría (Largas hasta el marco superior)
         fig.add_shape(
             type="line", x0=idx_list[-1] + 0.5, x1=idx_list[-1] + 0.5, y0=-0.01, y1=1,
             xref="x2", yref="paper",
             line=dict(color="#DDDDDD", width=1.5)
         )
         
-        # Texto de Ocasión
         fig.add_annotation(
-            x=center, y=-0.60, 
-            xref="x2", yref="paper",
+            x=center, y=-0.60, xref="x2", yref="paper",
             text=f"{cat}<br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>",
             showarrow=False, font=dict(size=16, color="black"), align="center"
         )
@@ -177,7 +166,7 @@ if not st.session_state.data.empty:
         line=dict(color="#DDDDDD", width=2),
     )
 
-    # --- CONFIGURACIÓN DE EJES ---
+    # --- CONFIGURACIÓN FINAL ---
     fig.update_layout(
         height=1100, width=1950, template="plotly_white", showlegend=False,
         margin=dict(t=50, b=600, l=100, r=80)
@@ -185,14 +174,7 @@ if not st.session_state.data.empty:
 
     fig.update_xaxes(showline=False, zeroline=False)
     fig.update_yaxes(showline=False, zeroline=False)
-
-    # Eje Y: Cuadrícula tenue
-    fig.update_yaxes(
-        showgrid=True, gridcolor="#F5F5F5", 
-        dtick=5, tickprefix="$", tickfont=dict(size=16, color="black"),
-        row=2, col=1
-    )
-    
+    fig.update_yaxes(showgrid=True, gridcolor="#F5F5F5", dtick=5, tickprefix="$", row=2, col=1)
     fig.update_xaxes(tickangle=-90, tickfont=dict(size=16, color="black"), row=2, col=1)
     fig.update_yaxes(showticklabels=False, row=1, col=1)
 
