@@ -50,7 +50,54 @@ if "data" not in st.session_state:
     else:
         st.session_state.data = pd.DataFrame(columns=["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)", "Precio por Kg ($)", "SOM (%)"])
 
-# --- 6. GRÁFICO ---
+# --- 3. BARRA LATERAL ---
+st.sidebar.header("📁 Gestión")
+nombre_plantilla = st.sidebar.selectbox("Cargar Plantilla:", ["-- Seleccionar --"] + list(PLANTILLAS.keys()))
+
+if st.sidebar.button("Cargar Escalera"):
+    if nombre_plantilla != "-- Seleccionar --":
+        nuevos_datos = pd.DataFrame(PLANTILLAS[nombre_plantilla])
+        st.session_state.data = calcular_pkg(nuevos_datos)
+        st.session_state.data.to_csv(DB_FILE, index=False)
+        st.rerun()
+
+if st.sidebar.button("🗑️ Reset"):
+    if os.path.exists(DB_FILE): os.remove(DB_FILE)
+    st.session_state.data = pd.DataFrame(columns=["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)", "Precio por Kg ($)", "SOM (%)"])
+    st.rerun()
+
+st.title("📊 ESCALERAS DE PRECIO DINÁMICAS")
+
+# --- 4. FORMULARIO AGREGAR SKU (MANTENIDO) ---
+with st.expander("➕ Agregar nuevo producto manualmente", expanded=False):
+    with st.form("nuevo_sku_form", clear_on_submit=True):
+        c1, c2, c3 = st.columns(3)
+        f_nom = c1.text_input("Nombre del Producto").upper()
+        f_fab = c2.selectbox("Fabricante", ["BARCEL", "SABRITAS", "OTROS"])
+        f_oca = c3.selectbox("Ocasión", ["BITES", "INDIVIDUAL", "HAMBRE", "COMPARTIR", "FAMILIAR"])
+        
+        c4, c5, c6 = st.columns(3)
+        f_pre = c4.number_input("Precio ($)", min_value=0.0, step=0.5)
+        f_gra = c5.number_input("Gramaje (g)", min_value=1.0, step=1.0)
+        f_som = c6.number_input("SOM (%)", min_value=0.0, max_value=100.0, step=0.1)
+        
+        if st.form_submit_button("Añadir a la lista"):
+            nuevo_sku = pd.DataFrame([{"Producto": f_nom, "Fabricante": f_fab, "Ocasión": f_oca, 
+                                       "Precio ($)": f_pre, "Gramaje (g)": f_gra, "SOM (%)": f_som}])
+            st.session_state.data = pd.concat([st.session_state.data, nuevo_sku], ignore_index=True)
+            st.session_state.data = calcular_pkg(st.session_state.data)
+            st.session_state.data.to_csv(DB_FILE, index=False)
+            st.rerun()
+
+# --- 5. EDITOR ---
+st.subheader("📝 Tabla de Datos")
+edited_df = st.data_editor(st.session_state.data, num_rows="dynamic", use_container_width=True)
+if not edited_df.equals(st.session_state.data):
+    st.session_state.data = calcular_pkg(edited_df)
+    st.session_state.data.to_csv(DB_FILE, index=False)
+    st.rerun()
+
+# --- 6. GRÁFICO (REDISEÑADO SEGÚN IMAGEN) ---
 if not st.session_state.data.empty:
     df_p = st.session_state.data.copy()
     ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5}
@@ -59,85 +106,90 @@ if not st.session_state.data.empty:
 
     som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-    fig = make_subplots(
-        rows=2, cols=1,
-        shared_xaxes=True,
-        vertical_spacing=0.05,
-        row_heights=[0.3, 0.7]
-    )
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.3, 0.7])
 
-    # SOM
+    # Línea SOM
     fig.add_trace(go.Scatter(
-        x=df_p["Producto"],
-        y=df_p["SOM (%)"],
-        mode="lines+markers",
-        line=dict(color="#D3D3D3", width=2),
+        x=df_p["Producto"], y=df_p["SOM (%)"], 
+        mode="lines+markers", line=dict(color="#D3D3D3", width=2),
         marker=dict(size=4, color="#424242")
     ), row=1, col=1)
 
     for i, row in df_p.iterrows():
-        fig.add_annotation(
-            x=i, y=row["SOM (%)"],
-            text=f"{row['SOM (%)']}%",
-            showarrow=False, yshift=15,
-            font=dict(size=18),
-            bgcolor="rgba(224,224,224,0.8)",
-            bordercolor="#BDBDBD",
-            row=1, col=1
-        )
+        fig.add_annotation(x=i, y=row["SOM (%)"], text=f"{row['SOM (%)']}%", 
+                           showarrow=False, yshift=15, font=dict(size=14),
+                           bgcolor="rgba(240,240,240,0.8)", row=1, col=1)
 
-    # Barras precio
-    colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400"}
+    # Barras Precio
+    colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
     fig.add_trace(go.Bar(
-        x=df_p["Producto"],
-        y=df_p["Precio ($)"],
-        marker_color=[colors.get(f, "#999") for f in df_p["Fabricante"]],
-        text=[f"<b>${p}</b>" for p in df_p["Precio ($)"]],
-        textposition="outside",
-        textfont=dict(size=18)
+        x=df_p["Producto"], y=df_p["Precio ($)"],
+        marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]],
+        text=[f"<b>${p}</b>" for p in df_p["Precio ($)"]], textposition="outside",
+        textfont=dict(size=16)
     ), row=2, col=1)
 
-    # $/Kg dentro
+    # Etiquetas Index $/Kg
     for i, row in df_p.iterrows():
         fig.add_annotation(
-            x=i, y=2.5,
+            x=i, y=row["Precio ($)"]*0.5, 
             text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
-            showarrow=False,
-            font=dict(size=16, color="white" if row["Fabricante"] == "BARCEL" else "black"),
-            bgcolor="rgba(0,0,0,0.6)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.7)",
+            showarrow=False, font=dict(size=14, color="white" if row["Fabricante"] == "BARCEL" else "black"),
+            bgcolor="rgba(0,0,0,0.5)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.6)",
             row=2, col=1
         )
 
-    # Divisiones por ocasión (ARRIBA Y ABAJO)
+    # Divisiones y Sumas por Ocasión
     for cat in df_p["Ocasión"].unique():
-        idx = df_p.index[df_p["Ocasión"] == cat].tolist()
-        center = (idx[0] + idx[-1]) / 2
-
+        idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
+        center = (idx_list[0] + idx_list[-1]) / 2
+        
+        # Etiqueta abajo
         fig.add_annotation(
-            x=center, y=-0.28,
+            x=center, y=-0.45, 
             xref="x2", yref="paper",
             text=f"{cat}<br><b>{som_por_ocasion[cat]:.1f}%</b>",
-            showarrow=False,
-            font=dict(size=14),
-            align="center"
+            showarrow=False, font=dict(size=14, color="black"), align="center"
         )
-
-        fig.add_vline(x=idx[-1] + 0.5, line_color="#E0E0E0", row=1, col=1)
-        fig.add_vline(x=idx[-1] + 0.5, line_color="#E0E0E0", row=2, col=1)
+        # Línea divisoria vertical
+        fig.add_vline(x=idx_list[-1] + 0.5, line_color="#D3D3D3", line_width=1, row="all", col=1)
 
     fig.update_layout(
-        height=900,
-        template="plotly_white",
-        showlegend=False,
-        margin=dict(t=50, b=300, l=50, r=50)
+        height=950, 
+        template="plotly_white", 
+        showlegend=False, 
+        margin=dict(t=50, b=350, l=60, r=60)
     )
 
     fig.update_xaxes(
-        tickangle=90,
-        tickfont=dict(size=13),
+        tickangle=-90, # Verticales
+        tickfont=dict(size=12, color="black"),
         row=2, col=1
     )
 
     fig.update_yaxes(showgrid=False, showticklabels=False, row=1, col=1)
-
     st.plotly_chart(fig, use_container_width=True)
+
+# --- 7. COMPARATIVAS INDEX (MANTENIDO) ---
+st.divider()
+st.subheader("📈 Comparativas Index $/Kg")
+barcel_list = df_p[df_p["Fabricante"]=="BARCEL"]["Producto"].unique() if not df_p.empty else []
+comp_list = df_p[df_p["Fabricante"]!="BARCEL"]["Producto"].unique() if not df_p.empty else []
+
+if len(barcel_list) > 0 and len(comp_list) > 0:
+    idx_cols = st.columns(4)
+    for i in range(4):
+        with idx_cols[i]:
+            with st.container(border=True):
+                p_b = st.selectbox(f"Barcel", barcel_list, key=f"sb{i}", label_visibility="collapsed")
+                p_c = st.selectbox(f"Comp.", comp_list, key=f"sc{i}", label_visibility="collapsed")
+                val_b = df_p[df_p["Producto"]==p_b]["Precio por Kg ($)"].values[0]
+                val_c = df_p[df_p["Producto"]==p_c]["Precio por Kg ($)"].values[0]
+                index_val = int((val_b / val_c) * 100)
+                color_index = "#0B3C8C" if index_val <= 100 else "#D32F2F"
+                st.markdown(f"""
+                    <div style="background-color: #f8f9fa; padding: 10px; border-radius: 8px; border-top: 4px solid {color_index}; text-align: center;">
+                        <div style="font-size: 0.7rem; font-weight: bold; color: #555;">{p_b} vs {p_c}</div>
+                        <div style="font-size: 1.8rem; font-weight: 900; color: {color_index};">{index_val}</div>
+                    </div>
+                """, unsafe_allow_html=True)
