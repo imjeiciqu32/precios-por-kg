@@ -96,7 +96,7 @@ if not edited_df.equals(st.session_state.data):
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
 
-# --- 6. GRÁFICO ---
+# --- 6. GRÁFICO ACTUALIZADO CON LÍNEAS CADA $5 ---
 if not st.session_state.data.empty:
     ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5}
     df_p = st.session_state.data.copy()
@@ -106,25 +106,20 @@ if not st.session_state.data.empty:
 
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.12, 0.88])
 
-    # SOM (Líneas ultra tenues)
+    # SOM (Líneas tenues)
     fig.add_trace(go.Scatter(
         x=df_p["Producto"], y=df_p["SOM (%)"], 
-        mode="lines+markers", line=dict(color="#CCCCCC", width=1), 
-        marker=dict(size=4, color="#AAAAAA")
+        mode="lines+markers", line=dict(color="#CCCCCC", width=1.5), 
+        marker=dict(size=5, color="#AAAAAA")
     ), row=1, col=1)
 
-    # --- AJUSTE: ETIQUETAS SOM NEGRAS CON FONDO GRIS ---
+    # Etiquetas SOM (Negras con fondo gris)
     for i, row in df_p.iterrows():
         fig.add_annotation(
-            x=i, y=row["SOM (%)"], 
-            text=f"<b>{row['SOM (%)']}%</b>", 
-            showarrow=False, 
-            yshift=15, 
-            font=dict(size=14, color="black"), # Letra negra y clara
-            bgcolor="#E5E5E5",                 # <--- FONDO GRIS (puedes usar "lightgray")
-            bordercolor="#CCCCCC",             # Un borde sutil para que resalte más
-            borderwidth=1,
-            borderpad=4,                       # Espaciado interno para que no quede apretado
+            x=i, y=row["SOM (%)"], text=f"<b>{row['SOM (%)']}%</b>", 
+            showarrow=False, yshift=15, 
+            font=dict(size=13, color="black"), 
+            bgcolor="#E5E5E5", bordercolor="#CCCCCC", borderwidth=1, borderpad=4,
             row=1, col=1
         )
 
@@ -137,7 +132,7 @@ if not st.session_state.data.empty:
         textfont=dict(size=18)
     ), row=2, col=1)
 
-    # $/Kg
+    # $/Kg (Azul acero para Barcel)
     for i, row in df_p.iterrows():
         fig.add_annotation(
             x=i, y=2.5, 
@@ -148,45 +143,47 @@ if not st.session_state.data.empty:
             row=2, col=1
         )
 
-    # Divisiones entre nombres (Gris tenue)
+    # Divisiones verticales entre productos (Tenues)
     for i in range(len(df_p) + 1):
         fig.add_shape(
-            type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.38, 
+            type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50, # Aumentamos y1 para que baje la línea divisoria
             xref="x2", yref="paper",
             line=dict(color="#DDDDDD", width=1) 
         )
 
-    # Ocasiones (Espaciado ajustado para juntar título y suma)
+    # Ocasiones (Ajustadas un poco más abajo)
     for cat in df_p["Ocasión"].unique():
         idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
         center = (idx_list[0] + idx_list[-1]) / 2
         
-        fig.add_vline(x=idx_list[-1] + 0.5, line_color="#EEEEEE", line_width=1.5, row=2, col=1)
+        fig.add_vline(x=idx_list[-1] + 0.5, line_color="#DDDDDD", line_width=1.5, row=2, col=1)
         
         fig.add_annotation(
-            x=center, y=-0.42, xref="x2", yref="paper",
+            x=center, y=-0.55, # Bajamos de -0.42 a -0.55 para dar más espacio
+            xref="x2", yref="paper",
             text=f"{cat}<br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>",
             showarrow=False, font=dict(size=16, color="black"), align="center"
         )
 
-    # Layout ancho y limpio
+    # Layout y Ejes (Líneas cada $5)
     fig.update_layout(
         height=1100, width=1950,
         template="plotly_white", showlegend=False, 
-        margin=dict(t=50, b=450, l=80, r=80) 
+        margin=dict(t=50, b=550, l=80, r=80) # Aumentamos margen inferior para las etiquetas bajadas
     )
 
-    fig.update_xaxes(
-        tickangle=-90, 
-        tickfont=dict(size=16, color="black", family="Arial"), 
+    fig.update_yaxes(
+        showgrid=True, 
+        gridcolor="#F0F0F0", # Gris muy tenue para las líneas de $5
+        dtick=5,             # <--- ESTO CREA LA DIVISIÓN CADA $5
         row=2, col=1
     )
 
+    fig.update_xaxes(tickangle=-90, tickfont=dict(size=16, color="black"), row=2, col=1)
     fig.update_yaxes(showgrid=False, showticklabels=False, row=1, col=1)
-    fig.update_yaxes(gridcolor="#FBFBFB", row=2, col=1)
 
     st.plotly_chart(fig, use_container_width=True)
-
+   
 # --- 7. COMPARATIVAS ---
 st.divider()
 st.subheader("📈 Comparativas Index $/Kg")
