@@ -96,7 +96,7 @@ if not edited_df.equals(st.session_state.data):
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
    
-# --- 6. GRÁFICO CORREGIDO: LÍNEAS COMPLETAS, MARCO Y DIVISIONES DE PRODUCTO ---
+# --- 6. GRÁFICO CORREGIDO: SIN LÍNEAS HORIZONTALES INTERMEDIAS Y CON TUS DIVISIONES ORIGINALES ---
 if not st.session_state.data.empty:
     ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5}
     df_p = st.session_state.data.copy()
@@ -104,15 +104,15 @@ if not st.session_state.data.empty:
     df_p = df_p.sort_values(by=["O_Oca", "Precio ($)"]).reset_index(drop=True)
     som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-    # Se define vertical_spacing aquí para evitar el ValueError
+    # Mantenemos shared_xaxes y vertical_spacing en 0 para que no haya líneas ni huecos en medio
     fig = make_subplots(
         rows=2, cols=1, 
         shared_xaxes=True, 
-        vertical_spacing=0.02, # Espacio mínimo entre SOM y Barras
+        vertical_spacing=0.0, 
         row_heights=[0.12, 0.88]
     )
 
-    # SOM
+    # --- SOM ---
     fig.add_trace(go.Scatter(
         x=df_p["Producto"], y=df_p["SOM (%)"], 
         mode="lines+markers", line=dict(color="#CCCCCC", width=1.5), 
@@ -126,7 +126,7 @@ if not st.session_state.data.empty:
             bgcolor="#E5E5E5", bordercolor="#CCCCCC", borderwidth=1, row=1, col=1
         )
 
-    # Barras de Precio
+    # --- BARRAS DE PRECIO ---
     colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
     fig.add_trace(go.Bar(
         x=df_p["Producto"], y=df_p["Precio ($)"],
@@ -135,7 +135,6 @@ if not st.session_state.data.empty:
         textposition="outside", textfont=dict(size=18, color="black") 
     ), row=2, col=1)
 
-    # Etiquetas $/Kg
     for i, row in df_p.iterrows():
         fig.add_annotation(
             x=i, y=2.5, text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
@@ -145,60 +144,52 @@ if not st.session_state.data.empty:
             row=2, col=1
         )
 
-    # --- LÍNEAS DIVISORIAS ENTRE PRODUCTOS (Gris muy tenue) ---
+    # --- TUS DIVISIONES VERTICALES ENTRE PRODUCTOS (SIN CAMBIOS) ---
     for i in range(len(df_p) + 1):
         fig.add_shape(
-            type="line", x0=i-0.5, x1=i-0.5, y0=0, y1=1,
+            type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50,
             xref="x2", yref="paper",
-            line=dict(color="#F0F0F0", width=1) 
+            line=dict(color="#DDDDDD", width=1) 
         )
 
-    # --- LÍNEAS DE OCASIÓN (Cruzan todo, Gris Tenue Medio) ---
-    ocasiones_unicas = df_p["Ocasión"].unique()
-    
-    # Línea inicial (Cierra BITES a la izquierda)
-    fig.add_shape(type="line", x0=-0.5, x1=-0.5, y0=-0.15, y1=1, xref="x2", yref="paper",
-                  line=dict(color="#BBBBBB", width=2))
-    
-    for cat in ocasiones_unicas:
+    # --- TUS OCASIONES (SIN CAMBIOS) ---
+    for cat in df_p["Ocasión"].unique():
         idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
         center = (idx_list[0] + idx_list[-1]) / 2
         
-        # Líneas al final de cada ocasión (Cruzan todo)
-        fig.add_shape(type="line", x0=idx_list[-1] + 0.5, x1=idx_list[-1] + 0.5, 
-                      y0=-0.15, y1=1, xref="x2", yref="paper",
-                      line=dict(color="#BBBBBB", width=2))
+        fig.add_vline(x=idx_list[-1] + 0.5, line_color="#DDDDDD", line_width=1.5, row=2, col=1)
         
-        # Etiquetas de Ocasión
         fig.add_annotation(
-            x=center, y=-0.65, xref="x2", yref="paper",
-            text=f"<b>{cat}</b><br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>",
+            x=center, y=-0.60, 
+            xref="x2", yref="paper",
+            text=f"{cat}<br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>",
             showarrow=False, font=dict(size=16, color="black"), align="center"
         )
 
-    # --- CONFIGURACIÓN DE MARCO Y EJES ---
+    # --- CONFIGURACIÓN FINAL: MARCO EXTERIOR Y LIMPIEZA ---
     fig.update_layout(
         height=1100, width=1950, template="plotly_white", showlegend=False,
         margin=dict(t=50, b=600, l=100, r=80)
     )
 
-    # Aplicar Marco Exterior Negro
+    # Marco exterior negro (Recuadro perimetral)
     fig.update_xaxes(showline=True, linewidth=2, linecolor='black', mirror=True)
     fig.update_yaxes(showline=True, linewidth=2, linecolor='black', mirror=True)
 
-    # Eje Y Precios (Eliminamos líneas horizontales del SOM)
+    # Eje Y: Quitamos todas las líneas de cuadrícula para que no se vea nada horizontal entre gráficas
+    fig.update_yaxes(showgrid=False, row=1, col=1) # Limpia el SOM
     fig.update_yaxes(
-        showgrid=True, gridcolor="#F5F5F5", dtick=5,                
-        tickprefix="$", tickfont=dict(size=16, color="black"),
+        showgrid=False, # Quitamos cuadrícula horizontal aquí también
+        dtick=5, tickprefix="$", 
+        tickfont=dict(size=16, color="black"),
         row=2, col=1
     )
-    fig.update_yaxes(showgrid=False, showticklabels=False, row=1, col=1)
 
-    # Eje X Productos
+    # Eje X
     fig.update_xaxes(tickangle=-90, tickfont=dict(size=16, color="black"), row=2, col=1)
+    fig.update_yaxes(showticklabels=False, row=1, col=1)
 
     st.plotly_chart(fig, use_container_width=True)
-
 # --- 7. COMPARATIVAS ---
 st.divider()
 st.subheader("📈 Comparativas Index $/Kg")
