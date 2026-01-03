@@ -194,19 +194,48 @@ barcel_list = df_p[df_p["Fabricante"]=="BARCEL"]["Producto"].unique() if not df_
 comp_list = df_p[df_p["Fabricante"]!="BARCEL"]["Producto"].unique() if not df_p.empty else []
 
 if len(barcel_list) > 0 and len(comp_list) > 0:
+    # Usamos columnas para organizar, pero el CSS interno controlará el ancho real
     idx_cols = st.columns(4)
     for i in range(4):
         with idx_cols[i]:
             with st.container(border=True):
                 p_b = st.selectbox(f"Barcel", barcel_list, key=f"sb{i}", label_visibility="collapsed")
                 p_c = st.selectbox(f"Comp.", comp_list, key=f"sc{i}", label_visibility="collapsed")
+                
                 val_b = df_p[df_p["Producto"]==p_b]["Precio por Kg ($)"].values[0]
                 val_c = df_p[df_p["Producto"]==p_c]["Precio por Kg ($)"].values[0]
                 index_val = int((val_b / val_c) * 100)
+                
+                # Color dinámico: Azul si es competitivo (<=100), Rojo si es caro (>100)
                 color_index = "#0B3C8C" if index_val <= 100 else "#D32F2F"
+                
+                # HTML Personalizado para la tarjeta
                 st.markdown(f"""
-                    <div style="background-color: #f8f9fa; padding: 10px; border-radius: 8px; border-top: 4px solid {color_index}; text-align: center;">
-                        <div style="font-size: 0.7rem; font-weight: bold; color: #555;">{p_b} vs {p_c}</div>
-                        <div style="font-size: 1.8rem; font-weight: 900; color: {color_index};">{index_val}</div>
+                    <div style="
+                        background-color: #f8f9fa; 
+                        padding: 15px 10px; 
+                        border-radius: 10px; 
+                        border-top: 5px solid {color_index}; 
+                        text-align: center;
+                        max-width: 200px; 
+                        margin: 10px auto;
+                        box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+                    ">
+                        <div style="
+                            font-size: 0.9rem; 
+                            font-weight: bold; 
+                            color: #333; 
+                            margin-bottom: 8px;
+                            line-height: 1.2;
+                        ">
+                            {p_b} <br> <span style="color: #888; font-size: 0.7rem;">vs</span> <br> {p_c}
+                        </div>
+                        <div style="
+                            font-size: 2.2rem; 
+                            font-weight: 900; 
+                            color: {color_index};
+                        ">
+                            {index_val}
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
