@@ -200,17 +200,18 @@ if not st.session_state.data.empty:
         # 2. LÍNEAS DIVISORIAS ENTRE NOMBRES (ABAJO)
         # Dibujamos líneas tenues para separar visualmente los nombres de los productos
         for i in range(len(df_p) + 1):
+
             fig.add_shape(
-                type="line", 
-                x0=i-0.5, 
-                x1=i-0.5, 
-                y0=-0.45, # Altura donde empiezan las líneas (zona de nombres)
-                y1=0,     # Llegan hasta la base del gráfico
-                xref="x", 
-                yref="paper",
-                # CAMBIO: Color #EEEEEE para una apariencia mucho más tenue
-                line=dict(color="#EEEEEE", width=1) 
-            )
+
+                type="line", x0=i-0.5, x1=i-0.5, 
+
+                y0=-0.45, y1=0, # Ajustado para que bajen a la zona de los nombres
+
+                xref="x", yref="paper",
+
+                line=dict(color="#DDDDDD", width=1)
+
+            ) 
 
         # 3. Etiquetas de datos sobre las barras y desembolso en la base
         for i, r in df_p.iterrows():
@@ -222,17 +223,21 @@ if not st.session_state.data.empty:
             indices = df_p.index[df_p["Canal"] == cat].tolist()
             center = (indices[0] + indices[-1]) / 2
             
-            # Línea gruesa que separa los CANALES (esta sí cruza todo el gráfico)
+            # LÍNEA QUE SEPARA LOS CANALES
             fig.add_shape(
                 type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, 
                 y0=-0.6, y1=1, xref="x", yref="paper", 
-                line=dict(color="#999999", width=2)
+                # CAMBIOS: 
+                # Color #CCCCCC es un gris claro pero visible.
+                # Width 1.5 para que no sea tan tosca.
+                line=dict(color="#CCCCCC", width=1.5) 
             )
             
-            # Etiqueta de Canal bien abajo
+            # Etiqueta de Canal
             fig.add_annotation(
                 x=center, y=-0.6, xref="x", yref="paper", 
-                text=f"<b>{cat}</b>", showarrow=False, font=dict(size=14, color="black")
+                text=f"<b>{cat}</b>", showarrow=False, 
+                font=dict(size=14, color="black")
             )
         
         # 5. Configuración del Layout
