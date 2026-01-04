@@ -189,7 +189,7 @@ if not st.session_state.data.empty:
         fig.update_xaxes(tickangle=-90, tickfont=dict(size=16, color="black"), showline=False, zeroline=False, row=2, col=1)
     
     else:
-        # 1. Ordenamiento
+        # 1. Ordenamiento por Canal y Desembolso
         ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIO": 5, "CONVENIENCIA": 6}
         df_p["O_Can"] = df_p["Canal"].str.upper().map(ord_can).fillna(99)
         df_p = df_p.sort_values(by=["O_Can", "Precio ($)"]).reset_index(drop=True)
@@ -197,38 +197,43 @@ if not st.session_state.data.empty:
         fig = go.Figure()
         fig.add_trace(go.Bar(x=df_p.index, y=df_p["Precio por Kg ($)"], marker_color="#0B3C8C"))
         
-        # 2. Líneas verticales entre cada producto (NUEVO)
+        # 2. LÍNEAS DIVISORIAS ENTRE NOMBRES (ABAJO)
+        # Dibujamos líneas que van desde la base del gráfico hacia abajo del eje X
         for i in range(len(df_p) + 1):
             fig.add_shape(
-                type="line", x0=i-0.5, x1=i-0.5, y0=0, y1=1,
+                type="line", x0=i-0.5, x1=i-0.5, 
+                y0=-0.45, y1=0, # Ajustado para que bajen a la zona de los nombres
                 xref="x", yref="paper",
                 line=dict(color="#DDDDDD", width=1)
             )
 
+        # 3. Etiquetas de datos sobre las barras y desembolso en la base
         for i, r in df_p.iterrows():
             fig.add_annotation(x=i, y=r["Precio por Kg ($)"], text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", yshift=15, showarrow=False, font=dict(size=13), bgcolor="rgba(255,255,255,0.9)", bordercolor="black", borderwidth=1)
             fig.add_annotation(x=i, y=15, text=f"<b>${r['Precio ($)']:.1f}</b>", showarrow=False, font=dict(size=12), bgcolor="#E1F5FE", bordercolor="#BDBDBD", borderwidth=1, borderpad=4)
         
-        # 3. Divisiones de Canales y Etiquetas
+        # 4. Divisiones de Canales y Etiquetas de Canal
         for cat in df_p["Canal"].unique():
             indices = df_p.index[df_p["Canal"] == cat].tolist()
             center = (indices[0] + indices[-1]) / 2
             
-            # Línea más gruesa para separar CANALES
+            # Línea gruesa que separa los CANALES (esta sí cruza todo el gráfico)
             fig.add_shape(
                 type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, 
-                y0=0, y1=1, xref="x", yref="paper", 
-                line=dict(color="#999999", width=2.5) # Más oscura para distinguir canal
+                y0=-0.6, y1=1, xref="x", yref="paper", 
+                line=dict(color="#999999", width=2)
             )
             
+            # Etiqueta de Canal bien abajo
             fig.add_annotation(
                 x=center, y=-0.6, xref="x", yref="paper", 
                 text=f"<b>{cat}</b>", showarrow=False, font=dict(size=14, color="black")
             )
         
+        # 5. Configuración del Layout
         fig.update_layout(
-            height=800, 
-            margin=dict(b=300), 
+            height=850, 
+            margin=dict(b=300, t=50, l=50, r=50), 
             template="plotly_white", 
             xaxis=dict(
                 tickmode='array', 
@@ -236,7 +241,7 @@ if not st.session_state.data.empty:
                 ticktext=df_p["Producto"], 
                 tickangle=-90,
                 tickfont=dict(color="black", size=12, family="Arial Black"),
-                showgrid=False # Desactivamos el grid default para usar nuestras líneas
+                showgrid=False
             )
         )
 
