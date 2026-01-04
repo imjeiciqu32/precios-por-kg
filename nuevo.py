@@ -44,13 +44,38 @@ def calcular_pkg(df):
     df["Precio por Kg ($)"] = (df["Precio ($)"] / (df["Gramaje (g)"] / 1000)).round(0)
     return df
 
+# --- NUEVA FUNCIÓN NECESARIA PARA LA PIRÁMIDE ---
+def calcular_piramide_dinamica(df):
+    if df.empty: return df
+    df_temp = df.copy()
+    
+    # Base 100: El SKU con mayor SOM de la ocasión seleccionada
+    def get_base_price(group):
+        if group["SOM (%)"].max() > 0:
+            return group.loc[group["SOM (%)"].idxmax(), "Precio por Kg ($)"]
+        return group["Precio por Kg ($)"].mean() if not group.empty else 1
+
+    precios_base = df_temp.groupby("Ocasión").apply(get_base_price).reset_index()
+    precios_base.columns = ["Ocasión", "Precio_Base_100"]
+    
+    df_temp = df_temp.merge(precios_base, on="Ocasión", how="left")
+    df_temp["Brand_Index"] = (df_temp["Precio por Kg ($)"] / df_temp["Precio_Base_100"] * 100).round(0)
+
+    def asignar_tier(idx):
+        if idx >= 170: return "PREMIUM"
+        elif 120 <= idx < 170: return "UPPER MAINSTREAM"
+        elif 95 <= idx < 120: return "MAINSTREAM"
+        elif 80 <= idx < 95: return "MAINSTREAM LOW"
+        else: return "VALUE"
+        
+    df_temp["Tier"] = df_temp["Brand_Index"].apply(asignar_tier)
+    return df_temp
+
 if "data" not in st.session_state:
     if os.path.exists(DB_FILE):
         st.session_state.data = calcular_pkg(pd.read_csv(DB_FILE))
     else:
         st.session_state.data = pd.DataFrame(columns=["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)", "Precio por Kg ($)", "SOM (%)"])
-
-df_p = st.session_state.data.copy()
 
 # --- 3. BARRA LATERAL ---
 st.sidebar.header("📁 Gestión")
@@ -95,7 +120,6 @@ if not edited_df.equals(st.session_state.data):
     st.session_state.data = calcular_pkg(edited_df)
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
-
 
 # --- 6. GRÁFICO FINAL: INTEGRACIÓN COMPLETA ---
 if not st.session_state.data.empty:
@@ -185,15 +209,13 @@ if not st.session_state.data.empty:
         line=dict(color="#DDDDDD", width=2),
     )
 
- # --- CONFIGURACIÓN FINAL DEL LAYOUT ---
+    # --- CONFIGURACIÓN FINAL DEL LAYOUT ---
     fig.update_layout(
         height=950, 
         width=1950, 
         template="plotly_white", 
         showlegend=False,
-        # l=40 pega el eje a la izquierda. b=400 da espacio a las etiquetas de ocasión.
         margin=dict(t=50, b=400, l=40, r=40),
-        # Esto asegura que el subgráfico ocupe todo el espacio lateral disponible
         xaxis2=dict(anchor="y2"),
         yaxis2=dict(anchor="x2")
     )
@@ -211,7 +233,6 @@ if not st.session_state.data.empty:
         tickfont=dict(size=14, color="black"),
         showline=False, 
         zeroline=False,
-        # CLAVE: automargin=False elimina el "colchón" de espacio a la izquierda
         automargin=False, 
         row=2, col=1
     )
@@ -228,6 +249,10 @@ if not st.session_state.data.empty:
     st.plotly_chart(fig, use_container_width=True)
    
 # --- 7. COMPARATIVAS ---
+# He movido la definición de df_p aquí arriba para evitar el NameError
+else:
+    df_p = pd.DataFrame()
+
 st.divider()
 st.subheader("📈 Comparativas Index $/Kg")
 barcel_list = df_p[df_p["Fabricante"]=="BARCEL"]["Producto"].unique() if not df_p.empty else []
@@ -278,3 +303,35 @@ if len(barcel_list) > 0 and len(comp_list) > 0:
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
+
+# --- 8. NUEVA SECCIÓN: PIRÁMIDE DE MARCA ---
+st.divider()
+st.subheader("🏔️ Pirámide de Posicionamiento por Tier")
+
+if not df_p.empty:
+    df_piramide = calcular_piramide_dinamica(df_p)
+    filtro_oca = st.selectbox("Seleccionar Segmento para Pirámide:", df_piramide["Ocasión"].unique())
+    df_filtered = df_piramide[df_piramide["Ocasión"] == filtro_oca].sort_values("Brand_Index", ascending=False)
+
+    tier_colors = {"PREMIUM": "#1A237E", "UPPER MAINSTREAM": "#0D47A1", "MAINSTREAM": "#0B3C8C", "MAINSTREAM LOW": "#1976D2", "VALUE": "#42A5F5"}
+
+    for tier in ["PREMIUM", "UPPER MAINSTREAM", "MAINSTREAM", "MAINSTREAM LOW", "VALUE"]:
+        productos_tier = df_filtered[df_filtered["Tier"] == tier]
+        
+        if not productos_tier.empty:
+            c1, c2 = st.columns([1, 4])
+            c1.markdown(f'<div style="background-color:{tier_colors[tier]}; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold;">{tier}</div>', unsafe_allow_html=True)
+            
+            items_html = '<div style="display: flex; flex-wrap: wrap; gap: 10px;">'
+            for _, row in productos_tier.iterrows():
+                b_color = "#4B207E" if row["Fabricante"] == "BARCEL" else "#CCCCCC"
+                items_html += f"""
+                    <div style="border: 2px solid {b_color}; border-radius: 10px; padding: 10px; background: white; min-width: 160px; flex: 1 1 160px;">
+                        <span style="font-size: 0.95rem; font-weight: bold; color: #333;">{row['Producto']}</span><br>
+                        <span style="color: #666; font-size: 0.85rem;">Index: {int(row['Brand_Index'])}</span><br>
+                        <span style="font-size: 1rem; font-weight: 800; color: #111;">${int(row['Precio ($)'])} ({int(row['Gramaje (g)'])}g)</span>
+                    </div>
+                """
+            items_html += '</div>'
+            c2.markdown(items_html, unsafe_allow_html=True)
+            st.write("")
