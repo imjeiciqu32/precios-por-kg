@@ -121,6 +121,7 @@ if not st.session_state.data.empty:
     df_p = df_p.sort_values(by=["Orden_Agru", "Precio ($)"], ascending=[True, True]).reset_index(drop=True)
 
     if modo == "Price Ladder":
+        # GRÁFICA DE ESCALERAS (Mantenida sin cambios según solicitud)
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.0, row_heights=[0.15, 0.85])
         fig.add_trace(go.Scatter(x=df_p.index, y=df_p["SOM (%)"], mode="lines+markers+text", marker=dict(size=30, color="#EEE", symbol="square"), text=[f"<b>{s}%</b>" for s in df_p["SOM (%)"]], textposition="middle center"), row=1, col=1)
         colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"}
@@ -132,18 +133,35 @@ if not st.session_state.data.empty:
         fig.update_layout(height=850, margin=dict(b=200), template="plotly_white", showlegend=False)
         fig.update_xaxes(tickmode='array', tickvals=list(df_p.index), ticktext=df_p["Producto"], tickangle=-90, row=2, col=1)
     else:
+        # GRÁFICA PRICE PACK (Con las últimas modificaciones de etiquetas)
         fig = go.Figure()
         fig.add_trace(go.Bar(x=df_p.index, y=df_p["Precio por Kg ($)"], marker_color="#0B3C8C"))
 
         for i, r in df_p.iterrows():
-            # Etiqueta Superior $/Kg con contorno (fondo blanco pequeño)
-            fig.add_annotation(x=i, y=r["Precio por Kg ($)"], text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", yshift=15, showarrow=False, font=dict(size=13, color="black"), bgcolor="rgba(255,255,255,0.9)", bordercolor="black", borderwidth=1)
-            # Etiqueta Inferior Desembolso alineada a la base
-            fig.add_annotation(x=i, y=15, text=f"<b>${r['Precio ($)']:.1f}</b>", showarrow=False, font=dict(size=12, color="black"), bgcolor="#B0E0E6", bordercolor="white", borderwidth=1, borderpad=4)
+            # Etiqueta Superior $/Kg con contorno negro y fondo blanco
+            fig.add_annotation(
+                x=i, y=r["Precio por Kg ($)"], 
+                text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", 
+                yshift=15, showarrow=False, 
+                font=dict(size=13, color="black"), 
+                bgcolor="rgba(255,255,255,0.9)", 
+                bordercolor="black", borderwidth=1
+            )
+            # Etiqueta Inferior Desembolso: Azul MUY tenue, con contorno gris suave y alineada a la base
+            fig.add_annotation(
+                x=i, y=15, 
+                text=f"<b>${r['Precio ($)']:.1f}</b>", 
+                showarrow=False, 
+                font=dict(size=12, color="black"), 
+                bgcolor="#E1F5FE", # Azul cielo muy tenue
+                bordercolor="#BDBDBD", # Contorno gris suave
+                borderwidth=1, 
+                borderpad=4
+            )
 
         fig.update_layout(height=750, margin=dict(b=250), template="plotly_white", xaxis=dict(tickmode='array', tickvals=list(df_p.index), ticktext=df_p["Producto"], tickangle=-90), yaxis=dict(title="Precio por Kg ($)", range=[0, df_p["Precio por Kg ($)"].max() * 1.3]))
 
-    # Divisores Comunes
+    # Divisores y Etiquetas de Agrupación
     for cat in df_p[label_agru].unique():
         indices = df_p.index[df_p[label_agru] == cat].tolist()
         if indices:
@@ -154,7 +172,7 @@ if not st.session_state.data.empty:
 
     st.plotly_chart(fig, use_container_width=True)
 
-# Comparativas (Solo Ladder)
+# --- 8. COMPARATIVAS (Solo para Price Ladder) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("📈 Comparativas Index $/Kg")
