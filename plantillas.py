@@ -166,16 +166,15 @@ PLANTILLAS = {
        
        # INDIVIDUAL
        {"Producto": "Doritos 58g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 18.0, "Gramaje (g)": 58, "SOM (%)": 2.2},
-       {"Producto": "Fritos 70g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 15.0, "Gramaje (g)": 70, "SOM (%)": 2.1},
        {"Producto": "Rancheritos 72g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 15.0, "Gramaje (g)": 72, "SOM (%)": 2.0},
-       
+       {"Producto": "Fritos 70g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 15.0, "Gramaje (g)": 70, "SOM (%)": 2.1},
        # HAMBRE
        {"Producto": "Takis 94g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 25.0, "Gramaje (g)": 94, "SOM (%)": 4.5},
        {"Producto": "Doritos Nacho 76g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 25.0, "Gramaje (g)": 76, "SOM (%)": 5.1},
        
        # COMPARTIR
-       {"Producto": "Rancheritos 145g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 39.0, "Gramaje (g)": 145, "SOM (%)": 2.8},
        {"Producto": "Doritos 146g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 39.0, "Gramaje (g)": 146, "SOM (%)": 6.5},
+       {"Producto": "Rancheritos 145g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 39.0, "Gramaje (g)": 145, "SOM (%)": 2.8},
        
        # FAMILIAR
        {"Producto": "Churrumais 200g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 39.0, "Gramaje (g)": 200, "SOM (%)": 3.1},
@@ -185,12 +184,12 @@ PLANTILLAS = {
        {"Producto": "Chipotles 200g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 45.0, "Gramaje (g)": 200, "SOM (%)": 0.5},
        {"Producto": "Takis Blue Heat 200g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 47.0, "Gramaje (g)": 200, "SOM (%)": 0.1},
        {"Producto": "Fritos 250g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 53.0, "Gramaje (g)": 250, "SOM (%)": 1.2},
+       {"Producto": "Runners 280g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 280, "SOM (%)": 1.0},
        {"Producto": "Takis 240g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 240, "SOM (%)": 6.9},
        {"Producto": "Tostitos Sv Y Fh 240g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 240, "SOM (%)": 7.3},
        {"Producto": "Doritos 223g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 223, "SOM (%)": 13.3},
        {"Producto": "Rancheritos 225g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 60.0, "Gramaje (g)": 225, "SOM (%)": 1.8},
-       {"Producto": "Runners 280g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 280, "SOM (%)": 1.0},
-       {"Producto": "Mi Tierra Strips 280g", "Fabricante": "OTROS", "Ocasión": "FAMILIAR", "Precio ($)": 65.0, "Gramaje (g)": 280, "SOM (%)": 0.0},
+       {"Producto": "Mi Tierra Strips 280g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 65.0, "Gramaje (g)": 280, "SOM (%)": 0.0},
        
        # REUNIÓN
        {"Producto": "Takis 340g", "Fabricante": "BARCEL", "Ocasión": "REUNIÓN", "Precio ($)": 80.0, "Gramaje (g)": 340, "SOM (%)": 0.0},
