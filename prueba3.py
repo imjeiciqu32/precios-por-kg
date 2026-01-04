@@ -170,23 +170,41 @@ if not st.session_state.data.empty:
                 bordercolor="#444" if row["Fabricante"] != "BARCEL" else None, borderwidth=1, row=2, col=1
             )
 
+        # --- LÍNEAS DIVISORIAS Y OCASIONES EN PRICE LADDER ---
+        
+        # 1. Líneas Cortas: Entre productos (solo en la base)
         for i in range(len(df_p) + 1):
-            fig.add_shape(type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50, xref="x2", yref="paper", line=dict(color="#DDDDDD", width=1))
-        fig.add_shape(type="line", x0=-0.5, x1=-0.5, y0=-0.01, y1=1, xref="x2", yref="paper", line=dict(color="#DDDDDD", width=1.5))
+            fig.add_shape(
+                type="line", x0=i-0.5, x1=i-0.5, 
+                y0=-0.01, y1=-0.50, # Se mantienen cortas para los nombres
+                xref="x2", yref="paper", 
+                line=dict(color="#DDDDDD", width=1)
+            )
 
+        # 2. Líneas Largas: Entre Ocasiones de Consumo (Cruzan todo el gráfico)
         for cat in df_p["Ocasión"].unique():
             idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
             center = (idx_list[0] + idx_list[-1]) / 2
-            fig.add_shape(type="line", x0=idx_list[-1] + 0.5, x1=idx_list[-1] + 0.5, y0=-0.01, y1=1, xref="x2", yref="paper", line=dict(color="#DDDDDD", width=1.5))
-            fig.add_annotation(x=center, y=-0.60, xref="x2", yref="paper", text=f"{cat}<br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>", showarrow=False, font=dict(size=16, color="black"), align="center")
-
-        fig.add_shape(type="rect", xref="paper", yref="paper", x0=0, y0=0, x1=1, y1=1, line=dict(color="#DDDDDD", width=2))
-        fig.update_layout(height=950, width=1950, template="plotly_white", showlegend=False, margin=dict(t=50, b=400, l=40, r=40), xaxis2=dict(anchor="y2"), yaxis2=dict(anchor="x2"))
-        fig.update_yaxes(showticklabels=False, showline=False, zeroline=False, row=1, col=1)
-        fig.update_xaxes(showline=False, zeroline=False, row=1, col=1)
-        fig.update_yaxes(showgrid=True, gridcolor="#DCDCDC", dtick=5, tickprefix="$", tickfont=dict(size=14, color="black"), showline=False, zeroline=False, automargin=False, row=2, col=1)
-        # Cambio: tickfont color negro para Ladder
-        fig.update_xaxes(tickangle=-90, tickfont=dict(size=16, color="black"), showline=False, zeroline=False, row=2, col=1)
+            
+            # AJUSTE: y1=1 hace que la línea suba hasta el techo del gráfico
+            fig.add_shape(
+                type="line", 
+                x0=idx_list[-1] + 0.5, 
+                x1=idx_list[-1] + 0.5, 
+                y0=-0.01, 
+                y1=1, # Cruza todo el gráfico verticalmente
+                xref="x2", 
+                yref="paper", 
+                # Usamos un gris un poco más fuerte para marcar el cambio de bloque
+                line=dict(color="#CCCCCC", width=2) 
+            )
+            
+            # Etiqueta de Ocasión y SOM%
+            fig.add_annotation(
+                x=center, y=-0.60, xref="x2", yref="paper", 
+                text=f"{cat}<br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>", 
+                showarrow=False, font=dict(size=16, color="black"), align="center"
+            )
     
     else:
         # 1. Ordenamiento por Canal y Desembolso
