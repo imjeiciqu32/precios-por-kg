@@ -31,7 +31,6 @@ if modo == "Price Ladder":
 else:
     DB_FILE = "historico_price_pack.csv"
     label_agru = "Canal"
-    # Jerarquía de canales para Price Pack
     opciones_agru = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "DETALLE", "AUTOSERVICIO", "CONVENIENCIA"]
     fuente_plantillas = PLANTILLAS_PP
     columnas_tabla = ["Producto", "Familia", "Canal", "Precio ($)", "Gramaje (g)"]
@@ -73,7 +72,7 @@ if st.sidebar.button("🗑️ Reset"):
 
 st.title(f"📊 {modo.upper()}")
 
-# --- 5. FORMULARIOS DE AGREGAR (DIFERENCIADOS) ---
+# --- 5. FORMULARIOS DE AGREGAR ---
 with st.expander(f"➕ Agregar nuevo SKU a {modo}", expanded=False):
     with st.form("form_nuevo_sku", clear_on_submit=True):
         col1, col2, col3 = st.columns(3)
@@ -119,73 +118,43 @@ if not st.session_state.data.empty:
     df_p = st.session_state.data.copy()
     ord_map = {cat.upper(): i for i, cat in enumerate(opciones_agru)}
     df_p["Orden_Agru"] = df_p[label_agru].str.upper().map(ord_map).fillna(99)
-    
-    # ORDENAMIENTO: Ambos modos se ordenan por su bloque y luego por Precio Desembolso ($)
     df_p = df_p.sort_values(by=["Orden_Agru", "Precio ($)"], ascending=[True, True]).reset_index(drop=True)
 
     if modo == "Price Ladder":
-        # GRÁFICO DE ESCALERAS (CON SOM Y COLORES POR MARCA)
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.0, row_heights=[0.15, 0.85])
-        
-        fig.add_trace(go.Scatter(
-            x=df_p.index, y=df_p["SOM (%)"], mode="lines+markers+text",
-            marker=dict(size=30, color="#EEE", symbol="square"),
-            text=[f"<b>{s}%</b>" for s in df_p["SOM (%)"]], textposition="middle center",
-        ), row=1, col=1)
-        
+        fig.add_trace(go.Scatter(x=df_p.index, y=df_p["SOM (%)"], mode="lines+markers+text", marker=dict(size=30, color="#EEE", symbol="square"), text=[f"<b>{s}%</b>" for s in df_p["SOM (%)"]], textposition="middle center"), row=1, col=1)
         colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"}
-        fig.add_trace(go.Bar(
-            x=df_p.index, y=df_p["Precio ($)"],
-            marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]],
-            text=[f"<b>${int(p)}</b>" for p in df_p["Precio ($)"]], textposition="outside"
-        ), row=2, col=1)
-
+        fig.add_trace(go.Bar(x=df_p.index, y=df_p["Precio ($)"], marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]], text=[f"<b>${int(p)}</b>" for p in df_p["Precio ($)"]], textposition="outside"), row=2, col=1)
+        
         for i, r in df_p.iterrows():
-            fig.add_annotation(x=i, y=2, text=f"<b>${int(r['Precio por Kg ($)'])}</b>", showarrow=False, 
-                               font=dict(color="white" if r["Fabricante"]=="BARCEL" else "black"), 
-                               bgcolor="rgba(0,0,0,0.5)" if r["Fabricante"]=="BARCEL" else "rgba(255,255,255,0.7)", row=2, col=1)
+            fig.add_annotation(x=i, y=2, text=f"<b>${int(r['Precio por Kg ($)'])}</b>", showarrow=False, font=dict(color="white" if r["Fabricante"]=="BARCEL" else "black"), bgcolor="rgba(0,0,0,0.5)" if r["Fabricante"]=="BARCEL" else "rgba(255,255,255,0.7)", row=2, col=1)
         
         fig.update_layout(height=850, margin=dict(b=200), template="plotly_white", showlegend=False)
         fig.update_xaxes(tickmode='array', tickvals=list(df_p.index), ticktext=df_p["Producto"], tickangle=-90, row=2, col=1)
-
     else:
-        # GRÁFICO PRICE PACK (EJE Y = $/KG)
         fig = go.Figure()
-        fig.add_trace(go.Bar(
-            x=df_p.index, y=df_p["Precio por Kg ($)"],
-            marker_color="#0B3C8C",
-            text=[f"<b>${p:,.0f}</b>" for p in df_p["Precio por Kg ($)"]], # Etiqueta superior $/Kg
-            textposition="outside",
-            textfont=dict(size=14, color="black")
-        ))
+        fig.add_trace(go.Bar(x=df_p.index, y=df_p["Precio por Kg ($)"], marker_color="#0B3C8C"))
 
         for i, r in df_p.iterrows():
-            fig.add_annotation(
-                x=i, y=r["Precio por Kg ($)"] * 0.15,
-                text=f"<b>${r['Precio ($)']:.1f}</b>", # Etiqueta interna Desembolso
-                showarrow=False, font=dict(size=12, color="white"),
-                bgcolor="rgba(0,0,0,0.6)", borderpad=4
-            )
+            # Etiqueta Superior $/Kg con contorno (fondo blanco pequeño)
+            fig.add_annotation(x=i, y=r["Precio por Kg ($)"], text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", yshift=15, showarrow=False, font=dict(size=13, color="black"), bgcolor="rgba(255,255,255,0.9)", bordercolor="black", borderwidth=1)
+            # Etiqueta Inferior Desembolso alineada a la base
+            fig.add_annotation(x=i, y=15, text=f"<b>${r['Precio ($)']:.1f}</b>", showarrow=False, font=dict(size=12, color="black"), bgcolor="#B0E0E6", bordercolor="white", borderwidth=1, borderpad=4)
 
-        fig.update_layout(
-            height=750, margin=dict(b=250), template="plotly_white",
-            xaxis=dict(tickmode='array', tickvals=list(df_p.index), ticktext=df_p["Producto"], tickangle=-90),
-            yaxis=dict(title="Precio por Kg ($)", range=[0, df_p["Precio por Kg ($)"].max() * 1.2])
-        )
+        fig.update_layout(height=750, margin=dict(b=250), template="plotly_white", xaxis=dict(tickmode='array', tickvals=list(df_p.index), ticktext=df_p["Producto"], tickangle=-90), yaxis=dict(title="Precio por Kg ($)", range=[0, df_p["Precio por Kg ($)"].max() * 1.3]))
 
-    # Divisores y Etiquetas (Ocasión o Canal)
+    # Divisores Comunes
     for cat in df_p[label_agru].unique():
         indices = df_p.index[df_p[label_agru] == cat].tolist()
         if indices:
             center = (indices[0] + indices[-1]) / 2
-            # Ajustamos la referencia del eje para que la línea salga bien en ambos modos
             xref_val = "x" if modo == "Price Pack" else "x2"
             fig.add_shape(type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, y0=0, y1=1, xref=xref_val, yref="paper", line=dict(color="#DDD", width=2))
             fig.add_annotation(x=center, y=-0.4, xref=xref_val, yref="paper", text=f"<b>{cat}</b>", showarrow=False, font=dict(size=14))
 
     st.plotly_chart(fig, use_container_width=True)
 
-# Sección de Comparativas solo para Ladder
+# Comparativas (Solo Ladder)
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("📈 Comparativas Index $/Kg")
