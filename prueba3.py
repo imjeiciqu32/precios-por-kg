@@ -189,7 +189,7 @@ if not st.session_state.data.empty:
     else:
         ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIO": 5, "CONVENIENCIA": 6}
         df_p["O_Can"] = df_p["Canal"].str.upper().map(ord_can).fillna(99)
-        df_p = df_p.sort_values(by=["O_Can", "Precio por Kg ($)"]).reset_index(drop=True)
+        df_p = df_p.sort_values(by=["O_Can", "Precio ($)"]).reset_index(drop=True)
         fig = go.Figure()
         fig.add_trace(go.Bar(x=df_p.index, y=df_p["Precio por Kg ($)"], marker_color="#0B3C8C"))
         for i, r in df_p.iterrows():
