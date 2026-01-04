@@ -33,7 +33,3 @@ PLANTILLAS_PP = {
     ]
 }
     
-    "CHIPOTLES": [
-        # Aquí irían los datos de Chipotles siguiendo la misma estructura
-    ]
-}
