@@ -144,8 +144,10 @@ if not st.session_state.data.empty:
         df_p = df_p.sort_values(by=["O_Oca", "Precio ($)"]).reset_index(drop=True)
         som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.0, row_heights=[0.12, 0.88])
+        # Mantenemos el alto para que no se vea "chaparro"
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.15, 0.85])
 
+        # --- TRACE 1: SOM% ---
         fig.add_trace(go.Scatter(
             x=df_p["Producto"], y=df_p["SOM (%)"], mode="lines+markers+text", 
             line=dict(color="#BBBBBB", width=1.5), 
@@ -154,6 +156,7 @@ if not st.session_state.data.empty:
             textposition="middle center", textfont=dict(size=13, color="black"),
         ), row=1, col=1)
 
+        # --- TRACE 2: BARRAS DE PRECIO ---
         colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D","PROPUESTA":"#4B207E"}
         fig.add_trace(go.Bar(
             x=df_p["Producto"], y=df_p["Precio ($)"],
@@ -162,6 +165,7 @@ if not st.session_state.data.empty:
             textposition="outside", textfont=dict(size=18, color="black") 
         ), row=2, col=1)
 
+        # Anotaciones de Precio por Kg dentro de las barras
         for i, row in df_p.iterrows():
             fig.add_annotation(
                 x=i, y=2.5, text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
@@ -170,42 +174,47 @@ if not st.session_state.data.empty:
                 bordercolor="#444" if row["Fabricante"] != "BARCEL" else None, borderwidth=1, row=2, col=1
             )
 
-        # --- LÍNEAS DIVISORIAS Y OCASIONES EN PRICE LADDER ---
-        
-        # 1. Líneas Cortas: Entre productos (solo en la base)
+        # --- LÍNEAS DIVISORIAS ---
+        # 1. Líneas cortas para separar NOMBRES de productos (Solo abajo)
         for i in range(len(df_p) + 1):
-            fig.add_shape(
-                type="line", x0=i-0.5, x1=i-0.5, 
-                y0=-0.01, y1=-0.50, # Se mantienen cortas para los nombres
-                xref="x2", yref="paper", 
-                line=dict(color="#DDDDDD", width=1)
-            )
+            fig.add_shape(type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50, xref="x2", yref="paper", line=dict(color="#DDDDDD", width=1))
 
-        # 2. Líneas Largas: Entre Ocasiones de Consumo (Cruzan todo el gráfico)
+        # 2. Líneas largas para separar OCASIONES (Cruzan todo el gráfico)
         for cat in df_p["Ocasión"].unique():
             idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
-            center = (idx_list[0] + idx_list[-1]) / 2
             
-            # AJUSTE: y1=1 hace que la línea suba hasta el techo del gráfico
+            # Línea divisoria al final de cada categoría (y0=-0.6 para que baje hasta el texto del canal)
             fig.add_shape(
-                type="line", 
-                x0=idx_list[-1] + 0.5, 
-                x1=idx_list[-1] + 0.5, 
-                y0=-0.01, 
-                y1=1, # Cruza todo el gráfico verticalmente
-                xref="x2", 
-                yref="paper", 
-                # Usamos un gris un poco más fuerte para marcar el cambio de bloque
-                line=dict(color="#CCCCCC", width=2) 
+                type="line", x0=idx_list[-1] + 0.5, x1=idx_list[-1] + 0.5, 
+                y0=-0.60, y1=1, xref="x2", yref="paper", 
+                line=dict(color="#CCCCCC", width=2)
             )
             
-            # Etiqueta de Ocasión y SOM%
+            # Texto de la Ocasión y SOM%
+            center = (idx_list[0] + idx_list[-1]) / 2
             fig.add_annotation(
                 x=center, y=-0.60, xref="x2", yref="paper", 
-                text=f"{cat}<br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>", 
+                text=f"<b>{cat}</b><br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>", 
                 showarrow=False, font=dict(size=16, color="black"), align="center"
             )
-    
+
+        # Ajustes finales de Layout
+        fig.update_layout(
+            height=950, width=1950, template="plotly_white", showlegend=False, 
+            margin=dict(t=50, b=400, l=40, r=40)
+        )
+        
+        # Restaurar visibilidad del eje X inferior (Nombres de productos en negro y 90°)
+        fig.update_xaxes(
+            tickangle=-90, 
+            tickfont=dict(size=16, color="black"), 
+            showline=False, 
+            row=2, col=1
+        )
+        
+        # Ocultar ejes innecesarios
+        fig.update_yaxes(showticklabels=False, row=1, col=1)
+        fig.update_yaxes(showgrid=True, gridcolor="#DCDCDC", tickprefix="$", tickfont=dict(size=14), row=2, col=1)
     else:
         # 1. Ordenamiento por Canal y Desembolso
         ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIO": 5, "CONVENIENCIA": 6}
