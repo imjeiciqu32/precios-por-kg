@@ -199,8 +199,8 @@ if not st.session_state.data.empty:
             indices = df_p.index[df_p["Canal"] == cat].tolist()
             center = (indices[0] + indices[-1]) / 2
             fig.add_shape(type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, y0=0, y1=1, xref="x", yref="paper", line=dict(color="#DDD", width=2))
-            fig.add_annotation(x=center, y=-0.4, xref="x", yref="paper", text=f"<b>{cat}</b>", showarrow=False, font=dict(size=14))
-        fig.update_layout(height=750, margin=dict(b=250), template="plotly_white", xaxis=dict(tickmode='array', tickvals=list(df_p.index), ticktext=df_p["Producto"], tickangle=-90))
+            fig.add_annotation(x=center, y=-0.6, xref="x", yref="paper", text=f"<b>{cat}</b>", showarrow=False, font=dict(size=14))
+        fig.update_layout(height=800, margin=dict(b=300), template="plotly_white", xaxis=dict(tickmode='array', tickvals=list(df_p.index), ticktext=df_p["Producto"], tickangle=-90),tickfont=dict(color="black", size=12, family="Arial Black"))
 
     st.plotly_chart(fig, use_container_width=True)
 
