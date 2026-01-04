@@ -75,8 +75,8 @@ with st.expander("➕ Agregar nuevo producto manualmente", expanded=False):
     with st.form("nuevo_sku_form", clear_on_submit=True):
         c1, c2, c3 = st.columns(3)
         f_nom = c1.text_input("Nombre del Producto").upper()
-        f_fab = c2.selectbox("Fabricante", ["BARCEL", "SABRITAS", "OTROS"])
-        f_oca = c3.selectbox("Ocasión", ["BITES", "INDIVIDUAL", "HAMBRE", "COMPARTIR", "FAMILIAR"])
+        f_fab = c2.selectbox("Fabricante", ["BARCEL", "SABRITAS", "OTROS","PROPUESTA"])
+        f_oca = c3.selectbox("Ocasión", ["BITES", "INDIVIDUAL", "HAMBRE", "COMPARTIR", "FAMILIAR","REUNIÓN", "FIESTA","TRANSFORMADOR"])
         c4, c5, c6 = st.columns(3)
         f_pre = c4.number_input("Precio ($)", min_value=0.0, step=0.5)
         f_gra = c5.number_input("Gramaje (g)", min_value=1.0, step=1.0)
@@ -99,7 +99,7 @@ if not edited_df.equals(st.session_state.data):
 
 # --- 6. GRÁFICO FINAL: INTEGRACIÓN COMPLETA ---
 if not st.session_state.data.empty:
-    ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5}
+    ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5,"REUNIÓN":6, "FIESTA":7,"TRANSFORMADOR":8}
     df_p = st.session_state.data.copy()
     df_p["O_Oca"] = df_p["Ocasión"].str.upper().map(ord_oca).fillna(99)
     df_p = df_p.sort_values(by=["O_Oca", "Precio ($)"]).reset_index(drop=True)
@@ -130,7 +130,7 @@ if not st.session_state.data.empty:
     ), row=1, col=1)
 
     # --- BARRAS DE PRECIO ---
-    colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
+    colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D","PROPUESTA":"#4B207E"}
     fig.add_trace(go.Bar(
         x=df_p["Producto"], y=df_p["Precio ($)"],
         marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]],
