@@ -121,47 +121,22 @@ if not st.session_state.data.empty:
     df_p = df_p.sort_values(by=["Orden_Agru", "Precio ($)"], ascending=[True, True]).reset_index(drop=True)
 
     if modo == "Price Ladder":
-        # GRÁFICA DE ESCALERAS (Mantenida sin cambios según solicitud)
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.0, row_heights=[0.15, 0.85])
         fig.add_trace(go.Scatter(x=df_p.index, y=df_p["SOM (%)"], mode="lines+markers+text", marker=dict(size=30, color="#EEE", symbol="square"), text=[f"<b>{s}%</b>" for s in df_p["SOM (%)"]], textposition="middle center"), row=1, col=1)
         colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"}
         fig.add_trace(go.Bar(x=df_p.index, y=df_p["Precio ($)"], marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]], text=[f"<b>${int(p)}</b>" for p in df_p["Precio ($)"]], textposition="outside"), row=2, col=1)
-        
         for i, r in df_p.iterrows():
             fig.add_annotation(x=i, y=2, text=f"<b>${int(r['Precio por Kg ($)'])}</b>", showarrow=False, font=dict(color="white" if r["Fabricante"]=="BARCEL" else "black"), bgcolor="rgba(0,0,0,0.5)" if r["Fabricante"]=="BARCEL" else "rgba(255,255,255,0.7)", row=2, col=1)
-        
         fig.update_layout(height=850, margin=dict(b=200), template="plotly_white", showlegend=False)
         fig.update_xaxes(tickmode='array', tickvals=list(df_p.index), ticktext=df_p["Producto"], tickangle=-90, row=2, col=1)
     else:
-        # GRÁFICA PRICE PACK (Con las últimas modificaciones de etiquetas)
         fig = go.Figure()
         fig.add_trace(go.Bar(x=df_p.index, y=df_p["Precio por Kg ($)"], marker_color="#0B3C8C"))
-
         for i, r in df_p.iterrows():
-            # Etiqueta Superior $/Kg con contorno negro y fondo blanco
-            fig.add_annotation(
-                x=i, y=r["Precio por Kg ($)"], 
-                text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", 
-                yshift=15, showarrow=False, 
-                font=dict(size=13, color="black"), 
-                bgcolor="rgba(255,255,255,0.9)", 
-                bordercolor="black", borderwidth=1
-            )
-            # Etiqueta Inferior Desembolso: Azul MUY tenue, con contorno gris suave y alineada a la base
-            fig.add_annotation(
-                x=i, y=15, 
-                text=f"<b>${r['Precio ($)']:.1f}</b>", 
-                showarrow=False, 
-                font=dict(size=12, color="black"), 
-                bgcolor="#E1F5FE", # Azul cielo muy tenue
-                bordercolor="#BDBDBD", # Contorno gris suave
-                borderwidth=1, 
-                borderpad=4
-            )
-
+            fig.add_annotation(x=i, y=r["Precio por Kg ($)"], text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", yshift=15, showarrow=False, font=dict(size=13, color="black"), bgcolor="rgba(255,255,255,0.9)", bordercolor="black", borderwidth=1)
+            fig.add_annotation(x=i, y=15, text=f"<b>${r['Precio ($)']:.1f}</b>", showarrow=False, font=dict(size=12, color="black"), bgcolor="#E1F5FE", bordercolor="#BDBDBD", borderwidth=1, borderpad=4)
         fig.update_layout(height=750, margin=dict(b=250), template="plotly_white", xaxis=dict(tickmode='array', tickvals=list(df_p.index), ticktext=df_p["Producto"], tickangle=-90), yaxis=dict(title="Precio por Kg ($)", range=[0, df_p["Precio por Kg ($)"].max() * 1.3]))
 
-    # Divisores y Etiquetas de Agrupación
     for cat in df_p[label_agru].unique():
         indices = df_p.index[df_p[label_agru] == cat].tolist()
         if indices:
@@ -172,16 +147,48 @@ if not st.session_state.data.empty:
 
     st.plotly_chart(fig, use_container_width=True)
 
-# --- 8. COMPARATIVAS (Solo para Price Ladder) ---
-if modo == "Price Ladder" and not st.session_state.data.empty:
+# --- 8. COMPARATIVAS (MEJORADO CON 4 CUADROS) ---
+if not st.session_state.data.empty:
     st.divider()
-    st.subheader("📈 Comparativas Index $/Kg")
-    barcel_list = df_p[df_p["Fabricante"]=="BARCEL"]["Producto"].unique()
-    comp_list = df_p[df_p["Fabricante"]!="BARCEL"]["Producto"].unique()
-    if len(barcel_list) > 0 and len(comp_list) > 0:
-        c1, c2 = st.columns(2)
-        p1 = c1.selectbox("Producto Barcel", barcel_list)
-        p2 = c2.selectbox("Producto Competencia", comp_list)
-        v1 = df_p[df_p["Producto"]==p1]["Precio por Kg ($)"].values[0]
-        v2 = df_p[df_p["Producto"]==p2]["Precio por Kg ($)"].values[0]
-        st.metric(f"Index {p1} vs {p2}", int((v1/v2)*100))
+    st.subheader(f"📈 Comparativas Index $/Kg ({modo})")
+    
+    # Lógica de listas según el modo
+    if modo == "Price Ladder":
+        list_a = df_p[df_p["Fabricante"]=="BARCEL"]["Producto"].unique().tolist()
+        list_b = df_p[df_p["Fabricante"]!="BARCEL"]["Producto"].unique().tolist()
+        label_a, label_b = "Barcel", "Comp."
+    else:
+        # En Price Pack comparamos todos contra todos
+        list_a = df_p["Producto"].unique().tolist()
+        list_b = df_p["Producto"].unique().tolist()
+        label_a, label_b = "Producto A", "Producto B"
+
+    if len(list_a) > 0 and len(list_b) > 0:
+        idx_cols = st.columns(4)
+        for i in range(4):
+            with idx_cols[i]:
+                with st.container(border=True):
+                    # Selectores
+                    p_a = st.selectbox(f"{label_a}", list_a, key=f"sa{i}", label_visibility="visible")
+                    p_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=min(i+1, len(list_b)-1), label_visibility="visible")
+                    
+                    # Cálculo
+                    val_a = df_p[df_p["Producto"]==p_a]["Precio por Kg ($)"].values[0]
+                    val_b = df_p[df_p["Producto"]==p_b]["Precio por Kg ($)"].values[0]
+                    
+                    if val_b > 0:
+                        index_val = int((val_a / val_b) * 100)
+                        # Color: Azul si es eficiente (<=100), Rojo si es más caro (>100)
+                        color_index = "#0B3C8C" if index_val <= 100 else "#D32F2F"
+                        
+                        st.markdown(f"""
+                            <div style="background-color: #f8f9fa; padding: 15px 5px; border-radius: 10px; border-top: 5px solid {color_index}; text-align: center; margin-top: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
+                                <div style="font-size: 0.9rem; font-weight: bold; color: #333; margin-bottom: 5px; min-height: 40px; display: flex; align-items: center; justify-content: center;">
+                                    {p_a} vs {p_b}
+                                </div>
+                                <div style="font-size: 2rem; font-weight: 900; color: {color_index};">
+                                    {index_val}
+                                </div>
+                                <div style="font-size: 0.7rem; color: #777; margin-top: 5px;">INDEX $/KG</div>
+                            </div>
+                        """, unsafe_allow_html=True)
