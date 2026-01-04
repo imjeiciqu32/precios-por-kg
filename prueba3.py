@@ -5,7 +5,7 @@ from plotly.subplots import make_subplots
 import os
 from plantillas import PLANTILLAS 
 
-# Intentamos cargar price_pack, si no existe creamos un diccionario vacío
+# Carga de plantillas Price Pack
 try:
     from price_pack import PLANTILLAS_PP
 except ImportError:
@@ -14,62 +14,32 @@ except ImportError:
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Price Architecture Expert Pro", layout="wide")
 
-# NAVEGACIÓN ENTRE MODOS
 st.sidebar.header("🚀 Modo de Visualización")
 modo = st.sidebar.radio("Seleccionar:", ["Price Ladder", "Price Pack"])
 
+# Variables de entorno según el modo
 if modo == "Price Ladder":
     DB_FILE = "historico_productos.csv"
     label_agru = "Ocasión"
-    opciones_agru = ["BITES", "INDIVIDUAL", "HAMBRE", "COMPARTIR", "FAMILIAR","REUNIÓN", "FIESTA","TRANSFORMADOR"]
+    opciones_agru = ["BITES", "INDIVIDUAL", "HAMBRE", "COMPARTIR", "FAMILIAR", "REUNIÓN", "FIESTA", "TRANSFORMADOR"]
     fuente_plantillas = PLANTILLAS
 else:
     DB_FILE = "historico_price_pack.csv"
     label_agru = "Canal"
-    # Jerarquía basada en tus capturas (INST, MAY, CLUB, DT, AS, CNV)
     opciones_agru = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "DETALLE", "AUTOSERVICIO", "CONVENIENCIA"]
     fuente_plantillas = PLANTILLAS_PP
 
-# --- 2. FUNCIONES CORE ---
+# --- 2. FUNCIONES DE PROCESAMIENTO ---
 def calcular_pkg(df):
     if df.empty: return df
-    # Asegurar que las columnas existan antes de operar
-    for col in ["Precio ($)", "Gramaje (g)", "SOM (%)"]:
-        if col not in df.columns: df[col] = 0.0
-    
     df["Precio ($)"] = pd.to_numeric(df["Precio ($)"], errors='coerce').fillna(0)
-    df["Gramaje (g)"] = pd.to_numeric(df["Gramaje (g)"], errors='coerce').fillna(1).replace(0, 1)
-    df["SOM (%)"] = pd.to_numeric(df["SOM (%)"], errors='coerce').fillna(0)
+    df["Gramaje (g)"] = pd.to_numeric(df["Gramaje (g)"], errors='coerce').fillna(1)
     df["Precio por Kg ($)"] = (df["Precio ($)"] / (df["Gramaje (g)"] / 1000)).round(1)
-    
-    # SOLUCIÓN AL NAMEERROR: Asegurar columna Fabricante
-    if "Fabricante" not in df.columns:
-        df["Fabricante"] = "BARCEL"
+    if "SOM (%)" not in df.columns: df["SOM (%)"] = 0.0
+    if "Fabricante" not in df.columns: df["Fabricante"] = "BARCEL"
     return df
 
-def procesar_datos_piramide(df, agrupador="Ocasión"):
-    if df.empty: return df
-    temp = df.copy()
-    def get_base(g):
-        if g["SOM (%)"].max() > 0:
-            return g.loc[g["SOM (%)"].idxmax(), "Precio por Kg ($)"]
-        return g["Precio por Kg ($)"].mean() if not g.empty else 1
-    
-    bases = temp.groupby(agrupador).apply(lambda x: get_base(x)).reset_index()
-    bases.columns = [agrupador, "P_Ref"]
-    temp = temp.merge(bases, on=agrupador, how="left")
-    temp["Idx_P"] = (temp["Precio por Kg ($)"] / temp["P_Ref"] * 100).round(0)
-    
-    def asignar_t(i):
-        if i >= 170: return "PREMIUM"
-        elif 120 <= i < 170: return "UPPER MAINSTREAM"
-        elif 95 <= i < 120: return "MAINSTREAM"
-        elif 80 <= i < 95: return "MAINSTREAM LOW"
-        else: return "VALUE"
-    temp["Tier"] = temp["Idx_P"].apply(asignar_t)
-    return temp
-
-# --- 3. ESTADO DE SESIÓN ---
+# --- 3. GESTIÓN DE DATOS ---
 if "data" not in st.session_state or st.session_state.get("last_modo") != modo:
     if os.path.exists(DB_FILE):
         st.session_state.data = calcular_pkg(pd.read_csv(DB_FILE))
@@ -83,8 +53,7 @@ nombre_plantilla = st.sidebar.selectbox("Cargar Plantilla:", ["-- Seleccionar --
 
 if st.sidebar.button("Cargar Datos"):
     if nombre_plantilla != "-- Seleccionar --":
-        nuevos_datos = pd.DataFrame(fuente_plantillas[nombre_plantilla])
-        st.session_state.data = calcular_pkg(nuevos_datos)
+        st.session_state.data = calcular_pkg(pd.DataFrame(fuente_plantillas[nombre_plantilla]))
         st.session_state.data.to_csv(DB_FILE, index=False)
         st.rerun()
 
@@ -102,46 +71,67 @@ if not edited_df.equals(st.session_state.data):
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
 
-# --- 6. GRÁFICO (MODIFICADO PARA PRICE PACK) ---
+# --- 6. GRÁFICO DINÁMICO ---
 if not st.session_state.data.empty:
     df_p = st.session_state.data.copy()
     ord_map = {cat.upper(): i for i, cat in enumerate(opciones_agru)}
     df_p["Orden"] = df_p[label_agru].str.upper().map(ord_map).fillna(99)
-    df_p = df_p.sort_values(by=["Orden", "Precio ($)"]).reset_index(drop=True)
-    
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.0, row_heights=[0.15, 0.85])
+    df_p = df_p.sort_values(by=["Orden", "Precio por Kg ($)" if modo == "Price Pack" else "Precio ($)"]).reset_index(drop=True)
 
-    # SOM superior
-    fig.add_trace(go.Scatter(
-        x=df_p.index, y=df_p["SOM (%)"], mode="lines+markers+text",
-        marker=dict(size=25, color="#EEE", symbol="square"),
-        text=[f"<b>{s}%</b>" for s in df_p["SOM (%)"]], textposition="middle center",
-    ), row=1, col=1)
+    if modo == "Price Ladder":
+        # Gráfico original con SOM arriba
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.0, row_heights=[0.15, 0.85])
+        fig.add_trace(go.Scatter(
+            x=df_p.index, y=df_p["SOM (%)"], mode="lines+markers+text",
+            marker=dict(size=30, color="#EEE", symbol="square"),
+            text=[f"<b>{s}%</b>" for s in df_p["SOM (%)"]], textposition="middle center",
+        ), row=1, col=1)
+        
+        fig.add_trace(go.Bar(
+            x=df_p.index, y=df_p["Precio ($)"],
+            marker_color=["#0B3C8C" if f == "BARCEL" else "#F5C400" for f in df_p["Fabricante"]],
+            text=[f"<b>${int(p)}</b>" for p in df_p["Precio ($)"]], textposition="outside"
+        ), row=2, col=1)
 
-    # Barras de Precio
-    fig.add_trace(go.Bar(
-        x=df_p.index, y=df_p["Precio ($)"],
-        marker_color=["#0B3C8C" if f == "BARCEL" else "#7F8C8D" for f in df_p["Fabricante"]],
-        text=[f"<b>${p}</b>" for p in df_p["Precio ($)"]], textposition="outside"
-    ), row=2, col=1)
+        for i, r in df_p.iterrows():
+            fig.add_annotation(x=i, y=2, text=f"<b>${int(r['Precio por Kg ($)'])}</b>", showarrow=False, font=dict(color="white" if r["Fabricante"]=="BARCEL" else "black"), bgcolor="rgba(0,0,0,0.4)" if r["Fabricante"]=="BARCEL" else "rgba(255,255,255,0.7)", row=2, col=1)
 
-    # $/Kg Annotations
-    for i, row in df_p.iterrows():
-        fig.add_annotation(
-            x=i, y=row["Precio ($)"]*0.5, text=f"<b>${row['Precio por Kg ($)']:,.0f}</b>",
-            showarrow=False, font=dict(color="white"), bgcolor="rgba(0,0,0,0.5)", row=2, col=1
-        )
+    else:
+        # MODO PRICE PACK: Eje Y es Precio x Kg
+        fig = make_subplots(rows=1, cols=1)
+        
+        fig.add_trace(go.Bar(
+            x=df_p.index, y=df_p["Precio por Kg ($)"],
+            marker_color="#0B3C8C",
+            text=[f"<b>${p:,.0f}</b>" for p in df_p["Precio por Kg ($)"]], # Etiqueta Superior: PxKg
+            textposition="outside",
+            textfont=dict(size=14, color="black")
+        ))
 
-    fig.update_layout(height=800, template="plotly_white", showlegend=False)
-    fig.update_xaxes(tickmode='array', tickvals=list(df_p.index), ticktext=df_p["Producto"], tickangle=-90, row=2, col=1)
+        # Etiqueta Interna: Desembolso (Precio $)
+        for i, r in df_p.iterrows():
+            fig.add_annotation(
+                x=i, y=r["Precio por Kg ($)"] * 0.5,
+                text=f"Desembolso:<br><b>${r['Precio ($)']}</b><br>{int(r['Gramaje (g)'])}g",
+                showarrow=False, font=dict(size=11, color="white"),
+                bgcolor="rgba(0,0,0,0.3)", borderpad=4
+            )
+
+    # Líneas divisorias de categorías y nombres de Canal/Ocasión
+    for cat in df_p[label_agru].unique():
+        idx_list = df_p.index[df_p[label_agru] == cat].tolist()
+        center = (idx_list[0] + idx_list[-1]) / 2
+        fig.add_shape(type="line", x0=idx_list[-1]+0.5, x1=idx_list[-1]+0.5, y0=0, y1=1, xref="x", yref="paper", line=dict(color="#DDD", width=2))
+        fig.add_annotation(x=center, y=-0.15 if modo == "Price Pack" else -0.3, xref="x", yref="paper", text=f"<b>{cat}</b>", showarrow=False, font=dict(size=14))
+
+    fig.update_layout(height=700, margin=dict(b=150), template="plotly_white", showlegend=False)
+    fig.update_xaxes(tickmode='array', tickvals=list(df_p.index), ticktext=df_p["Producto"], tickangle=-45)
     st.plotly_chart(fig, use_container_width=True)
 
-# --- 7. COMPARATIVAS (SOLUCIÓN AL ERROR) ---
-st.divider()
-st.subheader("📈 Comparativas Index $/Kg")
-
-# Verificación de seguridad para evitar el NameError
-if not st.session_state.data.empty:
+# --- 7. COMPARATIVAS (SOLO EN PRICE LADDER) ---
+if modo == "Price Ladder" and not st.session_state.data.empty:
+    st.divider()
+    st.subheader("📈 Comparativas Index $/Kg")
     df_c = st.session_state.data
     barcel_list = df_c[df_c["Fabricante"] == "BARCEL"]["Producto"].unique()
     comp_list = df_c[df_c["Fabricante"] != "BARCEL"]["Producto"].unique()
@@ -154,7 +144,6 @@ if not st.session_state.data.empty:
                 p2 = st.selectbox(f"Comp {i}", comp_list, key=f"c{i}")
                 v1 = df_c[df_c["Producto"] == p1]["Precio por Kg ($)"].values[0]
                 v2 = df_c[df_c["Producto"] == p2]["Precio por Kg ($)"].values[0]
-                idx = int((v1/v2)*100)
-                st.metric(f"{p1} vs {p2}", f"Index {idx}")
+                st.metric(f"{p1} vs {p2}", f"Index {int((v1/v2)*100)}")
 
 st.sidebar.caption("G g")
