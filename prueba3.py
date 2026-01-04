@@ -232,17 +232,19 @@ if not st.session_state.data.empty:
                         color_index = "#0B3C8C" if index_val <= 100 else "#D32F2F"
                         st.markdown(f'<div style="text-align:center; padding:10px; border-top:5px solid {color_index}; background:#f8f9fa; border-radius:5px;"><div style="font-size:1.8rem; font-weight:900; color:{color_index};">{index_val}</div><div style="font-size:0.7rem;">INDEX $/KG</div></div>', unsafe_allow_html=True)
 
-# --- 9. PIRÁMIDE DE POSICIONAMIENTO CORREGIDA (SOLUCIÓN FINAL) ---
-st.divider()
-st.subheader("🏔️ Pirámide de Posicionamiento por Tier")
-
+# --- 9. PIRÁMIDE DE POSICIONAMIENTO (SOLO LADDER) ---
+# Movimos el título y la lógica dentro del condicional para que no aparezca en Price Pack
 if modo == "Price Ladder" and not st.session_state.data.empty:
+    st.divider()
+    st.subheader("🏔️ Pirámide de Posicionamiento por Tier")
+    
+    # Usamos la función procesar_datos_piramide que fija el Index 100 en el mayor SOM
     df_pyramid = procesar_datos_piramide(st.session_state.data)
     
     # Selector de ocasión
     sel_ocasion = st.selectbox("Seleccionar Segmento para Pirámide:", df_pyramid["Ocasión"].unique())
     
-    # Filtrar y ordenar por Index de mayor a menor
+    # Filtrar por ocasión y ordenar por Index de mayor a menor
     df_f = df_pyramid[df_pyramid["Ocasión"] == sel_ocasion].sort_values("Idx_P", ascending=False)
     
     tier_colors = {
@@ -258,7 +260,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         if not productos_tier.empty:
             c1, c2 = st.columns([1, 4])
             
-            # Etiqueta del Tier
+            # Etiqueta visual del Tier
             c1.markdown(f"""
                 <div style="background-color:{tier_colors[tier]}; color:white; padding:15px; 
                 border-radius:10px; text-align:center; font-weight:bold; height:100%; 
@@ -267,10 +269,10 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 </div>
             """, unsafe_allow_html=True)
             
-            # Contenedor de Tarjetas
+            # Construcción de tarjetas horizontales
             cards_html = ""
             for _, r in productos_tier.iterrows():
-                # Borde morado para Barcel/Propuesta como en tu SS
+                # Borde morado para destacar Barcel/Propuesta
                 b_color = "#4B207E" if r["Fabricante"] in ["BARCEL", "PROPUESTA"] else "#CCCCCC"
                 
                 cards_html += f"""
@@ -284,4 +286,4 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             
             with c2:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
-            st.write("") # Espacio entre Tiers
+            st.write("")
