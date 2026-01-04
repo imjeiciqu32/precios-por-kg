@@ -108,7 +108,7 @@ PLANTILLAS = {
       {"Producto": "Bokados Chicharron De Cerdo 115g", "Fabricante": "OTROS", "Ocasión": "COMPARTIR", "Precio ($)": 56.0, "Gramaje (g)": 115, "SOM (%)": 0.8},
       {"Producto": "Sabritas Chicharron De Cerdo 105g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 56.0, "Gramaje (g)": 105, "SOM (%)": 0.7}
   ],
-  # 5. PLANTILLA PARA PALOMITAS SALADAS
+  # 6. PLANTILLA PARA PALOMITAS SALADAS
   "DT - PALOMITAS SALADAS": [
       {"Producto": "Vpc Queso Cheddar 35g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 14.0, "Gramaje (g)": 35, "SOM (%)": 0.3},
       {"Producto": "Cheetos Palomitas 29g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 17.0, "Gramaje (g)": 29, "SOM (%)": 19.4},
@@ -122,14 +122,14 @@ PLANTILLAS = {
       {"Producto": "Act Ii Mantequilla 35g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 22.0, "Gramaje (g)": 35, "SOM (%)": 0.2}
   ],
   
-  # 6. PLANTILLA PARA PALOMITAS DULCES
+  # 7. PLANTILLA PARA PALOMITAS DULCES
   "DT - PALOMITAS DULCES": [
       {"Producto": "Karameladas Pop 45g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 10.0, "Gramaje (g)": 45, "SOM (%)": 14.4},
       {"Producto": "Act Ii Caramelo 45g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 17.0, "Gramaje (g)": 45, "SOM (%)": 1.3},
       {"Producto": "Act Ii Caramelo 95g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 22.0, "Gramaje (g)": 95, "SOM (%)": 0.4},
       {"Producto": "Karameladas Pop 110g", "Fabricante": "BARCEL", "Ocasión": "COMPARTIR", "Precio ($)": 16.0, "Gramaje (g)": 110, "SOM (%)": 37.7}
   ],
-  # 7. PLANTILLA PARA CACAHUATE FRITO / SALADO
+  # 8. PLANTILLA PARA CACAHUATE FRITO / SALADO
   "DT - CACAHUATE FRITO": [
       {"Producto": "Bokados 100g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 15.0, "Gramaje (g)": 100, "SOM (%)": 7.8},
       {"Producto": "Cacahuate Leo 80g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 15.0, "Gramaje (g)": 80, "SOM (%)": 12.0},
@@ -138,7 +138,7 @@ PLANTILLAS = {
       {"Producto": "Golden Nuts 110g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 25.0, "Gramaje (g)": 110, "SOM (%)": 15.2}
   ],
   
-  # 8. PLANTILLA PARA CACAHUATE CUBIERTO
+  # 9. PLANTILLA PARA CACAHUATE CUBIERTO
   "DT - CACAHUATE CUBIERTO": [
       {"Producto": "Kacang Cubierto 77g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 18.0, "Gramaje (g)": 77, "SOM (%)": 39.3},
       {"Producto": "Kacang Xferas 60g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 18.0, "Gramaje (g)": 60, "SOM (%)": 7.9},
@@ -146,7 +146,7 @@ PLANTILLAS = {
       {"Producto": "Kacang Cubierto 130g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 25.0, "Gramaje (g)": 130, "SOM (%)": 0.6},
       {"Producto": "Hot Nuts 115g", "Fabricante": "BARCEL", "Ocasión": "COMPARTIR", "Precio ($)": 25.0, "Gramaje (g)": 115, "SOM (%)": 43.4}
   ],
- # 9. PLANTILLA PARA CACAHUATE JAPONÉS
+ # 10. PLANTILLA PARA CACAHUATE JAPONÉS
   "DT - CACAHUATE JAPONÉS": [
       {"Producto": "Encanto 60g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 10.0, "Gramaje (g)": 60, "SOM (%)": 0.4},
       {"Producto": "Karate 65g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 13.0, "Gramaje (g)": 65, "SOM (%)": 12.2},
@@ -156,7 +156,7 @@ PLANTILLAS = {
       {"Producto": "Kiyakis 120g", "Fabricante": "BARCEL", "Ocasión": "COMPARTIR", "Precio ($)": 20.0, "Gramaje (g)": 120, "SOM (%)": 15.3},
       {"Producto": "Karate 185g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 22.0, "Gramaje (g)": 185, "SOM (%)": 0.4}
   ],
-   # 10. PLANTILLA COMPLETA PARA AS - MAÍZ
+   # 11. PLANTILLA COMPLETA PARA AS - MAÍZ
    "AS - MAÍZ": [
        # BITES
        {"Producto": "Doritos Nachos 23g", "Fabricante": "SABRITAS", "Ocasión": "BITES", "Precio ($)": 8.5, "Gramaje (g)": 23, "SOM (%)": 4.4},
@@ -166,10 +166,10 @@ PLANTILLAS = {
        
        # INDIVIDUAL
        {"Producto": "Doritos 58g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 18.0, "Gramaje (g)": 58, "SOM (%)": 2.2},
-       
-       # HAMBRE
-       {"Producto": "Fritos 70g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 15.0, "Gramaje (g)": 70, "SOM (%)": 2.1},
-       {"Producto": "Rancheritos 72g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 15.0, "Gramaje (g)": 72, "SOM (%)": 2.0},
+       {"Producto": "Fritos 70g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 15.0, "Gramaje (g)": 70, "SOM (%)": 2.1},
+       {"Producto": "Rancheritos 72g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 15.0, "Gramaje (g)": 72, "SOM (%)": 2.0},
+       {"Producto": "Rancheritos 72g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 15.0, "Gramaje (g)": 72, "SOM (%)": 2.0},      
+      # HAMBRE
        {"Producto": "Takis 94g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 25.0, "Gramaje (g)": 94, "SOM (%)": 4.5},
        {"Producto": "Doritos Nacho 76g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 25.0, "Gramaje (g)": 76, "SOM (%)": 5.1},
        
@@ -189,14 +189,237 @@ PLANTILLAS = {
        {"Producto": "Tostitos Sv Y Fh 240g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 240, "SOM (%)": 7.3},
        {"Producto": "Doritos 223g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 223, "SOM (%)": 13.3},
        {"Producto": "Rancheritos 225g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 60.0, "Gramaje (g)": 225, "SOM (%)": 1.8},
-       
+       {"Producto": "Runners 280g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 280, "SOM (%)": 1.0},
+       {"Producto": "Mi Tierra Strips 280g", "Fabricante": "OTROS", "Ocasión": "FAMILIAR", "Precio ($)": 65.0, "Gramaje (g)": 280, "SOM (%)": 0.0},
+      
        # REUNIÓN
-       {"Producto": "Runners 280g", "Fabricante": "BARCEL", "Ocasión": "REUNIÓN", "Precio ($)": 59.0, "Gramaje (g)": 280, "SOM (%)": 1.0},
-       {"Producto": "Mi Tierra Strips 280g", "Fabricante": "OTROS", "Ocasión": "REUNIÓN", "Precio ($)": 65.0, "Gramaje (g)": 280, "SOM (%)": 0.0},
        {"Producto": "Takis 340g", "Fabricante": "BARCEL", "Ocasión": "REUNIÓN", "Precio ($)": 80.0, "Gramaje (g)": 340, "SOM (%)": 0.0},
        {"Producto": "Doritos 335g", "Fabricante": "SABRITAS", "Ocasión": "REUNIÓN", "Precio ($)": 85.0, "Gramaje (g)": 335, "SOM (%)": 2.1},
+       {"Producto": "Tostitos Sal 400g", "Fabricante": "SABRITAS", "Ocasión": "REUNIÓN", "Precio ($)": 60.0, "Gramaje (g)": 400, "SOM (%)": 3.9}
+   ],
+   # 12. PLANTILLA PARA AS - PAPA
+   "AS - PAPA": [
+       # BITES
+       {"Producto": "Ruffles Queso 20g", "Fabricante": "SABRITAS", "Ocasión": "BITES", "Precio ($)": 8.5, "Gramaje (g)": 20, "SOM (%)": 3.8},
+       {"Producto": "Sabritas 18g", "Fabricante": "SABRITAS", "Ocasión": "BITES", "Precio ($)": 8.5, "Gramaje (g)": 18, "SOM (%)": 6.2},
+       {"Producto": "Mini Chips (E. Ba, Bae Y Mb) 18g", "Fabricante": "BARCEL", "Ocasión": "BITES", "Precio ($)": 10.0, "Gramaje (g)": 18, "SOM (%)": 0.1},
        
-       # FIESTA
-       {"Producto": "Tostitos Sal 400g", "Fabricante": "SABRITAS", "Ocasión": "FIESTA", "Precio ($)": 60.0, "Gramaje (g)": 400, "SOM (%)": 3.9}
+       # INDIVIDUAL
+       {"Producto": "Ruffles Queso 48g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 15.0, "Gramaje (g)": 48, "SOM (%)": 1.0},
+       {"Producto": "Sabritas 45g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 15.0, "Gramaje (g)": 45, "SOM (%)": 1.4},
+       {"Producto": "Chip's 42g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 15.0, "Gramaje (g)": 42, "SOM (%)": 0.5},
+       {"Producto": "Sabritas 57g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 25.0, "Gramaje (g)": 57, "SOM (%)": 5.8},
+       {"Producto": "Chip's 55g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 25.0, "Gramaje (g)": 55, "SOM (%)": 2.2},
+       
+       # HAMBRE
+       {"Producto": "Ruffles Queso 67g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 25.0, "Gramaje (g)": 67, "SOM (%)": 2.8},
+       
+       # COMPARTIR
+       {"Producto": "Ruffles 120g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 39.0, "Gramaje (g)": 120, "SOM (%)": 4.0},
+       {"Producto": "Sabritas 105g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 39.0, "Gramaje (g)": 105, "SOM (%)": 2.9},
+       {"Producto": "Chip's 100g", "Fabricante": "BARCEL", "Ocasión": "COMPARTIR", "Precio ($)": 40.0, "Gramaje (g)": 100, "SOM (%)": 0.5},
+       
+       # FAMILIAR
+       {"Producto": "Chips Papatinas Chilix 200g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 55.0, "Gramaje (g)": 200, "SOM (%)": 0.3},
+       {"Producto": "Papa Barcel 170g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 55.0, "Gramaje (g)": 170, "SOM (%)": 0.3},
+       {"Producto": "Ruffles 185g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 185, "SOM (%)": 6.1},
+       {"Producto": "Sabritas 160g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 160, "SOM (%)": 8.0},
+       {"Producto": "Receta Crujiente 160g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 160, "SOM (%)": 5.3},
+       {"Producto": "Chip's (Ew) 160g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 160, "SOM (%)": 3.7},
+       {"Producto": "Chip's 150g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 150, "SOM (%)": 3.4},
+       {"Producto": "Sabritas Sensaciones 150g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 60.0, "Gramaje (g)": 150, "SOM (%)": 0.3},
+       {"Producto": "Chips Toque Maestro 140g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 62.0, "Gramaje (g)": 140, "SOM (%)": 0.3},
+       
+       # REUNIÓN
+       {"Producto": "Ruffles Queso 278g", "Fabricante": "SABRITAS", "Ocasión": "REUNIÓN", "Precio ($)": 85.0, "Gramaje (g)": 278, "SOM (%)": 0.9},
+       {"Producto": "Sabritas 240g", "Fabricante": "SABRITAS", "Ocasión": "REUNIÓN", "Precio ($)": 85.0, "Gramaje (g)": 240, "SOM (%)": 1.0},
+       {"Producto": "Receta Crujiente 240g", "Fabricante": "SABRITAS", "Ocasión": "REUNIÓN", "Precio ($)": 85.0, "Gramaje (g)": 240, "SOM (%)": 0.4},
+       {"Producto": "Chips 240g", "Fabricante": "BARCEL", "Ocasión": "REUNIÓN", "Precio ($)": 85.0, "Gramaje (g)": 240, "SOM (%)": 0.8}
+   ],
+   # 13. PLANTILLA PARA AS - MIXES
+   "AS - MIXES": [
+       # INDIVIDUAL
+       {"Producto": "Paketaxo (Pp) 44g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 10.0, "Gramaje (g)": 44, "SOM (%)": 52.7},
+       
+       # HAMBRE
+       {"Producto": "Cheetos Mix 55g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 15.0, "Gramaje (g)": 55, "SOM (%)": 3.3},
+       {"Producto": "Ruffles Mix 45g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 15.0, "Gramaje (g)": 45, "SOM (%)": 3.5},
+       {"Producto": "Doritos Mix 62g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 15.0, "Gramaje (g)": 62, "SOM (%)": 2.9},
+       {"Producto": "Paketaxo 62g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 15.0, "Gramaje (g)": 62, "SOM (%)": 2.3},
+       
+       # FAMILIAR
+       {"Producto": "Paketaxo Mezcladito 170g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 40.0, "Gramaje (g)": 170, "SOM (%)": 0.9},
+       {"Producto": "Big Mix 200g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 52.0, "Gramaje (g)": 200, "SOM (%)": 1.0},
+       {"Producto": "Paketaxo Botanero 255g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 255, "SOM (%)": 2.9},
+       {"Producto": "Paketaxo Fh 215g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 215, "SOM (%)": 2.0},
+       {"Producto": "Paketaxo Queso 208g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 208, "SOM (%)": 5.9},
+       {"Producto": "Paketaxo Dark 208g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 208, "SOM (%)": 2.8},
+       {"Producto": "Doritos Mix 205g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 205, "SOM (%)": 1.1},
+       {"Producto": "Paketaxo Mezcladito 265g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 265, "SOM (%)": 4.6},
+       {"Producto": "Cheetos Mix 190g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 190, "SOM (%)": 1.8},
+       {"Producto": "Ruffles Mix 170g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 170, "SOM (%)": 1.4},
+       
+       # REUNIÓN
+       {"Producto": "Paketaxo Queso 313g", "Fabricante": "SABRITAS", "Ocasión": "REUNIÓN", "Precio ($)": 85.0, "Gramaje (g)": 313, "SOM (%)": 0.8}
+   ],
+      # 14. PLANTILLA PARA AS - EXTRUIDO Y PELLET
+   "AS - EXTRUIDO Y PELLET": [
+       # BITES
+       {"Producto": "Cheetos 18g", "Fabricante": "SABRITAS", "Ocasión": "BITES", "Precio ($)": 8.5, "Gramaje (g)": 18, "SOM (%)": 4.1},
+       
+       # INDIVIDUAL
+       {"Producto": "Doritos 3d 40g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 10.0, "Gramaje (g)": 40, "SOM (%)": 4.4},
+       {"Producto": "Cheetos Poffs Fh 35g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 10.0, "Gramaje (g)": 35, "SOM (%)": 4.3},
+       {"Producto": "Crujitos 35g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 10.0, "Gramaje (g)": 35, "SOM (%)": 15.5},
+       {"Producto": "Cheetos Poffs 31g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 10.0, "Gramaje (g)": 31, "SOM (%)": 3.1},
+       {"Producto": "Cheetos Colmillos 28g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 10.0, "Gramaje (g)": 28, "SOM (%)": 11.7},
+       {"Producto": "Cheetos Torciditos 58g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 15.0, "Gramaje (g)": 58, "SOM (%)": 2.9},
+       {"Producto": "Cheetos Torciditos (Pp) 61g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 15.0, "Gramaje (g)": 61, "SOM (%)": 4.7},
+       
+       # HAMBRE
+       {"Producto": "Cheetos Torciditos 82g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 25.0, "Gramaje (g)": 82, "SOM (%)": 0.0},
+       
+       # COMPARTIR
+       {"Producto": "Leo Papirringas 100g", "Fabricante": "OTROS", "Ocasión": "COMPARTIR", "Precio ($)": 25.0, "Gramaje (g)": 100, "SOM (%)": 1.1},
+       {"Producto": "Cheetos Bolitas 110g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 40.0, "Gramaje (g)": 110, "SOM (%)": 1.5},
+       {"Producto": "Cheetos Poffs 110g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 40.0, "Gramaje (g)": 110, "SOM (%)": 1.2},
+       
+       # FAMILIAR
+       {"Producto": "Valentones 175g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 36.0, "Gramaje (g)": 175, "SOM (%)": 0.1},
+       {"Producto": "Sabritones 160g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 38.0, "Gramaje (g)": 160, "SOM (%)": 1.7},
+       {"Producto": "Cheetos Torciditos 145g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 40.0, "Gramaje (g)": 145, "SOM (%)": 6.1},
+       {"Producto": "Quesabritas 170g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 50.0, "Gramaje (g)": 170, "SOM (%)": 2.0},
+       
+       # REUNIÓN
+       {"Producto": "Cheetos Torciditos 240g", "Fabricante": "SABRITAS", "Ocasión": "REUNIÓN", "Precio ($)": 59.0, "Gramaje (g)": 240, "SOM (%)": 7.8},
+       {"Producto": "Sabritones 260g", "Fabricante": "SABRITAS", "Ocasión": "REUNIÓN", "Precio ($)": 59.0, "Gramaje (g)": 260, "SOM (%)": 0.2}
+   ],
+   # 15. PLANTILLA PARA AS - CHICHARRÓN
+   "AS - CHICHARRÓN": [
+       # INDIVIDUAL
+       {"Producto": "Encanto Chicharron De Cerdo 40g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 17.0, "Gramaje (g)": 40, "SOM (%)": 4.0},
+       {"Producto": "Leo Chicharron De Cerdo 35g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 17.0, "Gramaje (g)": 35, "SOM (%)": 9.0},
+       {"Producto": "Bokados Chicharron De Cerdo 30g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 17.0, "Gramaje (g)": 30, "SOM (%)": 7.2},
+       {"Producto": "Barcel Chicharron De Cerdo 30g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 18.0, "Gramaje (g)": 30, "SOM (%)": 10.3},
+       {"Producto": "Sabritas Chicharron De Cerdo 30g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 30, "SOM (%)": 35.4},
+       {"Producto": "Leo Chicharron De Cerdo 60g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 25.0, "Gramaje (g)": 60, "SOM (%)": 1.0},
+       {"Producto": "Bokados Chicharron De Cerdo 55g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 25.0, "Gramaje (g)": 55, "SOM (%)": 3.1},
+       
+       # HAMBRE
+       {"Producto": "Barcel Chicharron De Cerdo 70g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 35.0, "Gramaje (g)": 70, "SOM (%)": 4.5},
+       {"Producto": "Otras Marcas 70g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 25.0, "Gramaje (g)": 70, "SOM (%)": 11.4},
+       {"Producto": "Bokados Chicharron De Cerdo 67g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 35.0, "Gramaje (g)": 67, "SOM (%)": 3.4},
+       {"Producto": "Sabritas Chicharron De Cerdo 70g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 37.0, "Gramaje (g)": 70, "SOM (%)": 4.7},
+       
+       # COMPARTIR
+       {"Producto": "Petunia Chicharron De Cerdo 120g", "Fabricante": "OTROS", "Ocasión": "COMPARTIR", "Precio ($)": 52.0, "Gramaje (g)": 120, "SOM (%)": 0.4},
+       {"Producto": "Otras Marcas 100g", "Fabricante": "OTROS", "Ocasión": "COMPARTIR", "Precio ($)": 42.0, "Gramaje (g)": 100, "SOM (%)": 9.2},
+       {"Producto": "Barcel Chicharron De Cerdo 90g", "Fabricante": "BARCEL", "Ocasión": "COMPARTIR", "Precio ($)": 50.0, "Gramaje (g)": 90, "SOM (%)": 6.6},
+       {"Producto": "Spirrones 100g", "Fabricante": "BARCEL", "Ocasión": "COMPARTIR", "Precio ($)": 55.0, "Gramaje (g)": 100, "SOM (%)": 2.0},
+       {"Producto": "Bokados Chicharron De Cerdo 115g", "Fabricante": "OTROS", "Ocasión": "COMPARTIR", "Precio ($)": 56.0, "Gramaje (g)": 115, "SOM (%)": 0.8},
+       {"Producto": "Sabritas Chicharron De Cerdo 105g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 57.0, "Gramaje (g)": 105, "SOM (%)": 21.9},
+       
+       # FAMILIAR
+       {"Producto": "Otras Marcas 200g", "Fabricante": "OTROS", "Ocasión": "FAMILIAR", "Precio ($)": 65.0, "Gramaje (g)": 200, "SOM (%)": 4.1},
+       {"Producto": "Bokados Chicharron De Cerdo 210g", "Fabricante": "OTROS", "Ocasión": "FAMILIAR", "Precio ($)": 85.0, "Gramaje (g)": 210, "SOM (%)": 1.1}
+   ],
+   # 16. PLANTILLA PARA AS - PALOMITA DULCE
+   "AS - PALOMITA DULCE": [
+       # BITES
+       {"Producto": "Slim Pop Sweet & Salty 25g", "Fabricante": "OTROS", "Ocasión": "BITES", "Precio ($)": 13.0, "Gramaje (g)": 25, "SOM (%)": 0.9},
+       
+       # INDIVIDUAL
+       {"Producto": "Pop Karameladas (Pp) 45g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 10.0, "Gramaje (g)": 45, "SOM (%)": 6.3},
+       
+       # HAMBRE
+       {"Producto": "Pop Karameladas 90g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 17.0, "Gramaje (g)": 90, "SOM (%)": 25.0},
+       {"Producto": "Act Ii Caramelo 95g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 22.0, "Gramaje (g)": 95, "SOM (%)": 1.1},
+       
+       # COMPARTIR
+       {"Producto": "Pop Karameladas 120g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 30.0, "Gramaje (g)": 120, "SOM (%)": 2.4},
+       {"Producto": "Slim Pop Sweet & Salty 125g", "Fabricante": "OTROS", "Ocasión": "COMPARTIR", "Precio ($)": 42.0, "Gramaje (g)": 125, "SOM (%)": 1.9},
+       
+       # FAMILIAR
+       {"Producto": "Act Ii Caramelo 175g", "Fabricante": "OTROS", "Ocasión": "FAMILIAR", "Precio ($)": 42.0, "Gramaje (g)": 175, "SOM (%)": 2.3},
+       {"Producto": "Pop Karameladas 240g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 59.0, "Gramaje (g)": 240, "SOM (%)": 4.4}
+   ],
+   
+   # 17. PLANTILLA PARA AS - PALOMITA SALADA
+   "AS - PALOMITA SALADA": [
+       # BITES
+       {"Producto": "Slim Pop 18g", "Fabricante": "OTROS", "Ocasión": "BITES", "Precio ($)": 13.0, "Gramaje (g)": 18, "SOM (%)": 5.6},
+       {"Producto": "Poffets Queso 24g", "Fabricante": "SABRITAS", "Ocasión": "BITES", "Precio ($)": 10.0, "Gramaje (g)": 24, "SOM (%)": 20.1},
+       {"Producto": "Pop Cheddar (Pp) 23g", "Fabricante": "SABRITAS", "Ocasión": "BITES", "Precio ($)": 10.0, "Gramaje (g)": 23, "SOM (%)": 0.0},
+       
+       # INDIVIDUAL
+       {"Producto": "Pop Cheddar (Pp) 35g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 15.0, "Gramaje (g)": 35, "SOM (%)": 0.0},
+       {"Producto": "Act Ii Chile Y Limon 50g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 22.0, "Gramaje (g)": 50, "SOM (%)": 0.8},
+       {"Producto": "Act Ii Queso Cheddar 45g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 22.0, "Gramaje (g)": 45, "SOM (%)": 0.8},
+       
+       # COMPARTIR
+       {"Producto": "Act Ii Queso Cheddar E Infierno 90g", "Fabricante": "OTROS", "Ocasión": "COMPARTIR", "Precio ($)": 42.0, "Gramaje (g)": 90, "SOM (%)": 2.8},
+       {"Producto": "Netflix Mantequilla 90g", "Fabricante": "OTROS", "Ocasión": "COMPARTIR", "Precio ($)": 53.0, "Gramaje (g)": 90, "SOM (%)": 0.5},
+       
+       # FAMILIAR
+       {"Producto": "Pop Cheddar 110g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 40.0, "Gramaje (g)": 110, "SOM (%)": 0.0},
+       {"Producto": "Slim Pop Total Sabores 110g", "Fabricante": "OTROS", "Ocasión": "FAMILIAR", "Precio ($)": 42.0, "Gramaje (g)": 110, "SOM (%)": 8.7},
+       {"Producto": "Act Ii 110g", "Fabricante": "OTROS", "Ocasión": "FAMILIAR", "Precio ($)": 42.0, "Gramaje (g)": 110, "SOM (%)": 4.5},
+       {"Producto": "Act Ii 150g", "Fabricante": "OTROS", "Ocasión": "FAMILIAR", "Precio ($)": 54.0, "Gramaje (g)": 150, "SOM (%)": 0.2},
+       {"Producto": "Act Ii Queso Chipotle 160g", "Fabricante": "OTROS", "Ocasión": "FAMILIAR", "Precio ($)": 54.0, "Gramaje (g)": 160, "SOM (%)": 0.5}
+   ],
+
+      # 18. PLANTILLA PARA AS - CACAHUATE CUBIERTO
+   "AS - CACAHUATE CUBIERTO": [
+       # INDIVIDUAL
+       {"Producto": "Kacang (Pp) 60g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 10.0, "Gramaje (g)": 60, "SOM (%)": 36.2},
+       
+       # HAMBRE
+       {"Producto": "Kacang Xferas 80g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 25.0, "Gramaje (g)": 80, "SOM (%)": 0.4},
+       {"Producto": "Hot Nuts 100g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 27.0, "Gramaje (g)": 100, "SOM (%)": 23.9},
+       {"Producto": "Kacang 110g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 27.0, "Gramaje (g)": 110, "SOM (%)": 7.7},
+       
+       # COMPARTIR
+       {"Producto": "Kacang Xferas 137g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 37.0, "Gramaje (g)": 137, "SOM (%)": 0.0},
+       
+       # FAMILIAR
+       {"Producto": "Hot Nuts 200g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 42.0, "Gramaje (g)": 200, "SOM (%)": 19.3},
+       {"Producto": "Kacang 185g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 44.0, "Gramaje (g)": 185, "SOM (%)": 12.5}
+   ],
+   
+   # 19. PLANTILLA PARA AS - CACAHUATE FRITO
+   "AS - CACAHUATE FRITO": [
+       # INDIVIDUAL
+       {"Producto": "Coolnuts Frito 50g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 50, "SOM (%)": 0.1},
+       {"Producto": "Mafer Frito 65g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 65, "SOM (%)": 28.2},
+       
+       # HAMBRE
+       {"Producto": "Golden Nuts 100g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 27.0, "Gramaje (g)": 100, "SOM (%)": 25.3},
+       {"Producto": "Kacang Frito 100g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 27.0, "Gramaje (g)": 100, "SOM (%)": 0.0},
+       {"Producto": "Mafer Frito 120g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 32.0, "Gramaje (g)": 120, "SOM (%)": 7.8},
+       
+       # FAMILIAR
+       {"Producto": "Golden Nuts 200g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 40.0, "Gramaje (g)": 200, "SOM (%)": 5.2},
+       {"Producto": "Mafer Frito 170g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 46.0, "Gramaje (g)": 170, "SOM (%)": 33.5}
+   ],
+      # 20. PLANTILLA PARA AS - CACAHUATE JAPONÉS
+   "AS - CACAHUATE JAPONÉS": [
+       # HAMBRE
+       {"Producto": "Karate 90g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 10.0, "Gramaje (g)": 90, "SOM (%)": 29.6},
+       {"Producto": "Mafer 65g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 20.0, "Gramaje (g)": 65, "SOM (%)": 4.6},
+       {"Producto": "Karate 115g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 20.0, "Gramaje (g)": 115, "SOM (%)": 43.7},
+       
+       # COMPARTIR
+       {"Producto": "Kiyakis 150g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 25.0, "Gramaje (g)": 150, "SOM (%)": 9.6},
+       {"Producto": "Mafer 120g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 32.0, "Gramaje (g)": 120, "SOM (%)": 1.5},
+       
+       # FAMILIAR
+       {"Producto": "Mafer 170g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 46.0, "Gramaje (g)": 170, "SOM (%)": 9.9},
+       
+       # REUNIÓN
+       {"Producto": "Mafer 230g", "Fabricante": "SABRITAS", "Ocasión": "REUNIÓN", "Precio ($)": 59.0, "Gramaje (g)": 230, "SOM (%)": 1.1}
    ]
+      
+   
+   
+
 }
