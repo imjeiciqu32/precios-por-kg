@@ -47,6 +47,24 @@ def calcular_pkg(df, modo_actual):
         if "Fabricante" not in df.columns: df["Fabricante"] = "OTROS"
     return df
 
+def procesar_datos_piramide(df):
+    """Calcula los Tiers basados en el Index de Precio por Kg vs el promedio de su Ocasión"""
+    if df.empty: return df
+    df_py = df.copy()
+    # Calcular promedio por ocasión
+    avg_pkg = df_py.groupby("Ocasión")["Precio por Kg ($)"].transform("mean")
+    df_py["Idx_P"] = (df_py["Precio por Kg ($)"] / avg_pkg) * 100
+    
+    def definir_tier(idx):
+        if idx >= 120: return "PREMIUM"
+        if idx >= 105: return "UPPER MAINSTREAM"
+        if idx >= 95:  return "MAINSTREAM"
+        if idx >= 85:  return "MAINSTREAM LOW"
+        return "VALUE"
+    
+    df_py["Tier"] = df_py["Idx_P"].apply(definir_tier)
+    return df_py
+
 # --- 3. GESTIÓN DE ESTADO ---
 if "data" not in st.session_state or st.session_state.get("last_modo") != modo:
     if os.path.exists(DB_FILE):
@@ -147,18 +165,15 @@ if not st.session_state.data.empty:
 
     st.plotly_chart(fig, use_container_width=True)
 
-# --- 8. COMPARATIVAS (MEJORADO CON 4 CUADROS) ---
+# --- 8. COMPARATIVAS INDEX ---
 if not st.session_state.data.empty:
     st.divider()
     st.subheader(f"📈 Comparativas Index $/Kg ({modo})")
-    
-    # Lógica de listas según el modo
     if modo == "Price Ladder":
         list_a = df_p[df_p["Fabricante"]=="BARCEL"]["Producto"].unique().tolist()
         list_b = df_p[df_p["Fabricante"]!="BARCEL"]["Producto"].unique().tolist()
         label_a, label_b = "Barcel", "Comp."
     else:
-        # En Price Pack comparamos todos contra todos
         list_a = df_p["Producto"].unique().tolist()
         list_b = df_p["Producto"].unique().tolist()
         label_a, label_b = "Producto A", "Producto B"
@@ -168,27 +183,39 @@ if not st.session_state.data.empty:
         for i in range(4):
             with idx_cols[i]:
                 with st.container(border=True):
-                    # Selectores
-                    p_a = st.selectbox(f"{label_a}", list_a, key=f"sa{i}", label_visibility="visible")
-                    p_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=min(i+1, len(list_b)-1), label_visibility="visible")
-                    
-                    # Cálculo
+                    p_a = st.selectbox(f"{label_a}", list_a, key=f"sa{i}")
+                    p_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=min(i+1, len(list_b)-1))
                     val_a = df_p[df_p["Producto"]==p_a]["Precio por Kg ($)"].values[0]
                     val_b = df_p[df_p["Producto"]==p_b]["Precio por Kg ($)"].values[0]
-                    
                     if val_b > 0:
                         index_val = int((val_a / val_b) * 100)
-                        # Color: Azul si es eficiente (<=100), Rojo si es más caro (>100)
                         color_index = "#0B3C8C" if index_val <= 100 else "#D32F2F"
-                        
-                        st.markdown(f"""
-                            <div style="background-color: #f8f9fa; padding: 15px 5px; border-radius: 10px; border-top: 5px solid {color_index}; text-align: center; margin-top: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
-                                <div style="font-size: 0.9rem; font-weight: bold; color: #333; margin-bottom: 5px; min-height: 40px; display: flex; align-items: center; justify-content: center;">
-                                    {p_a} vs {p_b}
-                                </div>
-                                <div style="font-size: 2rem; font-weight: 900; color: {color_index};">
-                                    {index_val}
-                                </div>
-                                <div style="font-size: 0.7rem; color: #777; margin-top: 5px;">INDEX $/KG</div>
-                            </div>
-                        """, unsafe_allow_html=True)
+                        st.markdown(f'<div style="text-align:center; padding:10px; border-top:5px solid {color_index}; background:#f8f9fa; border-radius:5px;"><div style="font-size:1.8rem; font-weight:900; color:{color_index};">{index_val}</div><div style="font-size:0.7rem;">INDEX $/KG</div></div>', unsafe_allow_html=True)
+
+# --- 9. PIRÁMIDE DE POSICIONAMIENTO (SOLO LADDER) ---
+if modo == "Price Ladder" and not st.session_state.data.empty:
+    st.divider()
+    st.subheader("🏔️ Pirámide de Posicionamiento por Tier")
+    df_pyramid = procesar_datos_piramide(df_p)
+    sel_ocasion = st.selectbox("Seleccionar Segmento para Pirámide:", df_pyramid["Ocasión"].unique())
+    df_f = df_pyramid[df_pyramid["Ocasión"] == sel_ocasion].sort_values("Idx_P", ascending=False)
+    
+    tier_colors = {"PREMIUM": "#1A237E", "UPPER MAINSTREAM": "#0D47A1", "MAINSTREAM": "#0B3C8C", "MAINSTREAM LOW": "#1976D2", "VALUE": "#42A5F5"}
+
+    for tier in ["PREMIUM", "UPPER MAINSTREAM", "MAINSTREAM", "MAINSTREAM LOW", "VALUE"]:
+        productos_tier = df_f[df_f["Tier"] == tier]
+        if not productos_tier.empty:
+            c1, c2 = st.columns([1, 4])
+            c1.markdown(f'<div style="background-color:{tier_colors[tier]}; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold; height:100%; display:flex; align-items:center; justify-content:center;">{tier}</div>', unsafe_allow_html=True)
+            
+            cards_html = '<div style="display: flex; flex-wrap: wrap;">'
+            for _, r in productos_tier.iterrows():
+                b_color = "#4B207E" if r["Fabricante"] == "BARCEL" else "#CCCCCC"
+                cards_html += f"""
+                <div style="border: 2px solid {b_color}; border-radius: 10px; padding: 10px; background: white; width: 160px; margin: 5px; box-shadow: 1px 1px 3px rgba(0,0,0,0.1);">
+                    <div style="font-weight:bold; font-size:0.85rem; color:#333; height:35px; overflow:hidden;">{r['Producto']}</div>
+                    <div style="color:#666; font-size:0.75rem;">Index: {int(r['Idx_P'])}</div>
+                    <div style="font-weight:bold; font-size:0.95rem; color:#111; margin-top:4px;">${int(r['Precio ($)'])} ({int(r['Gramaje (g)'])}g)</div>
+                </div>"""
+            cards_html += '</div>'
+            c2.markdown(cards_html, unsafe_allow_html=True)
