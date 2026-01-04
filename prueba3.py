@@ -185,22 +185,40 @@ if not st.session_state.data.empty:
         fig.update_yaxes(showticklabels=False, showline=False, zeroline=False, row=1, col=1)
         fig.update_xaxes(showline=False, zeroline=False, row=1, col=1)
         fig.update_yaxes(showgrid=True, gridcolor="#DCDCDC", dtick=5, tickprefix="$", tickfont=dict(size=14, color="black"), showline=False, zeroline=False, automargin=False, row=2, col=1)
+        # Cambio: tickfont color negro para Ladder
         fig.update_xaxes(tickangle=-90, tickfont=dict(size=16, color="black"), showline=False, zeroline=False, row=2, col=1)
+    
     else:
         ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIO": 5, "CONVENIENCIA": 6}
         df_p["O_Can"] = df_p["Canal"].str.upper().map(ord_can).fillna(99)
         df_p = df_p.sort_values(by=["O_Can", "Precio ($)"]).reset_index(drop=True)
         fig = go.Figure()
         fig.add_trace(go.Bar(x=df_p.index, y=df_p["Precio por Kg ($)"], marker_color="#0B3C8C"))
+        
         for i, r in df_p.iterrows():
             fig.add_annotation(x=i, y=r["Precio por Kg ($)"], text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", yshift=15, showarrow=False, font=dict(size=13), bgcolor="rgba(255,255,255,0.9)", bordercolor="black", borderwidth=1)
             fig.add_annotation(x=i, y=15, text=f"<b>${r['Precio ($)']:.1f}</b>", showarrow=False, font=dict(size=12), bgcolor="#E1F5FE", bordercolor="#BDBDBD", borderwidth=1, borderpad=4)
+        
         for cat in df_p["Canal"].unique():
             indices = df_p.index[df_p["Canal"] == cat].tolist()
             center = (indices[0] + indices[-1]) / 2
             fig.add_shape(type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, y0=0, y1=1, xref="x", yref="paper", line=dict(color="#DDD", width=2))
-            fig.add_annotation(x=center, y=-0.6, xref="x", yref="paper", text=f"<b>{cat}</b>", showarrow=False, font=dict(size=14))
-        fig.update_layout(height=800, margin=dict(b=300), template="plotly_white", xaxis=dict(tickmode='array', tickvals=list(df_p.index), ticktext=df_p["Producto"], tickangle=-90),tickfont=dict(color="black", size=12, family="Arial Black"))
+            # Ajuste: y=-0.6 para bajar la etiqueta del canal
+            fig.add_annotation(x=center, y=-0.6, xref="x", yref="paper", text=f"<b>{cat}</b>", showarrow=False, font=dict(size=14, color="black"))
+        
+        # Ajuste: tickfont color negro y margen b=300
+        fig.update_layout(
+            height=800, 
+            margin=dict(b=300), 
+            template="plotly_white", 
+            xaxis=dict(
+                tickmode='array', 
+                tickvals=list(df_p.index), 
+                ticktext=df_p["Producto"], 
+                tickangle=-90,
+                tickfont=dict(color="black", size=12, family="Arial Black")
+            )
+        )
 
     st.plotly_chart(fig, use_container_width=True)
 
