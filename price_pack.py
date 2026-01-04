@@ -1,35 +1,37 @@
-# --- ARCHIVO: price_pack.py ---
+
 PLANTILLAS_PP = {
     "TAKIS": [
-        # INSTITUCIONALES
-        {"Canal": "INSTITUCIONALES", "Producto": "TAKIS FUEGO 200g", "Precio ($)": 19.0, "Gramaje (g)": 200},
-        {"Canal": "INSTITUCIONALES", "Producto": "TAKIS 56g", "Precio ($)": 6.0, "Gramaje (g)": 56},
-        {"Canal": "INSTITUCIONALES", "Producto": "MINI TAKIS 35g", "Precio ($)": 5.0, "Gramaje (g)": 35},
-        {"Canal": "INSTITUCIONALES", "Producto": "MIX MINI TAKIS 35g", "Precio ($)": 5.4, "Gramaje (g)": 35},
+        # --- INSTITUCIONALES (INST.) ---
+        {"Canal": "INSTITUCIONALES", "Familia": "TAKIS", "Producto": "MINI TAKIS(25P 35G) 35G", "Precio ($)": 5.4, "Gramaje (g)": 35},
+        {"Canal": "INSTITUCIONALES", "Familia": "TAKIS", "Producto": "MIX MINI TAKIS (25P 35G) 35G", "Precio ($)": 5.4, "Gramaje (g)": 35},
+        {"Canal": "INSTITUCIONALES", "Familia": "TAKIS", "Producto": "TAKIS 56G", "Precio ($)": 6.2, "Gramaje (g)": 56},
+        {"Canal": "INSTITUCIONALES", "Familia": "TAKIS", "Producto": "TAKIS FUEGO 200G", "Precio ($)": 19.4, "Gramaje (g)": 200},
         
-        # MAYOREO
-        {"Canal": "MAYOREO", "Producto": "TAKIS FUEGO 56g", "Precio ($)": 9.0, "Gramaje (g)": 56},
-        {"Canal": "MAYOREO", "Producto": "TAKIS FUEGO 700g", "Precio ($)": 125.0, "Gramaje (g)": 700},
-        {"Canal": "MAYOREO", "Producto": "TAKIS 200g", "Precio ($)": 45.0, "Gramaje (g)": 200},
+        # --- MAYOREO (MAY.) ---
+        {"Canal": "MAYOREO", "Familia": "TAKIS", "Producto": "MINI TAKIS 35G", "Precio ($)": 6.8, "Gramaje (g)": 35},
+        {"Canal": "MAYOREO", "Familia": "TAKIS", "Producto": "MIX MINI TAKIS 35G", "Precio ($)": 6.8, "Gramaje (g)": 35},
+        {"Canal": "MAYOREO", "Familia": "TAKIS", "Producto": "TAKIS FUEGO 56G", "Precio ($)": 8.7, "Gramaje (g)": 56},
         
-        # CLUBES
-        {"Canal": "CLUBES", "Producto": "TAKIS 35g", "Precio ($)": 10.0, "Gramaje (g)": 35},
-        {"Canal": "CLUBES", "Producto": "TAKIS 70g", "Precio ($)": 20.0, "Gramaje (g)": 70},
-        {"Canal": "CLUBES", "Producto": "TAKIS 200g", "Precio ($)": 45.0, "Gramaje (g)": 200},
+        # --- CLUBES (CBS) ---
+        {"Canal": "CLUBES", "Familia": "TAKIS", "Producto": "TAKIS FUEGO 700G", "Precio ($)": 125.0, "Gramaje (g)": 700},
         
-        # DETALLE
-        {"Canal": "DETALLE", "Producto": "MINI TAKIS FUEGO 35g", "Precio ($)": 10.0, "Gramaje (g)": 35},
-        {"Canal": "DETALLE", "Producto": "TAKIS 94g", "Precio ($)": 25.0, "Gramaje (g)": 94},
+        # --- DETALLE (DT) ---
+        {"Canal": "DETALLE", "Familia": "TAKIS", "Producto": "TAKIS 35G", "Precio ($)": 10.0, "Gramaje (g)": 35},
+        {"Canal": "DETALLE", "Familia": "TAKIS", "Producto": "TAKIS 70G", "Precio ($)": 20.0, "Gramaje (g)": 70},
+        {"Canal": "DETALLE", "Familia": "TAKIS", "Producto": "TAKIS 200G", "Precio ($)": 45.0, "Gramaje (g)": 200},
         
-        # AUTOSERVICIO
-        {"Canal": "AUTOSERVICIO", "Producto": "TAKIS BLUE HEAT 200g", "Precio ($)": 47.0, "Gramaje (g)": 200},
-        {"Canal": "AUTOSERVICIO", "Producto": "TAKIS 240g", "Precio ($)": 59.0, "Gramaje (g)": 240},
-        {"Canal": "AUTOSERVICIO", "Producto": "TAKIS 340g", "Precio ($)": 75.0, "Gramaje (g)": 340},
+        # --- AUTOSERVICIO (AS) ---
+        {"Canal": "AUTOSERVICIO", "Familia": "TAKIS", "Producto": "MINI TAKIS FUEGO (E. BA, BAE Y MB) 35G", "Precio ($)": 10.0, "Gramaje (g)": 35},
+        {"Canal": "AUTOSERVICIO", "Familia": "TAKIS", "Producto": "TAKIS 94G", "Precio ($)": 25.0, "Gramaje (g)": 94},
+        {"Canal": "AUTOSERVICIO", "Familia": "TAKIS", "Producto": "TAKIS BLUE HEAT 200G", "Precio ($)": 47.0, "Gramaje (g)": 200},
+        {"Canal": "AUTOSERVICIO", "Familia": "TAKIS", "Producto": "TAKIS 240G", "Precio ($)": 59.0, "Gramaje (g)": 240},
+        {"Canal": "AUTOSERVICIO", "Familia": "TAKIS", "Producto": "TAKIS 340G", "Precio ($)": 75.0, "Gramaje (g)": 340},
         
-        # CONVENIENCIA
-        {"Canal": "CONVENIENCIA", "Producto": "TAKIS BLUE HEAT 75g", "Precio ($)": 28.0, "Gramaje (g)": 75},
-        {"Canal": "CONVENIENCIA", "Producto": "TAKIS 80g", "Precio ($)": 28.0, "Gramaje (g)": 80},
-        {"Canal": "CONVENIENCIA", "Producto": "TAKIS FUEGO 260g", "Precio ($)": 65.0, "Gramaje (g)": 260}
+        # --- CONVENIENCIA (CNV) ---
+        {"Canal": "CONVENIENCIA", "Familia": "TAKIS", "Producto": "TAKIS BLUE HEAT 75G", "Precio ($)": 28.0, "Gramaje (g)": 75},
+        {"Canal": "CONVENIENCIA", "Familia": "TAKIS", "Producto": "TAKIS 80G", "Precio ($)": 28.0, "Gramaje (g)": 80},
+        {"Canal": "CONVENIENCIA", "Familia": "TAKIS", "Producto": "TAKIS FUEGO 200G", "Precio ($)": 55.0, "Gramaje (g)": 200},
+        {"Canal": "CONVENIENCIA", "Familia": "TAKIS", "Producto": "TAKIS FUEGO 260G", "Precio ($)": 65.0, "Gramaje (g)": 260}
     ]
 }
     
