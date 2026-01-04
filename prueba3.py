@@ -198,13 +198,18 @@ if not st.session_state.data.empty:
         fig.add_trace(go.Bar(x=df_p.index, y=df_p["Precio por Kg ($)"], marker_color="#0B3C8C"))
         
         # 2. LÍNEAS DIVISORIAS ENTRE NOMBRES (ABAJO)
-        # Dibujamos líneas que van desde la base del gráfico hacia abajo del eje X
+        # Dibujamos líneas tenues para separar visualmente los nombres de los productos
         for i in range(len(df_p) + 1):
             fig.add_shape(
-                type="line", x0=i-0.5, x1=i-0.5, 
-                y0=-0.45, y1=0, # Ajustado para que bajen a la zona de los nombres
-                xref="x", yref="paper",
-                line=dict(color="#DDDDDD", width=1)
+                type="line", 
+                x0=i-0.5, 
+                x1=i-0.5, 
+                y0=-0.45, # Altura donde empiezan las líneas (zona de nombres)
+                y1=0,     # Llegan hasta la base del gráfico
+                xref="x", 
+                yref="paper",
+                # CAMBIO: Color #EEEEEE para una apariencia mucho más tenue
+                line=dict(color="#EEEEEE", width=1) 
             )
 
         # 3. Etiquetas de datos sobre las barras y desembolso en la base
