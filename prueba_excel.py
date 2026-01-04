@@ -171,7 +171,7 @@ if not st.session_state.data.empty:
     fig.update_layout(
         height=1100, width=1950,
         template="plotly_white", showlegend=False, 
-        margin=dict(t=50, b=550, l=100, r=80) 
+        margin=dict(t=50, b=500, l=100, r=80) 
     )
 
     fig.update_yaxes(
