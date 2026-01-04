@@ -46,16 +46,28 @@ def calcular_pkg(df, modo_actual):
     return df
 
 def procesar_datos_piramide(df):
+    """Calcula los Tiers basados en un Producto Referencia (Index 100 = Mayor SOM de la Ocasión)"""
     if df.empty: return df
+    
     df_py = df.copy()
-    avg_pkg = df_py.groupby("Ocasión")["Precio por Kg ($)"].transform("mean")
-    df_py["Idx_P"] = (df_py["Precio por Kg ($)"] / avg_pkg) * 100
+    # Identificamos el producto con mayor SOM por cada Ocasión para que sea el Index 100
+    idx_referencia = df_py.groupby("Ocasión")["SOM (%)"].idxmax()
+    df_ref = df_py.loc[idx_referencia, ["Ocasión", "Precio por Kg ($)"]]
+    df_ref = df_ref.rename(columns={"Precio por Kg ($)": "Precio_Ref"})
+    
+    # Unimos para tener el precio de referencia en cada fila
+    df_py = df_py.merge(df_ref, on="Ocasión", how="left")
+    
+    # Calculamos el Index real comparado contra el líder (Mainstream)
+    df_py["Idx_P"] = (df_py["Precio por Kg ($)"] / df_py["Precio_Ref"]) * 100
+    
     def definir_tier(idx):
-        if idx >= 120: return "PREMIUM"
+        if idx >= 115: return "PREMIUM"
         if idx >= 105: return "UPPER MAINSTREAM"
         if idx >= 95:  return "MAINSTREAM"
         if idx >= 85:  return "MAINSTREAM LOW"
         return "VALUE"
+    
     df_py["Tier"] = df_py["Idx_P"].apply(definir_tier)
     return df_py
 
@@ -220,27 +232,51 @@ if not st.session_state.data.empty:
                         color_index = "#0B3C8C" if index_val <= 100 else "#D32F2F"
                         st.markdown(f'<div style="text-align:center; padding:10px; border-top:5px solid {color_index}; background:#f8f9fa; border-radius:5px;"><div style="font-size:1.8rem; font-weight:900; color:{color_index};">{index_val}</div><div style="font-size:0.7rem;">INDEX $/KG</div></div>', unsafe_allow_html=True)
 
-# --- 9. PIRÁMIDE DE POSICIONAMIENTO CORREGIDA ---
+# --- 9. PIRÁMIDE DE POSICIONAMIENTO CORREGIDA (SOLUCIÓN FINAL) ---
+st.divider()
+st.subheader("🏔️ Pirámide de Posicionamiento por Tier")
+
 if modo == "Price Ladder" and not st.session_state.data.empty:
-    st.divider()
-    st.subheader("🏔️ Pirámide de Posicionamiento por Tier")
-    df_pyramid = procesar_datos_piramide(df_p)
+    df_pyramid = procesar_datos_piramide(st.session_state.data)
+    
+    # Selector de ocasión
     sel_ocasion = st.selectbox("Seleccionar Segmento para Pirámide:", df_pyramid["Ocasión"].unique())
+    
+    # Filtrar y ordenar por Index de mayor a menor
     df_f = df_pyramid[df_pyramid["Ocasión"] == sel_ocasion].sort_values("Idx_P", ascending=False)
     
-    tier_colors = {"PREMIUM": "#1A237E", "UPPER MAINSTREAM": "#0D47A1", "MAINSTREAM": "#0B3C8C", "MAINSTREAM LOW": "#1976D2", "VALUE": "#42A5F5"}
+    tier_colors = {
+        "PREMIUM": "#1A237E", 
+        "UPPER MAINSTREAM": "#0D47A1", 
+        "MAINSTREAM": "#0B3C8C", 
+        "MAINSTREAM LOW": "#1976D2", 
+        "VALUE": "#42A5F5"
+    }
 
     for tier in ["PREMIUM", "UPPER MAINSTREAM", "MAINSTREAM", "MAINSTREAM LOW", "VALUE"]:
         productos_tier = df_f[df_f["Tier"] == tier]
         if not productos_tier.empty:
             c1, c2 = st.columns([1, 4])
-            c1.markdown(f'<div style="background-color:{tier_colors[tier]}; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold; height:100%; display:flex; align-items:center; justify-content:center;">{tier}</div>', unsafe_allow_html=True)
             
+            # Etiqueta del Tier
+            c1.markdown(f"""
+                <div style="background-color:{tier_colors[tier]}; color:white; padding:15px; 
+                border-radius:10px; text-align:center; font-weight:bold; height:100%; 
+                display:flex; align-items:center; justify-content:center; min-height:80px;">
+                    {tier}
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # Contenedor de Tarjetas
             cards_html = ""
             for _, r in productos_tier.iterrows():
-                b_color = "#4B207E" if r["Fabricante"] == "BARCEL" else "#CCCCCC"
+                # Borde morado para Barcel/Propuesta como en tu SS
+                b_color = "#4B207E" if r["Fabricante"] in ["BARCEL", "PROPUESTA"] else "#CCCCCC"
+                
                 cards_html += f"""
-                <div style="display:inline-block; border: 2px solid {b_color}; border-radius: 10px; padding: 10px; background: white; min-width: 155px; margin: 5px; vertical-align: top; box-shadow: 1px 1px 3px rgba(0,0,0,0.1);">
+                <div style="display:inline-block; border: 2px solid {b_color}; border-radius: 10px; 
+                padding: 10px; background: white; min-width: 160px; margin: 5px; 
+                vertical-align: top; box-shadow: 1px 1px 3px rgba(0,0,0,0.1);">
                     <div style="font-weight:bold; font-size:0.9rem; color:#333; margin-bottom:4px;">{r['Producto']}</div>
                     <div style="color:#666; font-size:0.8rem;">Index: {int(r['Idx_P'])}</div>
                     <div style="font-weight:bold; font-size:1rem; color:#111; margin-top:4px;">${int(r['Precio ($)'])} ({int(r['Gramaje (g)'])}g)</div>
@@ -248,4 +284,4 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             
             with c2:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
-            st.write("") # Espaciador
+            st.write("") # Espacio entre Tiers
