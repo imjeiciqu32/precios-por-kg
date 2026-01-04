@@ -259,13 +259,15 @@ if len(barcel_list) > 0 and len(comp_list) > 0:
                         box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
                     ">
                         <div style="
-                            font-size: 0.9rem; 
+                            font-size: 1.1rem;  /* <--- Aumentado de 0.9rem a 1.1rem */
                             font-weight: bold; 
                             color: #333; 
                             margin-bottom: 8px;
                             line-height: 1.2;
                         ">
-                            {p_b} <br> <span style="color: #888; font-size: 0.7rem;">vs</span> <br> {p_c}
+                            {p_b} <br> 
+                            <span style="color: #888; font-size: 0.9rem;">vs</span> <br>  /* <--- Aumentado de 0.7rem a 0.9rem */
+                            {p_c}
                         </div>
                         <div style="
                             font-size: 2.2rem; 
