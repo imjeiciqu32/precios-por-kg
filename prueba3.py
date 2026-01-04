@@ -21,7 +21,6 @@ st.set_page_config(page_title="Price Architecture Expert Pro", layout="wide")
 st.sidebar.header("🚀 Modo de Visualización")
 modo = st.sidebar.radio("Seleccionar Herramienta:", ["Price Ladder", "Price Pack"])
 
-# Configuración de variables según el modo
 if modo == "Price Ladder":
     DB_FILE = "historico_productos.csv"
     label_agru = "Ocasión"
@@ -41,26 +40,22 @@ def calcular_pkg(df, modo_actual):
     df["Precio ($)"] = pd.to_numeric(df["Precio ($)"], errors='coerce').fillna(0)
     df["Gramaje (g)"] = pd.to_numeric(df["Gramaje (g)"], errors='coerce').fillna(1).replace(0, 1)
     df["Precio por Kg ($)"] = (df["Precio ($)"] / (df["Gramaje (g)"] / 1000)).round(1)
-    
     if modo_actual == "Price Ladder":
         if "SOM (%)" not in df.columns: df["SOM (%)"] = 0.0
         if "Fabricante" not in df.columns: df["Fabricante"] = "OTROS"
     return df
 
 def procesar_datos_piramide(df):
-    """Calcula los Tiers basados en el Index de Precio por Kg vs el promedio de su Ocasión"""
     if df.empty: return df
     df_py = df.copy()
     avg_pkg = df_py.groupby("Ocasión")["Precio por Kg ($)"].transform("mean")
     df_py["Idx_P"] = (df_py["Precio por Kg ($)"] / avg_pkg) * 100
-    
     def definir_tier(idx):
         if idx >= 120: return "PREMIUM"
         if idx >= 105: return "UPPER MAINSTREAM"
         if idx >= 95:  return "MAINSTREAM"
         if idx >= 85:  return "MAINSTREAM LOW"
         return "VALUE"
-    
     df_py["Tier"] = df_py["Idx_P"].apply(definir_tier)
     return df_py
 
@@ -127,7 +122,7 @@ if not edited_df.equals(st.session_state.data):
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
 
-# --- 7. GRÁFICO FINAL (LADDER Y PRICE PACK) ---
+# --- 7. GRÁFICO FINAL ---
 if not st.session_state.data.empty:
     df_p = st.session_state.data.copy()
     
@@ -139,7 +134,6 @@ if not st.session_state.data.empty:
 
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.0, row_heights=[0.12, 0.88])
 
-        # SOM Line
         fig.add_trace(go.Scatter(
             x=df_p["Producto"], y=df_p["SOM (%)"], mode="lines+markers+text", 
             line=dict(color="#BBBBBB", width=1.5), 
@@ -148,7 +142,6 @@ if not st.session_state.data.empty:
             textposition="middle center", textfont=dict(size=13, color="black"),
         ), row=1, col=1)
 
-        # Bar Chart
         colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D","PROPUESTA":"#4B207E"}
         fig.add_trace(go.Bar(
             x=df_p["Producto"], y=df_p["Precio ($)"],
@@ -157,7 +150,6 @@ if not st.session_state.data.empty:
             textposition="outside", textfont=dict(size=18, color="black") 
         ), row=2, col=1)
 
-        # $/Kg Annotations
         for i, row in df_p.iterrows():
             fig.add_annotation(
                 x=i, y=2.5, text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
@@ -166,47 +158,36 @@ if not st.session_state.data.empty:
                 bordercolor="#444" if row["Fabricante"] != "BARCEL" else None, borderwidth=1, row=2, col=1
             )
 
-        # LÍNEAS DIVISORIAS DE PRODUCTOS (BAJAN HASTA EL FONDO)
         for i in range(len(df_p) + 1):
             fig.add_shape(type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50, xref="x2", yref="paper", line=dict(color="#DDDDDD", width=1))
-
-        # Línea de inicio (BITES y margen izquierdo)
         fig.add_shape(type="line", x0=-0.5, x1=-0.5, y0=-0.01, y1=1, xref="x2", yref="paper", line=dict(color="#DDDDDD", width=1.5))
 
-        # LÍNEAS DIVISORIAS POR OCASIÓN Y ETIQUETAS SOM
         for cat in df_p["Ocasión"].unique():
             idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
             center = (idx_list[0] + idx_list[-1]) / 2
             fig.add_shape(type="line", x0=idx_list[-1] + 0.5, x1=idx_list[-1] + 0.5, y0=-0.01, y1=1, xref="x2", yref="paper", line=dict(color="#DDDDDD", width=1.5))
             fig.add_annotation(x=center, y=-0.60, xref="x2", yref="paper", text=f"{cat}<br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>", showarrow=False, font=dict(size=16, color="black"), align="center")
 
-        # Recuadro Exterior
         fig.add_shape(type="rect", xref="paper", yref="paper", x0=0, y0=0, x1=1, y1=1, line=dict(color="#DDDDDD", width=2))
-
         fig.update_layout(height=950, width=1950, template="plotly_white", showlegend=False, margin=dict(t=50, b=400, l=40, r=40), xaxis2=dict(anchor="y2"), yaxis2=dict(anchor="x2"))
         fig.update_yaxes(showticklabels=False, showline=False, zeroline=False, row=1, col=1)
         fig.update_xaxes(showline=False, zeroline=False, row=1, col=1)
         fig.update_yaxes(showgrid=True, gridcolor="#DCDCDC", dtick=5, tickprefix="$", tickfont=dict(size=14, color="black"), showline=False, zeroline=False, automargin=False, row=2, col=1)
         fig.update_xaxes(tickangle=-90, tickfont=dict(size=16, color="black"), showline=False, zeroline=False, row=2, col=1)
-
     else:
-        # MODO PRICE PACK
         ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIO": 5, "CONVENIENCIA": 6}
         df_p["O_Can"] = df_p["Canal"].str.upper().map(ord_can).fillna(99)
         df_p = df_p.sort_values(by=["O_Can", "Precio por Kg ($)"]).reset_index(drop=True)
-        
         fig = go.Figure()
         fig.add_trace(go.Bar(x=df_p.index, y=df_p["Precio por Kg ($)"], marker_color="#0B3C8C"))
         for i, r in df_p.iterrows():
             fig.add_annotation(x=i, y=r["Precio por Kg ($)"], text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", yshift=15, showarrow=False, font=dict(size=13), bgcolor="rgba(255,255,255,0.9)", bordercolor="black", borderwidth=1)
             fig.add_annotation(x=i, y=15, text=f"<b>${r['Precio ($)']:.1f}</b>", showarrow=False, font=dict(size=12), bgcolor="#E1F5FE", bordercolor="#BDBDBD", borderwidth=1, borderpad=4)
-        
         for cat in df_p["Canal"].unique():
             indices = df_p.index[df_p["Canal"] == cat].tolist()
             center = (indices[0] + indices[-1]) / 2
             fig.add_shape(type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, y0=0, y1=1, xref="x", yref="paper", line=dict(color="#DDD", width=2))
             fig.add_annotation(x=center, y=-0.4, xref="x", yref="paper", text=f"<b>{cat}</b>", showarrow=False, font=dict(size=14))
-        
         fig.update_layout(height=750, margin=dict(b=250), template="plotly_white", xaxis=dict(tickmode='array', tickvals=list(df_p.index), ticktext=df_p["Producto"], tickangle=-90))
 
     st.plotly_chart(fig, use_container_width=True)
@@ -239,14 +220,13 @@ if not st.session_state.data.empty:
                         color_index = "#0B3C8C" if index_val <= 100 else "#D32F2F"
                         st.markdown(f'<div style="text-align:center; padding:10px; border-top:5px solid {color_index}; background:#f8f9fa; border-radius:5px;"><div style="font-size:1.8rem; font-weight:900; color:{color_index};">{index_val}</div><div style="font-size:0.7rem;">INDEX $/KG</div></div>', unsafe_allow_html=True)
 
-# --- 9. PIRÁMIDE DE POSICIONAMIENTO (SOLO LADDER) ---
+# --- 9. PIRÁMIDE DE POSICIONAMIENTO CORREGIDA ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("🏔️ Pirámide de Posicionamiento por Tier")
     df_pyramid = procesar_datos_piramide(df_p)
     sel_ocasion = st.selectbox("Seleccionar Segmento para Pirámide:", df_pyramid["Ocasión"].unique())
-    # Ordenar por venta o SOM para asegurar que el producto principal sea visible
-    df_f = df_pyramid[df_pyramid["Ocasión"] == sel_ocasion].sort_values("SOM (%)", ascending=False)
+    df_f = df_pyramid[df_pyramid["Ocasión"] == sel_ocasion].sort_values("Idx_P", ascending=False)
     
     tier_colors = {"PREMIUM": "#1A237E", "UPPER MAINSTREAM": "#0D47A1", "MAINSTREAM": "#0B3C8C", "MAINSTREAM LOW": "#1976D2", "VALUE": "#42A5F5"}
 
@@ -255,15 +235,17 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         if not productos_tier.empty:
             c1, c2 = st.columns([1, 4])
             c1.markdown(f'<div style="background-color:{tier_colors[tier]}; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold; height:100%; display:flex; align-items:center; justify-content:center;">{tier}</div>', unsafe_allow_html=True)
-            cards_html = '<div style="display: flex; flex-wrap: wrap;">'
+            
+            cards_html = ""
             for _, r in productos_tier.iterrows():
-                # Borde morado si es Propuesta/Barcel, gris si es otro
-                b_color = "#4B207E" if r["Fabricante"] in ["BARCEL", "PROPUESTA"] else "#CCCCCC"
+                b_color = "#4B207E" if r["Fabricante"] == "BARCEL" else "#CCCCCC"
                 cards_html += f"""
-                <div style="border: 2px solid {b_color}; border-radius: 10px; padding: 10px; background: white; width: 160px; margin: 5px; box-shadow: 1px 1px 3px rgba(0,0,0,0.1);">
-                    <div style="font-weight:bold; font-size:0.85rem; color:#333; height:35px; overflow:hidden;">{r['Producto']}</div>
-                    <div style="color:#666; font-size:0.75rem;">SOM: {r['SOM (%)']}%</div>
-                    <div style="font-weight:bold; font-size:0.95rem; color:#111; margin-top:4px;">${int(r['Precio ($)'])} ({int(r['Gramaje (g)'])}g)</div>
+                <div style="display:inline-block; border: 2px solid {b_color}; border-radius: 10px; padding: 10px; background: white; min-width: 155px; margin: 5px; vertical-align: top; box-shadow: 1px 1px 3px rgba(0,0,0,0.1);">
+                    <div style="font-weight:bold; font-size:0.9rem; color:#333; margin-bottom:4px;">{r['Producto']}</div>
+                    <div style="color:#666; font-size:0.8rem;">Index: {int(r['Idx_P'])}</div>
+                    <div style="font-weight:bold; font-size:1rem; color:#111; margin-top:4px;">${int(r['Precio ($)'])} ({int(r['Gramaje (g)'])}g)</div>
                 </div>"""
-            cards_html += '</div>'
-            c2.markdown(cards_html, unsafe_allow_html=True)
+            
+            with c2:
+                st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
+            st.write("") # Espaciador
