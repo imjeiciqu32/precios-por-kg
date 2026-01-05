@@ -492,7 +492,7 @@ PLANTILLAS = {
    # 23. PLANTILLA COMPLETA PARA CNV - MIXES
    "CNV - MIXES": [
        # HAMBRE
-       {"Producto": "Big Mix Queso 75g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 25.0, "Gramaje (g)": 75, "SOM (%)": 0.0},
+       {"Producto": "Big Mix Queso 75g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 24.0, "Gramaje (g)": 75, "SOM (%)": 0.0},
        {"Producto": "Mix Bokados 85g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 25.0, "Gramaje (g)": 85, "SOM (%)": 5.8},
        {"Producto": "Takis Duoz + Chips 70g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 27.0, "Gramaje (g)": 70, "SOM (%)": 0.8},
        {"Producto": "Cheetos Mix 90g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 30.0, "Gramaje (g)": 90, "SOM (%)": 2.5},
