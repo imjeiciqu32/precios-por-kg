@@ -78,7 +78,7 @@ PLANTILLAS = {
   "DT - EXTRUIDO Y PELLET": [
       {"Producto": "Leo Ke Chidos 48g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 10.0, "Gramaje (g)": 48, "SOM (%)": 3.1},
       {"Producto": "Leo Papiringas 38g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 10.0, "Gramaje (g)": 38, "SOM (%)": 2.1},
-      {"Producto": "Prispas 50g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 15.0, "Gramaje (g)": 50, "SOM (%)": 1.8},
+      {"Producto": "Prispas 50g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 15.0, "Gramaje (g)": 50, "SOM (%)": 1.8},
       {"Producto": "Valentones 60g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 16.0, "Gramaje (g)": 60, "SOM (%)": 0.3},
       {"Producto": "Sabritones 60g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 16.0, "Gramaje (g)": 60, "SOM (%)": 1.2},
       {"Producto": "Cheetos Torciditos 58g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 17.0, "Gramaje (g)": 58, "SOM (%)": 42.3},
