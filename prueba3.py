@@ -319,19 +319,21 @@ if not st.session_state.data.empty:
                         color_index = "#0B3C8C" if index_val <= 100 else "#D32F2F"
                         
                         st.markdown(f"""
-                            <div style="background:#f8f9fa; border-radius:10px; padding:12px; border-left:5px solid {color_index};">
-                                <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:5px;">
+                            <div style="background:#f8f9fa; border-radius:10px; padding:15px; border-left:6px solid {color_index};">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
                                     <div style="width:45%; text-align:left;">
-                                        <strong>{sel_a}</strong><br><span style="color:#555;">${val_a:.1f}/Kg</span>
+                                        <strong style="font-size:1.0rem; color:#333; display:block; line-height:1.2;">{sel_a}</strong>
+                                        <span style="font-size:1.1rem; font-weight:bold; color:#000;">${val_a:.1f}/Kg</span>
                                     </div>
-                                    <div style="width:10%; text-align:center; align-self:center; font-weight:bold;">vs</div>
+                                    <div style="width:10%; text-align:center; align-self:center; font-weight:bold; color:#999;">vs</div>
                                     <div style="width:45%; text-align:right;">
-                                        <strong>{sel_b}</strong><br><span style="color:#555;">${val_b:.1f}/Kg</span>
+                                        <strong style="font-size:1.0rem; color:#333; display:block; line-height:1.2;">{sel_b}</strong>
+                                        <span style="font-size:1.1rem; font-weight:bold; color:#000;">${val_b:.1f}/Kg</span>
                                     </div>
                                 </div>
-                                <div style="text-align:center; border-top:1px solid #ddd; padding-top:8px;">
-                                    <div style="font-size:2rem; font-weight:900; color:{color_index}; line-height:1;">{index_val}</div>
-                                    <div style="font-size:0.65rem; font-weight:bold; letter-spacing:1px; color:#333;">INDEX $/KG</div>
+                                <div style="text-align:center; border-top:1px solid #ddd; padding-top:10px;">
+                                    <div style="font-size:2.2rem; font-weight:900; color:{color_index}; line-height:1;">{index_val}</div>
+                                    <div style="font-size:0.75rem; font-weight:bold; letter-spacing:1.5px; color:#333;">INDEX $/KG</div>
                                 </div>
                             </div>
                         """, unsafe_allow_html=True)
