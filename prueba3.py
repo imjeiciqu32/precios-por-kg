@@ -78,36 +78,46 @@ if modo_oscuro:
         unsafe_allow_html=True
     )
 
+@st.dialog("📖 Glosario de Metodologías")
+def mostrar_glosario():
+    st.markdown("### 🔍 Conceptos Clave de Pricing")
+    st.write("Entender estas métricas es fundamental para una correcta toma de decisiones.")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.info("**Price Ladder**")
+        st.write("""
+        Visualización que ordena productos por precio de menor a mayor. 
+        Ayuda a identificar 'escalones' y brechas competitivas en el mercado.
+        """)
+    
+    with col2:
+        st.info("**Price Architecture**")
+        st.write("""
+        Estrategia para optimizar la relación entre gramaje y precio. 
+        Busca evitar la canibalización y cubrir todos los puntos de precio lógicos.
+        """)
+    
+    st.divider()
+    st.success("**Index $/Kg**")
+    st.write("""
+    Métrica de paridad. Compara el costo por kilo entre dos productos. 
+    - **Index 100:** Paridad absoluta.
+    - **Index > 100:** Tu producto es más caro por kilo.
+    - **Index < 100:** Tu producto es más barato por kilo.
+    """)
+    if st.button("Cerrar"):
+        st.rerun()
+
 # NAVEGACIÓN
 st.sidebar.header("🚀 Modo de Visualización")
 modo = st.sidebar.radio("Seleccionar Herramienta:", ["Price Ladder", "Price Pack"])
 
-# --- GLOSARIO ---
-with st.sidebar:
-    st.divider()
-    with st.popover("📖 Glosario de Términos"):
-        st.markdown("### 🔍 Metodologías de Precio")
-        
-        st.markdown("**1. Price Ladder (Escalera de Precios):**")
-        st.write("""
-        Es una visualización que ordena los productos de una categoría por su precio (o precio por kilo) de menor a mayor. 
-        Permite identificar los 'escalones' de precio en el mercado.
-        """)
-        
-        st.divider()
-        
-        st.markdown("**2. Price Architecture (Arquitectura de Precios):**")
-        st.write("""
-        Análisis del portafolio que busca optimizar la relación entre gramaje y precio para evitar canibalización y asegurar opciones en todos los puntos de precio.
-        """)
-        
-        st.divider()
-        
-        st.markdown("**3. Index $/Kg:**")
-        st.write("""
-        Métrica comparativa. Un Index de 110 significa que el producto es 10% más caro por kilo que el producto de referencia. 100 es paridad.
-        """)
-
+# Botón limpio para el Glosario
+if st.sidebar.button("❓ Ver Glosario Técnico", use_container_width=True):
+    mostrar_glosario()
+    
 # LÓGICA DE MODOS
 
 if modo == "Price Ladder":
