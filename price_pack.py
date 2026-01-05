@@ -28,7 +28,7 @@ PLANTILLAS_PP = {
         {"Canal": "AUTOSERVICIO", "Familia": "TAKIS", "Producto": "TAKIS 340G", "Precio ($)": 80.0, "Gramaje (g)": 340},
         
         # --- CONVENIENCIA (CNV) ---
-        {"Canal": "CONVENIENCIA", "Familia": "TAKIS", "Producto": "TAKIS 56G", "Precio ($)": 22.0, "Gramaje (g)": 56}
+        {"Canal": "CONVENIENCIA", "Familia": "TAKIS", "Producto": "TAKIS 56G", "Precio ($)": 22.0, "Gramaje (g)": 56},
         {"Canal": "CONVENIENCIA", "Familia": "TAKIS", "Producto": "TAKIS BLUE HEAT 75G", "Precio ($)": 30.0, "Gramaje (g)": 75},
         {"Canal": "CONVENIENCIA", "Familia": "TAKIS", "Producto": "TAKIS 80G", "Precio ($)": 30.0, "Gramaje (g)": 80},
         {"Canal": "CONVENIENCIA", "Familia": "TAKIS", "Producto": "TAKIS FUEGO 200G", "Precio ($)": 58.0, "Gramaje (g)": 200},
@@ -113,7 +113,7 @@ PLANTILLAS_PP = {
         {"Canal": "AUTOSERVICIO", "Familia": "Runners", "Producto": "Runners 280g", "Precio ($)": 59.0, "Gramaje (g)": 280},
         
         # --- CONVENIENCIA (CNV) ---
-        {"Canal": "CONVENIENCIA", "Familia": "Runners", "Producto": "Runners 80g", "Precio ($)": 28.0, "Gramaje (g)": 80}
+        {"Canal": "CONVENIENCIA", "Familia": "Runners", "Producto": "Runners 80g", "Precio ($)": 28.0, "Gramaje (g)": 80},
         {"Canal": "CONVENIENCIA", "Familia": "Runners", "Producto": "Runners 80g", "Precio ($)": 48.0, "Gramaje (g)": 200}
     ],
     "GOLDEN NUTS": [
