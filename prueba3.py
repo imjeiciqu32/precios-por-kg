@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import base64  # <--- ESTA ES LA LÍNEA QUE FALTA
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
