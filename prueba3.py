@@ -504,7 +504,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
             
-# --- 10. ANALISTA ESTRATÉGICO CON IMPACTO DE NEGOCIO (SOM) ---
+# --- 10. ANALISTA MAESTRO: SOM + GAPS + DOBLE INDEX ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("🎯 Diagnóstico de Competitividad e Impacto en Mercado")
@@ -512,7 +512,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
     df_p = st.session_state.data.copy()
     hallazgos = []
 
-    # Obtenemos el peso total de cada ocasión para el semáforo
+    # Diccionario de pesos para el semáforo de importancia
     pesos_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
     for oca in df_p["Ocasión"].unique():
@@ -521,74 +521,103 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         df_comp = df_oca[df_oca["Fabricante"] != "BARCEL"]
         
         peso_segmento = pesos_ocasion.get(oca, 0)
-        # Definimos importancia del segmento
-        importancia = "ALTA" if peso_segmento > 20 else "MEDIA" if peso_segmento > 5 else "BAJA"
+        importancia_tag = "ALTA" if peso_segmento > 20 else "MEDIA" if peso_segmento > 5 else "BAJA"
 
         if df_comp.empty: continue 
 
-        # --- A. LÓGICA DE TEXTO Y LÍDER ---
+        # Identificar Líder de la Competencia
         comp_ordenada = df_comp.sort_values("SOM (%)", ascending=False)
         lider_mercado = comp_ordenada.iloc[0]
         pkg_lider = lider_mercado["Precio por Kg ($)"]
         nombre_lider = lider_mercado["Producto"]
-        
-        comp_min, comp_max = df_comp["Precio ($)"].min(), df_comp["Precio ($)"].max()
+        pkg_promedio_comp = df_comp["Precio por Kg ($)"].mean()
 
-        # --- B. DETECCIÓN DE GAPS CON VALORACIÓN DE SOM ---
+        # Rango de la competencia para texto dinámico
+        comp_precios = sorted(df_comp["Precio ($)"].unique())
+        texto_rango_comp = f"solo opera en `${int(comp_precios[0])}`" if len(comp_precios) == 1 else f"opera entre `${int(min(comp_precios))}` y `${int(max(comp_precios))}`"
+
+        # --- 1. CASO: AUSENCIA TOTAL ---
         if df_barcel.empty:
             hallazgos.append({
-                "Prioridad": "ALTA" if importancia != "BAJA" else "MEDIA",
+                "Prioridad": "ALTA" if importancia_tag != "BAJA" else "MEDIA",
                 "Tipo": "AUSENCIA TOTAL", "Ocasión": oca,
                 "Msg": f"Barcel no participa en {oca} (Peso: {peso_segmento:.1f}%)",
-                "Detalle": f"La competencia domina un segmento que representa el **{peso_segmento:.1f}%** del mercado. El líder es {nombre_lider}.",
-                "Accion": f"Prioridad {importancia}: Evaluar entrada para capturar parte del {peso_segmento:.1f}% de SOM disponible."
+                "Detalle": f"Segmento dominado por {nombre_lider}. Mercado desatendido: {texto_rango_comp}.",
+                "Accion": f"Urgente: Evaluar entrada para capturar parte del {peso_segmento:.1f}% de SOM."
             })
         else:
-            # Gap de entrada / Abandono
-            b_min = df_barcel["Precio ($)"].min()
-            if b_min > comp_min + 2:
+            # --- 2. CASO: GAPS DE DESEMBOLSO (ABISMOS) ---
+            precios_b = sorted(df_barcel["Precio ($)"].unique())
+            b_min, b_max = min(precios_b), max(precios_b)
+            c_min, c_max = min(comp_precios), max(comp_precios)
+
+            # Gap al inicio
+            if b_min > c_min + 2:
                 hallazgos.append({
                     "Prioridad": "ALTA" if peso_segmento > 15 else "MEDIA",
                     "Tipo": "GAP ENTRADA", "Ocasión": oca,
-                    "Msg": f"Barrera de entrada en {oca} ({peso_segmento:.1f}% Peso)",
-                    "Detalle": f"Inicias en ${int(b_min)} mientras la competencia captura desde ${int(comp_min)}.",
-                    "Accion": "Lanzar formato 'Bites' para no ceder el volumen de entrada del segmento."
+                    "Msg": f"Falta opción de entrada (${int(c_min)})",
+                    "Detalle": f"La competencia inicia en `${int(c_min)}`. Tu primer precio es `${int(b_min)}`.",
+                    "Accion": "Lanzar formato pequeño para frenar la prueba de marcas competidoras."
                 })
 
-            # --- C. ANÁLISIS DE INDEX VS LÍDER ---
-            pkg_barcel_avg = df_barcel["Precio por Kg ($)"].mean()
-            idx_lider = int((pkg_barcel_avg / pkg_lider) * 100)
+            # Saltos internos (El abismo de Papa)
+            for i in range(len(precios_b)-1):
+                salto = precios_b[i+1] - precios_b[i]
+                if salto > 15:
+                    gap_comp = df_comp[(df_comp["Precio ($)"] > precios_b[i]) & (df_comp["Precio ($)"] < precios_b[i+1])]
+                    if not gap_comp.empty:
+                        hallazgos.append({
+                            "Prioridad": "ALTA" if importancia_tag == "ALTA" else "MEDIA",
+                            "Tipo": "ZONA DE ABANDONO", "Ocasión": oca,
+                            "Msg": f"Abismo entre `${int(precios_b[i])}` y `${int(precios_b[i+1])}`",
+                            "Detalle": f"Dejas un hueco de `${int(salto)}` donde la competencia tiene {len(gap_comp)} opción(es).",
+                            "Accion": "Necesario SKU intermedio para mantener al usuario en la marca."
+                        })
 
+            # --- 3. CASO: DOBLE INDEX ($/KG) ---
+            pkg_b_avg = df_barcel["Precio por Kg ($)"].mean()
+            idx_lider = int((pkg_b_avg / pkg_lider) * 100)
+            idx_promedio = int((pkg_b_avg / pkg_promedio_comp) * 100)
+
+            # Contra Líder (Foco en 85-95)
             if idx_lider > 95:
                 hallazgos.append({
-                    "Prioridad": "ALTA" if importancia == "ALTA" else "MEDIA",
+                    "Prioridad": "ALTA" if importancia_tag == "ALTA" else "MEDIA",
                     "Tipo": "INDEX VS LÍDER", "Ocasión": oca,
-                    "Msg": f"Desviación vs {nombre_lider} (Index {idx_lider})",
-                    "Detalle": f"En un segmento de alto peso ({peso_segmento:.1f}%), ser más caro que el líder pone en riesgo el SOM actual.",
-                    "Accion": "Ajustar gramaje/precio para retornar al rango ideal 85-95."
+                    "Msg": f"Caro vs {nombre_lider} (Index {idx_lider})",
+                    "Detalle": f"Estás fuera del rango ideal (85-95) contra el principal competidor del segmento.",
+                    "Accion": "Revisar gramaje para ganar competitividad frente al líder."
+                })
+            # Contra Promedio
+            elif idx_promedio > 105:
+                hallazgos.append({
+                    "Prioridad": "MEDIA", "Tipo": "INDEX VS PROMEDIO", "Ocasión": oca,
+                    "Msg": f"Superior al Promedio (Index {idx_promedio})",
+                    "Detalle": f"Estás sano vs el líder, pero eres más caro que la media de la ocasión.",
+                    "Accion": "Monitorear si marcas de bajo costo están ganando terreno."
                 })
 
-    # --- D. RENDERIZADO CON SEMÁFORO DE IMPACTO ---
+    # Renderizado final con Semáforo de Impacto
     if hallazgos:
-        # Ordenar para que lo más pesado salga primero
         for h in hallazgos:
             with st.container(border=True):
-                c1, c2, c3 = st.columns([1.2, 3, 2])
+                col_semaforo, col_texto, col_accion = st.columns([1.2, 3, 2])
                 
-                # Semáforo visual basado en Prioridad (que ya considera el peso SOM)
                 if h["Prioridad"] == "ALTA":
-                    c1.error(f"🔴 **CRÍTICO**\n\n{h['Tipo']}")
+                    col_semaforo.error(f"🔴 **CRÍTICO**\n\n{h['Tipo']}")
                 elif h["Prioridad"] == "MEDIA":
-                    c1.warning(f"🟡 **IMPORTANTE**\n\n{h['Tipo']}")
+                    col_semaforo.warning(f"🟡 **IMPORTANTE**\n\n{h['Tipo']}")
                 else:
-                    c1.info(f"🟢 **OPORTUNIDAD**\n\n{h['Tipo']}")
+                    col_semaforo.info(f"🔵 **OPORTUNIDAD**\n\n{h['Tipo']}")
                 
-                with c2:
+                with col_texto:
                     st.markdown(f"### {h['Ocasión']}")
                     st.write(f"**{h['Msg']}**")
                     st.markdown(f"<small>{h['Detalle']}</small>", unsafe_allow_html=True)
                 
-                with c3:
-                    st.info(f"📋 **Estrategia sugerida:**\n{h['Accion']}")
+                with col_accion:
+                    st.success(f"💡 **Estrategia sugerida:**\n{h['Accion']}")
     else:
-        st.success("✅ Portafolio blindado y balanceado según peso de mercado.")
+        st.balloons()
+        st.success("✅ Portafolio blindado: Sin gaps de precio y con Index $/Kg competitivo.")
