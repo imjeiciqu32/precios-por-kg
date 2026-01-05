@@ -290,18 +290,13 @@ if not st.session_state.data.empty:
     df_comp = df_p.copy()
     
     if modo == "Price Ladder":
-        list_a = df_comp[df_comp["Fabricante"]=="BARCEL"]["Producto"].unique().tolist()
-        list_b = df_comp[df_comp["Fabricante"]!="BARCEL"]["Producto"].unique().tolist()
-        label_a, label_b = "Barcel", "Comp."
-        # En Ladder no hay duplicados de producto por canal usualmente, pero por seguridad:
         df_comp["Lookup_Key"] = df_comp["Producto"]
+        list_a = df_comp[df_comp["Fabricante"]=="BARCEL"]["Lookup_Key"].unique().tolist()
+        list_b = df_comp[df_comp["Fabricante"]!="BARCEL"]["Lookup_Key"].unique().tolist()
+        label_a, label_b = "Barcel", "Comp."
     else:
-        # Creamos el Display_Name que el usuario ve
-        df_comp["Display_Name"] = df_comp["Producto"] + " (" + df_comp["Canal"] + ")"
-        # La clave de búsqueda DEBE ser el Display_Name para que sea única por canal
-        df_comp["Lookup_Key"] = df_comp["Display_Name"]
-        
-        list_a = df_comp["Display_Name"].unique().tolist()
+        df_comp["Lookup_Key"] = df_comp["Producto"] + " (" + df_comp["Canal"] + ")"
+        list_a = df_comp["Lookup_Key"].unique().tolist()
         list_b = list_a.copy()
         label_a, label_b = "Producto A", "Producto B"
 
@@ -310,25 +305,33 @@ if not st.session_state.data.empty:
         for i in range(4):
             with idx_cols[i]:
                 with st.container(border=True):
+                    # Selectores
                     sel_a = st.selectbox(f"{label_a}", list_a, key=f"sa{i}")
                     sel_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=min(i+1, len(list_b)-1))
                     
-                    # FILTRADO CORRECTO: Usamos la Lookup_Key que garantiza Producto + Canal
+                    # Obtención de valores
                     val_a = df_comp[df_comp["Lookup_Key"] == sel_a]["Precio por Kg ($)"].values[0]
                     val_b = df_comp[df_comp["Lookup_Key"] == sel_b]["Precio por Kg ($)"].values[0]
                     
                     if val_b > 0:
-                        # Cálculo: (Precio x Kg A / Precio x Kg B) * 100
                         index_val = int((val_a / val_b) * 100)
+                        # Color: Azul si es más barato o igual (<=100), Rojo si es más caro (>100)
                         color_index = "#0B3C8C" if index_val <= 100 else "#D32F2F"
                         
                         st.markdown(f"""
-                            <div style="text-align:center; padding:10px; border-top:5px solid {color_index}; 
-                            background:#f8f9fa; border-radius:5px;">
-                                <div style="font-size:1.8rem; font-weight:900; color:{color_index};">{index_val}</div>
-                                <div style="font-size:0.7rem;">INDEX $/KG</div>
-                                <div style="text-align:center; font-size:0.6rem; color:#666;">
-                                    ${val_a:.1f} vs ${val_b:.1f}
+                            <div style="background:#f8f9fa; border-radius:10px; padding:12px; border-left:5px solid {color_index};">
+                                <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:5px;">
+                                    <div style="width:45%; text-align:left;">
+                                        <strong>{sel_a}</strong><br><span style="color:#555;">${val_a:.1f}/Kg</span>
+                                    </div>
+                                    <div style="width:10%; text-align:center; align-self:center; font-weight:bold;">vs</div>
+                                    <div style="width:45%; text-align:right;">
+                                        <strong>{sel_b}</strong><br><span style="color:#555;">${val_b:.1f}/Kg</span>
+                                    </div>
+                                </div>
+                                <div style="text-align:center; border-top:1px solid #ddd; padding-top:8px;">
+                                    <div style="font-size:2rem; font-weight:900; color:{color_index}; line-height:1;">{index_val}</div>
+                                    <div style="font-size:0.65rem; font-weight:bold; letter-spacing:1px; color:#333;">INDEX $/KG</div>
                                 </div>
                             </div>
                         """, unsafe_allow_html=True)
