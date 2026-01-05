@@ -451,3 +451,29 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             with c2:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
+            
+# --- 10. MAPA DE CALOR: PRECIO PROMEDIO POR KG ---
+st.divider()
+st.subheader("🔥 Mapa de Calor: $/Kg Promedio por Marca y Canal")
+
+if not st.session_state.data.empty:
+    # 1. Crear una tabla pivote: Filas (Marca), Columnas (Canal), Valores (Precio por Kg)
+    # Usamos el promedio (mean) por si hay varios productos de la misma marca en un canal
+    df_pivot = df_p.pivot_table(
+        index='Marca', 
+        columns='Canal', 
+        values='Precio por Kg ($)', 
+        aggfunc='mean'
+    )
+
+    # 2. Aplicar el estilo de mapa de calor
+    # 'YlOrRd' va de Amarillo (barato) a Rojo (caro)
+    # Puedes usar 'RdYlGn_r' si prefieres Verde (barato) a Rojo (caro)
+    df_styled = df_pivot.style.background_gradient(cmap='YlOrRd', axis=None)\
+        .format("${:.1f}")\
+        .highlight_null(color='#f1f1f1') # Color gris para donde no hay productos
+
+    # 3. Mostrar en la app
+    st.dataframe(df_styled, use_container_width=True, height=400)
+
+    st.caption("💡 Los colores más intensos indican un Precio por Kg más elevado en ese canal específico.")
