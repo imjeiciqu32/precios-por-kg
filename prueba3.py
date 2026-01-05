@@ -15,7 +15,38 @@ try:
 except ImportError:
     PLANTILLAS_PP = {}
 
-st.set_page_config(page_title="Price Architecture Expert Pro", layout="wide")
+st.set_page_config(page_title="Price Ladder & Architecture Expert Pro", layout="wide")
+
+# 2. AQUÍ PEGAS LA FUNCIÓN Y EL BLOQUE DEL LOGO
+def get_base64_of_bin_file(bin_file):
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+try:
+    # Asegúrate de que 'logo_barcel.png' esté en tu carpeta del repositorio
+    bin_str = get_base64_of_bin_file('logo_barcel.png')
+    st.markdown(
+        f"""
+        <style>
+            [data-testid="stHeader"] {{
+                background-color: rgba(0,0,0,0);
+            }}
+            .logo-container {{
+                position: fixed;
+                top: 10px;
+                right: 20px;
+                z-index: 999999;
+            }}
+        </style>
+        <div class="logo-container">
+            <img src="data:image/png;base64,{bin_str}" width="100">
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+except FileNotFoundError:
+    pass # Si no encuentra el logo, la app sigue corriendo normal
 
 # NAVEGACIÓN
 st.sidebar.header("🚀 Modo de Visualización")
