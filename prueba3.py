@@ -49,6 +49,35 @@ try:
 except FileNotFoundError:
     pass # Si no encuentra el logo, la app sigue corriendo normal
 
+# --- SWITCH DE MODO OSCURO ---
+with st.sidebar:
+    st.divider()
+    modo_oscuro = st.toggle("🌙 Activar Modo Oscuro", value=False)
+
+if modo_oscuro:
+    # Inyectamos CSS para forzar colores oscuros en toda la interfaz
+    st.markdown(
+        """
+        <style>
+            /* Fondo principal y sidebar */
+            .stApp, [data-testid="stSidebar"] {
+                background-color: #0E1117 !important;
+                color: #FAFAFA !important;
+            }
+            /* Títulos y textos */
+            h1, h2, h3, p, span {
+                color: #FAFAFA !important;
+            }
+            /* Ajuste para que las tarjetas de Index no se pierdan */
+            div[style*="background:#f8f9fa"] {
+                background-color: #1E1E1E !important;
+                border: 1px solid #333 !important;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
 # NAVEGACIÓN
 st.sidebar.header("🚀 Modo de Visualización")
 modo = st.sidebar.radio("Seleccionar Herramienta:", ["Price Ladder", "Price Pack"])
