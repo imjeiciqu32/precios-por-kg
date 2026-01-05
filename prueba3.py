@@ -305,35 +305,32 @@ if not st.session_state.data.empty:
         for i in range(4):
             with idx_cols[i]:
                 with st.container(border=True):
-                    # Selectores
                     sel_a = st.selectbox(f"{label_a}", list_a, key=f"sa{i}")
                     sel_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=min(i+1, len(list_b)-1))
                     
-                    # Obtención de valores
                     val_a = df_comp[df_comp["Lookup_Key"] == sel_a]["Precio por Kg ($)"].values[0]
                     val_b = df_comp[df_comp["Lookup_Key"] == sel_b]["Precio por Kg ($)"].values[0]
                     
                     if val_b > 0:
                         index_val = int((val_a / val_b) * 100)
-                        # Color: Azul si es más barato o igual (<=100), Rojo si es más caro (>100)
                         color_index = "#0B3C8C" if index_val <= 100 else "#D32F2F"
                         
                         st.markdown(f"""
-                            <div style="background:#f8f9fa; border-radius:10px; padding:15px; border-left:6px solid {color_index};">
-                                <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                            <div style="background:#ffffff; border: 1px solid #e6e9ef; border-radius:10px; padding:15px; border-top:5px solid {color_index};">
+                                <div style="display:flex; justify-content:space-between; align-items: flex-start; min-height:60px;">
                                     <div style="width:45%; text-align:left;">
-                                        <strong style="font-size:1.0rem; color:#333; display:block; line-height:1.2;">{sel_a}</strong>
-                                        <span style="font-size:1.1rem; font-weight:bold; color:#000;">${val_a:.1f}/Kg</span>
+                                        <div style="font-size:0.85rem; color:#666; font-weight:500; line-height:1.1; margin-bottom:4px;">{sel_a}</div>
+                                        <div style="font-size:1.05rem; font-weight:800; color:#111;">${val_a:.1f}</div>
                                     </div>
-                                    <div style="width:10%; text-align:center; align-self:center; font-weight:bold; color:#999;">vs</div>
+                                    <div style="width:10%; text-align:center; padding-top:15px; font-weight:bold; color:#ccc; font-size:0.8rem;">vs</div>
                                     <div style="width:45%; text-align:right;">
-                                        <strong style="font-size:1.0rem; color:#333; display:block; line-height:1.2;">{sel_b}</strong>
-                                        <span style="font-size:1.1rem; font-weight:bold; color:#000;">${val_b:.1f}/Kg</span>
+                                        <div style="font-size:0.85rem; color:#666; font-weight:500; line-height:1.1; margin-bottom:4px;">{sel_b}</div>
+                                        <div style="font-size:1.05rem; font-weight:800; color:#111;">${val_b:.1f}</div>
                                     </div>
                                 </div>
-                                <div style="text-align:center; border-top:1px solid #ddd; padding-top:10px;">
-                                    <div style="font-size:2.2rem; font-weight:900; color:{color_index}; line-height:1;">{index_val}</div>
-                                    <div style="font-size:0.75rem; font-weight:bold; letter-spacing:1.5px; color:#333;">INDEX $/KG</div>
+                                <div style="text-align:center; margin-top:10px; padding-top:10px; border-top:1px solid #f0f2f6;">
+                                    <div style="font-size:2.2rem; font-weight:900; color:{color_index}; line-height:1; margin-bottom:2px;">{index_val}</div>
+                                    <div style="font-size:0.7rem; font-weight:bold; letter-spacing:1px; color:#999; text-transform:uppercase;">Index $/Kg</div>
                                 </div>
                             </div>
                         """, unsafe_allow_html=True)
