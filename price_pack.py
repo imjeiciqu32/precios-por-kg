@@ -16,7 +16,7 @@ PLANTILLAS_PP = {
         {"Canal": "CLUBES", "Familia": "TAKIS", "Producto": "TAKIS FUEGO 700G", "Precio ($)": 125.0, "Gramaje (g)": 700},
         
         # --- DETALLE (DT) ---
-        {"Canal": "DETALLE", "Familia": "TAKIS", "Producto": "TAKIS 35G", "Precio ($)": 10.0, "Gramaje (g)": 35},
+        {"Canal": "DETALLE", "Familia": "TAKIS", "Producto": "MINI TAKIS 35G", "Precio ($)": 10.0, "Gramaje (g)": 35},
         {"Canal": "DETALLE", "Familia": "TAKIS", "Producto": "TAKIS 70G", "Precio ($)": 20.0, "Gramaje (g)": 70},
         {"Canal": "DETALLE", "Familia": "TAKIS", "Producto": "TAKIS 200G", "Precio ($)": 45.0, "Gramaje (g)": 200},
         
