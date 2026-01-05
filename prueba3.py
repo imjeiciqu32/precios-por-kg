@@ -81,7 +81,7 @@ if modo_oscuro:
 @st.dialog("📖 Glosario de Metodologías Estratégicas")
 def mostrar_glosario():
     st.markdown("### 🔍 Conceptos Clave de Pricing & Revenue Management")
-    st.write("Esta sección detalla la metodología técnica utilizada para el análisis de la arquitectura de precios en Barcel.")
+    st.write("Esta sección detalla la metodología técnica utilizada para el análisis de Pricing en Barcel.")
     
     st.divider()
 
