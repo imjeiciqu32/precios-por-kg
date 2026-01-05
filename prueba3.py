@@ -504,62 +504,48 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
             
-# --- 11. BUSCADOR ESTRATÉGICO DE GAPS (SOLO LADDER) ---
+# --- 10. ANALISTA PRO DE OPORTUNIDADES (GAPS, PRECIO Y OCASIÓN) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
-    st.subheader("🎯 Buscador Estratégico de Gaps (Oportunidades de Mercado)")
+    st.subheader("🎯 Gaps y Oportunidades de Portafolio")
     
-    df_gaps = st.session_state.data.copy()
-    ocasiones = df_gaps["Ocasión"].unique()
-    
+    df_pro = st.session_state.data.copy()
     oportunidades = []
 
-    for oca in ocasiones:
-        df_oca = df_gaps[df_gaps["Ocasión"] == oca]
-        tiene_barcel = not df_oca[df_oca["Fabricante"] == "BARCEL"].empty
-        compu = df_oca[df_oca["Fabricante"] != "BARCEL"]
-        
-        if not compu.empty:
-            lider_comp = compu.sort_values("SOM (%)", ascending=False).iloc[0]
-            
-            # CASO A: PRIORIDAD ALTA
-            if not tiene_barcel and lider_comp["SOM (%)"] > 5:
-                oportunidades.append({
-                    "Prioridad": "ALTA",
-                    "Ocasión": oca,
-                    "Hallazgo": f"Sin presencia de Barcel.",
-                    "Evidencia": f"Competencia domina con {lider_comp['Producto']} ({lider_comp['SOM (%)']}% SOM).",
-                    "Acción": f"Evaluar lanzamiento en punto de precio ${lider_comp['Precio ($)']}."
-                })
-            
-            # CASO B: PRIORIDAD MEDIA
-            elif tiene_barcel:
-                nuestro_mejor = df_oca[df_oca["Fabricante"] == "BARCEL"].sort_values("SOM (%)", ascending=False).iloc[0]
-                if lider_comp["SOM (%)"] > (nuestro_mejor["SOM (%)"] * 2):
-                    oportunidades.append({
-                        "Prioridad": "MEDIA",
-                        "Ocasión": oca,
-                        "Hallazgo": f"Baja competitividad vs Líder.",
-                        "Evidencia": f"{lider_comp['Producto']} tiene {lider_comp['SOM (%)']}% vs nuestro {nuestro_mejor['SOM (%)']}%.",
-                        "Acción": "Revisar arquitectura de gramaje o inversión en PDV."
-                    })
+    for oca in opciones_agru:
+        df_oca = df_pro[df_pro["Ocasión"] == oca].sort_values("Precio ($)")
+        if df_oca.empty:
+            oportunidades.append({"Tipo": "VACÍO", "Prioridad": "ALTA", "Ocasión": oca, "Msg": "Ocasión sin participación.", "Detalle": "Barcel no tiene presencia en este segmento.", "Accion": "Evaluar entrada con SKU estratégico."})
+            continue
 
+        # 1. GAP DE DESEMBOLSO (Saltos de precio > $15)
+        precios = df_oca["Precio ($)"].unique()
+        for i in range(len(precios)-1):
+            salto = precios[i+1] - precios[i]
+            if salto > 15:
+                oportunidades.append({"Tipo": "DESEMBOLSO", "Prioridad": "MEDIA", "Ocasión": oca, "Msg": f"Salto de precio de ${salto}", "Detalle": f"Espacio vacío entre ${precios[i]} y ${precios[i+1]}.", "Accion": "Analizar SKU intermedio."})
+
+        # 2. OPORTUNIDAD DE $/KG (Eficiencia)
+        pkg_barcel = df_oca[df_oca["Fabricante"]=="BARCEL"]["Precio por Kg ($)"].mean()
+        pkg_comp = df_oca[df_oca["Fabricante"]!="BARCEL"]["Precio por Kg ($)"].mean()
+        
+        if pkg_barcel < pkg_comp * 0.9:
+            oportunidades.append({"Tipo": "EFICIENCIA", "Prioridad": "BAJA", "Ocasión": oca, "Msg": "$/Kg muy bajo", "Detalle": f"Tu $/Kg es >10% menor al promedio comp.", "Accion": "Oportunidad de optimización de gramaje/precio."})
+
+    # Renderizado de Hallazgos
     if oportunidades:
         for op in oportunidades:
             with st.container(border=True):
                 c1, c2, c3 = st.columns([1, 3, 2])
-                
-                # CORRECCIÓN AQUÍ: Usamos condicionales simples de Streamlit
-                if op["Prioridad"] == "ALTA":
-                    c1.error("🚨 ALTA")
-                else:
-                    c1.warning("⚠️ MEDIA")
+                if op["Prioridad"] == "ALTA": c1.error(f"🚨 {op['Tipo']}")
+                elif op["Prioridad"] == "MEDIA": c1.warning(f"⚠️ {op['Tipo']}")
+                else: c1.info(f"📈 {op['Tipo']}")
                 
                 with c2:
-                    st.markdown(f"**Segmento:** {op['Ocasión']} | **{op['Hallazgo']}**")
-                    st.caption(op["Evidencia"])
+                    st.markdown(f"**{op['Ocasión']}**: {op['Msg']}")
+                    st.caption(op["Detalle"])
                 with c3:
-                    st.info(f"💡 {op['Acción']}")
+                    st.success(f"💡 {op['Accion']}")
     else:
-        st.success("✅ No se detectaron Gaps críticos. La cobertura de portafolio es óptima según el SOM actual.")
+        st.write("✅ Portafolio equilibrado.")
             
