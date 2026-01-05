@@ -21,7 +21,7 @@ PLANTILLAS_PP = {
         {"Canal": "DETALLE", "Familia": "TAKIS", "Producto": "TAKIS 200G", "Precio ($)": 45.0, "Gramaje (g)": 200},
         
         # --- AUTOSERVICIO (AS) ---
-        {"Canal": "AUTOSERVICIO", "Familia": "TAKIS", "Producto": "MINI TAKIS FUEGO (E. BA, BAE Y MB) 35G", "Precio ($)": 10.0, "Gramaje (g)": 35},
+        {"Canal": "AUTOSERVICIO", "Familia": "TAKIS", "Producto": "MINI TAKIS (E. BA, BAE Y MB) 35G", "Precio ($)": 10.0, "Gramaje (g)": 35},
         {"Canal": "AUTOSERVICIO", "Familia": "TAKIS", "Producto": "TAKIS 94G", "Precio ($)": 25.0, "Gramaje (g)": 94},
         {"Canal": "AUTOSERVICIO", "Familia": "TAKIS", "Producto": "TAKIS BLUE HEAT 200G", "Precio ($)": 47.0, "Gramaje (g)": 200},
         {"Canal": "AUTOSERVICIO", "Familia": "TAKIS", "Producto": "TAKIS 240G", "Precio ($)": 59.0, "Gramaje (g)": 240},
