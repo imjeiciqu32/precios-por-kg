@@ -504,7 +504,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
             
-# --- 11. ANALISTA ESTRATÉGICO DE PORTAFOLIO (BARCEL VS MERCADO) ---
+# --- 10. ANALISTA ESTRATÉGICO DE PORTAFOLIO (BARCEL VS MERCADO) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("🎯 Diagnóstico de Competitividad y Gaps de Portafolio")
@@ -512,94 +512,97 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
     df_p = st.session_state.data.copy()
     hallazgos = []
 
-    # Solo analizamos ocasiones que tengan datos en la gráfica actual
     for oca in df_p["Ocasión"].unique():
         df_oca = df_p[df_p["Ocasión"] == oca].sort_values("Precio ($)")
         df_barcel = df_oca[df_oca["Fabricante"] == "BARCEL"]
         df_comp = df_oca[df_oca["Fabricante"] != "BARCEL"]
 
         if df_comp.empty:
-            continue # Si no hay competencia cargada, no hay contra qué comparar
+            continue 
 
-        # --- A. ANÁLISIS DE COBERTURA DE RANGOS ---
-        comp_min, comp_max = df_comp["Precio ($)"].min(), df_comp["Precio ($)"].max()
+        # --- A. LÓGICA DE TEXTO DINÁMICO PARA RANGOS ---
+        comp_precios = df_comp["Precio ($)"].unique()
+        comp_min, comp_max = min(comp_precios), max(comp_precios)
         
+        # Generamos el texto del rango de la competencia
+        if len(comp_precios) == 1:
+            texto_rango_comp = f"la competencia solo opera en `${int(comp_min)}`"
+        else:
+            texto_rango_comp = f"la competencia opera desde `${int(comp_min)}` hasta `${int(comp_max)}`"
+
+        # --- B. DETECCIÓN DE AUSENCIA O GAPS ---
         if df_barcel.empty:
             hallazgos.append({
                 "Prioridad": "ALTA", "Tipo": "AUSENCIA TOTAL", "Ocasión": oca,
                 "Msg": f"Barcel no participa en {oca}",
-                "Detalle": f"La competencia opera desde ${comp_min} hasta ${comp_max} y no tenemos presencia.",
-                "Accion": "Lanzamiento prioritario para capturar share en este segmento."
+                "Detalle": f"Segmento desatendido: {texto_rango_comp} y no tenemos presencia.",
+                "Accion": "Evaluar entrada inmediata para evitar el monopolio de la competencia."
             })
         else:
             b_min, b_max = df_barcel["Precio ($)"].min(), df_barcel["Precio ($)"].max()
 
-            # Gap al inicio (Entrada)
-            if b_min > comp_min + 2: # Margen de $2 para evitar ruido
+            # Gap de entrada (Bites/Individual)
+            if b_min > comp_min + 2:
                 hallazgos.append({
                     "Prioridad": "ALTA", "Tipo": "GAP ENTRADA", "Ocasión": oca,
-                    "Msg": f"Barrera de entrada alta en {oca}",
-                    "Detalle": f"La competencia inicia en ${comp_min} y Barcel aparece hasta los ${b_min}.",
-                    "Accion": "Evaluar formato 'Bites' o gramaje reducido para bajar el desembolso."
+                    "Msg": f"Barrera de entrada alta (${int(b_min)})",
+                    "Detalle": f"La competencia inicia en `${int(comp_min)}`. Estás perdiendo al consumidor de bajo desembolso.",
+                    "Accion": "Lanzar formato pequeño/Bites para capturar el ticket de entrada."
                 })
 
-            # Gap al final (Salida/Premium)
-            if b_max < comp_max - 5:
-                hallazgos.append({
-                    "Prioridad": "MEDIA", "Tipo": "GAP PREMIUM", "Ocasión": oca,
-                    "Msg": f"Abandono de zona alta en {oca}",
-                    "Detalle": f"La competencia llega hasta ${comp_max} (ej. {df_comp.iloc[-1]['Producto']}), nosotros nos detenemos en ${b_max}.",
-                    "Accion": "Evaluar SKU Familiar/Plus para capturar tickets más altos."
-                })
-
-            # --- B. ANÁLISIS DE SALTOS INTERNOS (GAPS DE ABANDONO) ---
+            # Zona de abandono (El caso de Papa $20-$55)
             precios_b = sorted(df_barcel["Precio ($)"].unique())
             for i in range(len(precios_b)-1):
-                salto = precios_b[i+1] - precios_b[i]
-                if salto > 15:
-                    # Revisamos si la competencia sí está llenando ese hueco
-                    gap_comp = df_comp[(df_comp["Precio ($)"] > precios_b[i]) & (df_comp["Precio ($)"] < precios_b[i+1])]
+                p_actual, p_siguiente = precios_b[i], precios_b[i+1]
+                if (p_siguiente - p_actual) > 15:
+                    # ¿Hay competencia en medio de ese salto?
+                    gap_comp = df_comp[(df_comp["Precio ($)"] > p_actual) & (df_comp["Precio ($)"] < p_siguiente)]
                     if not gap_comp.empty:
                         hallazgos.append({
                             "Prioridad": "ALTA", "Tipo": "ZONA DE ABANDONO", "Ocasión": oca,
-                            "Msg": f"Salto crítico entre ${int(precios_b[i])} y ${int(precios_b[i+1])}",
-                            "Detalle": f"Barcel deja un hueco de ${int(salto)} que la competencia está aprovechando.",
-                            "Accion": "Lanzar SKU intermedio para retener al consumidor en el escalonamiento."
+                            "Msg": f"Abismo entre `${int(p_actual)}` y `${int(p_siguiente)}`",
+                            "Detalle": f"Dejas un hueco de `${int(p_siguiente - p_actual)}` que la competencia llena con {len(gap_comp)} SKU(s).",
+                            "Accion": "Urge SKU intermedio para dar continuidad a la escalera de precios."
                         })
 
         # --- C. ANÁLISIS DE INDEX $/KG (META 85-95) ---
-        if not df_barcel.empty:
-            pkg_lider_comp = df_comp.sort_values("SOM (%)", ascending=False).iloc[0]["Precio por Kg ($)"]
+        if not df_barcel.empty and not df_comp.empty:
+            pkg_lider = df_comp.sort_values("SOM (%)", ascending=False).iloc[0]["Precio por Kg ($)"]
             pkg_barcel_avg = df_barcel["Precio por Kg ($)"].mean()
-            idx = (pkg_barcel_avg / pkg_lider_comp) * 100
+            idx = int((pkg_barcel_avg / pkg_lider) * 100)
 
             if idx > 95:
                 hallazgos.append({
                     "Prioridad": "MEDIA", "Tipo": "INDEX $/KG", "Ocasión": oca,
-                    "Msg": f"Precio x Kg poco competitivo (Index {int(idx)})",
-                    "Detalle": f"Estamos >95 vs líder. Riesgo de ser percibidos como marca cara.",
-                    "Accion": "Ajustar gramaje al alza o revisar precio para entrar en el rango 85-95."
+                    "Msg": f"Precio x Kg elevado (Index {idx})",
+                    "Detalle": f"Tu eficiencia está por encima del benchmark. Riesgo de migración por precio.",
+                    "Accion": "Ajustar gramaje para bajar el Index al rango ideal (85-95)."
                 })
             elif idx < 85:
                 hallazgos.append({
                     "Prioridad": "BAJA", "Tipo": "INDEX $/KG", "Ocasión": oca,
-                    "Msg": f"Eficiencia castigada (Index {int(idx)})",
-                    "Detalle": f"Estamos regalando valor debajo del index 85.",
-                    "Accion": "Oportunidad de captura de margen subiendo precio o reduciendo gramaje."
+                    "Msg": f"Eficiencia agresiva (Index {idx})",
+                    "Detalle": f"Estás entregando demasiado gramaje por el precio. Margen castigado.",
+                    "Accion": "Oportunidad de 'Price-Up' o reducción de gramaje para capturar utilidad."
                 })
 
-    # Renderizado visual
+    # --- D. RENDERIZADO CON FORMATO MEJORADO ---
     if hallazgos:
         for h in hallazgos:
             with st.container(border=True):
-                c1, c2, c3 = st.columns([1, 3, 2])
-                if h["Prioridad"] == "ALTA": c1.error(f"🚨 {h['Tipo']}")
-                elif h["Prioridad"] == "MEDIA": c1.warning(f"⚠️ {h['Tipo']}")
-                else: c1.info(f"📈 {h['Tipo']}")
+                c1, c2, c3 = st.columns([1.2, 3, 2])
+                
+                # Etiqueta visual de Prioridad
+                if h["Prioridad"] == "ALTA": c1.error(f"🚨 **{h['Tipo']}**")
+                elif h["Prioridad"] == "MEDIA": c1.warning(f"⚠️ **{h['Tipo']}**")
+                else: c1.info(f"📈 **{h['Tipo']}**")
+                
                 with c2:
                     st.markdown(f"**{h['Ocasión']}**: {h['Msg']}")
-                    st.caption(h["Detalle"])
+                    st.markdown(f"<small>{h['Detalle']}</small>", unsafe_allow_html=True)
+                
                 with c3:
-                    st.success(f"💡 {h['Accion']}")
+                    st.success(f"💡 **Acción:**\n{h['Accion']}")
     else:
-        st.success("✅ Portafolio optimizado según la competencia actual.")
+        st.balloons()
+        st.success("✅ **¡Felicidades!** El portafolio no presenta gaps críticos frente a la competencia cargada.")
