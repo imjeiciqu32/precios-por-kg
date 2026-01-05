@@ -504,35 +504,72 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
             
-# --- 10. ANALISTA PRO DE OPORTUNIDADES (GAPS, PRECIO Y OCASIÓN) ---
+# --- 11. ANALISTA PRO: ESTRATEGIA DE PRECIOS E INDEX (85-95) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
-    st.subheader("🎯 Gaps y Oportunidades de Portafolio")
+    st.subheader("🎯 Insights de Estrategia y Portafolio")
     
     df_pro = st.session_state.data.copy()
     oportunidades = []
 
-    for oca in opciones_agru:
+    # Obtenemos las ocasiones que REALMENTE tienen datos cargados
+    ocasiones_con_datos = df_pro["Ocasión"].unique()
+
+    for oca in ocasiones_con_datos:
         df_oca = df_pro[df_pro["Ocasión"] == oca].sort_values("Precio ($)")
-        if df_oca.empty:
-            oportunidades.append({"Tipo": "VACÍO", "Prioridad": "ALTA", "Ocasión": oca, "Msg": "Ocasión sin participación.", "Detalle": "Barcel no tiene presencia en este segmento.", "Accion": "Evaluar entrada con SKU estratégico."})
-            continue
+        df_barcel = df_oca[df_oca["Fabricante"] == "BARCEL"]
+        df_comp = df_oca[df_oca["Fabricante"] != "BARCEL"]
 
-        # 1. GAP DE DESEMBOLSO (Saltos de precio > $15)
-        precios = df_oca["Precio ($)"].unique()
-        for i in range(len(precios)-1):
-            salto = precios[i+1] - precios[i]
-            if salto > 15:
-                oportunidades.append({"Tipo": "DESEMBOLSO", "Prioridad": "MEDIA", "Ocasión": oca, "Msg": f"Salto de precio de ${salto}", "Detalle": f"Espacio vacío entre ${precios[i]} y ${precios[i+1]}.", "Accion": "Analizar SKU intermedio."})
+        # 1. ANÁLISIS DE INDEX $/KG (Rango Ideal 85-95)
+        if not df_barcel.empty and not df_comp.empty:
+            # Tomamos al líder de la competencia como referencia de Index 100
+            pkg_ref = df_comp.sort_values("SOM (%)", ascending=False).iloc[0]["Precio por Kg ($)"]
+            nuestro_pkg = df_barcel["Precio por Kg ($)"].mean()
+            idx_calculado = (nuestro_pkg / pkg_ref) * 100
 
-        # 2. OPORTUNIDAD DE $/KG (Eficiencia)
-        pkg_barcel = df_oca[df_oca["Fabricante"]=="BARCEL"]["Precio por Kg ($)"].mean()
-        pkg_comp = df_oca[df_oca["Fabricante"]!="BARCEL"]["Precio por Kg ($)"].mean()
-        
-        if pkg_barcel < pkg_comp * 0.9:
-            oportunidades.append({"Tipo": "EFICIENCIA", "Prioridad": "BAJA", "Ocasión": oca, "Msg": "$/Kg muy bajo", "Detalle": f"Tu $/Kg es >10% menor al promedio comp.", "Accion": "Oportunidad de optimización de gramaje/precio."})
+            if idx_calculado > 95:
+                oportunidades.append({
+                    "Tipo": "RENTABILIDAD", "Prioridad": "MEDIA", "Ocasión": oca,
+                    "Msg": f"Index $/Kg elevado ({int(idx_calculado)})",
+                    "Detalle": f"Estás por encima del rango ideal (85-95). Riesgo de ser percibido como costoso.",
+                    "Accion": "Evaluar incremento de gramaje o ajuste de precio para bajar al rango 85-95."
+                })
+            elif idx_calculado < 85:
+                oportunidades.append({
+                    "Tipo": "EFICIENCIA", "Prioridad": "BAJA", "Ocasión": oca,
+                    "Msg": f"Index $/Kg agresivo ({int(idx_calculado)})",
+                    "Detalle": f"Estás por debajo del rango 85-95. Estás regalando mucho valor/gramaje.",
+                    "Accion": "Oportunidad de optimizar margen subiendo precio o reduciendo gramaje."
+                })
 
-    # Renderizado de Hallazgos
+        # 2. GAPS DE DESEMBOLSO (Huecos entre productos)
+        precios_todos = df_oca["Precio ($)"].unique()
+        if len(precios_todos) > 1:
+            for i in range(len(precios_todos)-1):
+                salto = precios_todos[i+1] - precios_todos[i]
+                # Detectamos saltos mayores a $15 donde Barcel no tenga nada intermedio
+                if salto > 15:
+                    p_min, p_max = precios_todos[i], precios_todos[i+1]
+                    tiene_barcel_en_medio = not df_barcel[(df_barcel["Precio ($)"] > p_min) & (df_barcel["Precio ($)"] < p_max)].empty
+                    
+                    if not tiene_barcel_en_medio:
+                        oportunidades.append({
+                            "Tipo": "DESEMBOLSO", "Prioridad": "ALTA", "Ocasión": oca,
+                            "Msg": f"Gap detectado entre ${int(p_min)} y ${int(p_max)}",
+                            "Detalle": f"Existe un salto de ${int(salto)} sin opciones de Barcel.",
+                            "Accion": "Lanzar formato intermedio para evitar que el consumidor migre a la competencia."
+                        })
+
+        # 3. PARTICIPACIÓN EN COMPARTIR (Caso específico que mencionas)
+        if oca == "COMPARTIR" and df_barcel.empty:
+             oportunidades.append({
+                "Tipo": "PARTICIPACIÓN", "Prioridad": "ALTA", "Ocasión": oca,
+                "Msg": "Sin presencia de Barcel en Compartir",
+                "Detalle": "La competencia tiene productos pero Barcel no participa en este segmento.",
+                "Accion": "Urgente: Evaluar portafolio para esta ocasión de consumo."
+            })
+
+    # Renderizado
     if oportunidades:
         for op in oportunidades:
             with st.container(border=True):
@@ -540,12 +577,10 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 if op["Prioridad"] == "ALTA": c1.error(f"🚨 {op['Tipo']}")
                 elif op["Prioridad"] == "MEDIA": c1.warning(f"⚠️ {op['Tipo']}")
                 else: c1.info(f"📈 {op['Tipo']}")
-                
                 with c2:
                     st.markdown(f"**{op['Ocasión']}**: {op['Msg']}")
                     st.caption(op["Detalle"])
                 with c3:
                     st.success(f"💡 {op['Accion']}")
     else:
-        st.write("✅ Portafolio equilibrado.")
-            
+        st.write("✅ Estrategia alineada con los datos cargables.")
