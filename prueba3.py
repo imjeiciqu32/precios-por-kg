@@ -504,3 +504,61 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
             
+# --- 10. BUSCADOR ESTRATÉGICO DE GAPS (SOLO LADDER) ---
+if modo == "Price Ladder" and not st.session_state.data.empty:
+    st.divider()
+    st.subheader("🎯 Buscador Estratégico de Gaps (Oportunidades de Mercado)")
+    
+    df_gaps = st.session_state.data.copy()
+    ocasiones = df_gaps["Ocasión"].unique()
+    
+    oportunidades = []
+
+    for oca in ocasiones:
+        df_oca = df_gaps[df_gaps["Ocasión"] == oca]
+        
+        # 1. Identificar si Barcel tiene presencia en esta ocasión
+        tiene_barcel = not df_oca[df_oca["Fabricante"] == "BARCEL"].empty
+        
+        # 2. Obtener el líder de la competencia en esa ocasión
+        compu = df_oca[df_oca["Fabricante"] != "BARCEL"]
+        if not compu.empty:
+            lider_comp = compu.sort_values("SOM (%)", ascending=False).iloc[0]
+            
+            # Lógica de detección de Gaps:
+            # Caso A: No tenemos presencia y el competidor tiene un SOM relevante (> 5%)
+            if not tiene_barcel and lider_comp["SOM (%)"] > 5:
+                oportunidades.append({
+                    "Prioridad": "🚨 ALTA",
+                    "Ocasión": oca,
+                    "Hallazgo": f"Sin presencia de Barcel.",
+                    "Evidencia": f"Competencia domina con {lider_comp['Producto']} ({lider_comp['SOM (%)']}% SOM).",
+                    "Acción": f"Evaluar lanzamiento en punto de precio ${lider_comp['Precio ($)']}."
+                })
+            
+            # Caso B: Tenemos presencia pero el líder nos duplica en SOM
+            elif tiene_barcel:
+                nuestro_mejor = df_oca[df_oca["Fabricante"] == "BARCEL"].sort_values("SOM (%)", ascending=False).iloc[0]
+                if lider_comp["SOM (%)"] > (nuestro_mejor["SOM (%)"] * 2):
+                    oportunidades.append({
+                        "Prioridad": "⚠️ MEDIA",
+                        "Ocasión": oca,
+                        "Hallazgo": f"Baja competitividad vs Líder.",
+                        "Evidencia": f"{lider_comp['Producto']} tiene {lider_comp['SOM (%)']}% vs nuestro {nuestro_mejor['SOM (%)']}%.",
+                        "Acción": "Revisar arquitectura de gramaje o inversión en PDV."
+                    })
+
+    if oportunidades:
+        # Mostrar como tarjetas visuales
+        for op in oportunidades:
+            with st.container(border=True):
+                c1, c2, c3 = st.columns([1, 3, 2])
+                c1.error(op["Prioridad"]) if "ALTA" in op["Prioridad"] else c1.warning(op["Prioridad"])
+                with c2:
+                    st.markdown(f"**Segmento:** {op['Ocasión']} | **{op['Hallazgo']}**")
+                    st.caption(op["Evidencia"])
+                with c3:
+                    st.info(f"💡 {op['Acción']}")
+    else:
+        st.success("✅ No se detectaron Gaps críticos. La cobertura de portafolio es óptima según el SOM actual.")
+            
