@@ -290,20 +290,16 @@ if not st.session_state.data.empty:
     df_comp = df_p.copy()
     
     if modo == "Price Ladder":
-        # En Ladder mantenemos la lógica de Barcel vs Competencia
         list_a = df_comp[df_comp["Fabricante"]=="BARCEL"]["Producto"].unique().tolist()
         list_b = df_comp[df_comp["Fabricante"]!="BARCEL"]["Producto"].unique().tolist()
         label_a, label_b = "Barcel", "Comp."
-        mapping_a = {p: p for p in list_a}
-        mapping_b = {p: p for p in list_b}
+        # En Ladder no hay duplicados de producto por canal usualmente, pero por seguridad:
+        df_comp["Lookup_Key"] = df_comp["Producto"]
     else:
-        # En Price Pack, creamos una lista que incluya el Canal para facilitar la lectura
-        # Creamos un nombre temporal: "Producto (CANAL)"
+        # Creamos el Display_Name que el usuario ve
         df_comp["Display_Name"] = df_comp["Producto"] + " (" + df_comp["Canal"] + ")"
-        
-        # Diccionarios para recuperar el nombre real del producto después de la selección
-        mapping_a = dict(zip(df_comp["Display_Name"], df_comp["Producto"]))
-        mapping_b = mapping_a.copy()
+        # La clave de búsqueda DEBE ser el Display_Name para que sea única por canal
+        df_comp["Lookup_Key"] = df_comp["Display_Name"]
         
         list_a = df_comp["Display_Name"].unique().tolist()
         list_b = list_a.copy()
@@ -314,24 +310,26 @@ if not st.session_state.data.empty:
         for i in range(4):
             with idx_cols[i]:
                 with st.container(border=True):
-                    # El usuario ve el nombre con canal, pero nosotros mapeamos al producto real
                     sel_a = st.selectbox(f"{label_a}", list_a, key=f"sa{i}")
                     sel_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=min(i+1, len(list_b)-1))
                     
-                    p_a = mapping_a[sel_a]
-                    p_b = mapping_b[sel_b]
-                    
-                    val_a = df_comp[df_comp["Producto"]==p_a]["Precio por Kg ($)"].values[0]
-                    val_b = df_comp[df_comp["Producto"]==p_b]["Precio por Kg ($)"].values[0]
+                    # FILTRADO CORRECTO: Usamos la Lookup_Key que garantiza Producto + Canal
+                    val_a = df_comp[df_comp["Lookup_Key"] == sel_a]["Precio por Kg ($)"].values[0]
+                    val_b = df_comp[df_comp["Lookup_Key"] == sel_b]["Precio por Kg ($)"].values[0]
                     
                     if val_b > 0:
+                        # Cálculo: (Precio x Kg A / Precio x Kg B) * 100
                         index_val = int((val_a / val_b) * 100)
                         color_index = "#0B3C8C" if index_val <= 100 else "#D32F2F"
+                        
                         st.markdown(f"""
                             <div style="text-align:center; padding:10px; border-top:5px solid {color_index}; 
                             background:#f8f9fa; border-radius:5px;">
                                 <div style="font-size:1.8rem; font-weight:900; color:{color_index};">{index_val}</div>
                                 <div style="font-size:0.7rem;">INDEX $/KG</div>
+                                <div style="text-align:center; font-size:0.6rem; color:#666;">
+                                    ${val_a:.1f} vs ${val_b:.1f}
+                                </div>
                             </div>
                         """, unsafe_allow_html=True)
                         
