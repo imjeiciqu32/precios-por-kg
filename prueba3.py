@@ -78,36 +78,50 @@ if modo_oscuro:
         unsafe_allow_html=True
     )
 
-@st.dialog("📖 Glosario de Metodologías")
+@st.dialog("📖 Glosario de Metodologías Estratégicas")
 def mostrar_glosario():
-    st.markdown("### 🔍 Conceptos Clave de Pricing")
-    st.write("Entender estas métricas es fundamental para una correcta toma de decisiones.")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.info("**Price Ladder**")
-        st.write("""
-        Visualización que ordena productos por precio de menor a mayor. 
-        Ayuda a identificar 'escalones' y brechas competitivas en el mercado.
-        """)
-    
-    with col2:
-        st.info("**Price Architecture**")
-        st.write("""
-        Estrategia para optimizar la relación entre gramaje y precio. 
-        Busca evitar la canibalización y cubrir todos los puntos de precio lógicos.
-        """)
+    st.markdown("### 🔍 Conceptos Clave de Pricing & Revenue Management")
+    st.write("Esta sección detalla la metodología técnica utilizada para el análisis de la arquitectura de precios en Barcel.")
     
     st.divider()
-    st.success("**Index $/Kg**")
-    st.write("""
-    Métrica de paridad. Compara el costo por kilo entre dos productos. 
-    - **Index 100:** Paridad absoluta.
-    - **Index > 100:** Tu producto es más caro por kilo.
-    - **Index < 100:** Tu producto es más barato por kilo.
+
+    # --- SECCIÓN: PRICE LADDER ---
+    st.info("#### **1. Price Ladder (Escalera de Precios)**")
+    st.markdown("""
+    Es una herramienta estratégica de **mapeo competitivo** que genera una "fotografía" de los productos de la categoría en un canal y segmento específico. 
+    Permite analizar la jerarquía de valor basada en el **Precio Desembolsado, Gramaje y Precio por Kilo ($/Kg).**
+    
+    **El rol del SOM (Share of Market):** El SOM es el indicador de relevancia crítica dentro de la escalera. Al visualizar el peso de cada producto, identificamos qué 'escalones' de precio dominan la preferencia del consumidor. Esto permite **jerarquizar las ocasiones de consumo** y priorizar aquellos 'gaps' de mercado donde existe una mayor concentración de volumen en el mercado, asegurando que participemos en las ocasiones de consumo y bandas de desembolso con mayor fuerza competitiva y oportunidad real de captura de share.
     """)
-    if st.button("Cerrar"):
+    
+    st.divider()
+
+    # --- SECCIÓN: PRICE ARCHITECTURE ---
+    st.success("#### **2. Price Architecture (Arquitectura de Precios)**")
+    st.markdown("""
+    Es el análisis integral que nos permite gestionar estratégicamente nuestro portafolio a través de todos los canales de venta. Su objetivo es optimizar la relación entre el gramaje y el precio para maximizar la rentabilidad y la cobertura de mercado.
+    
+    **Impacto Interno y Estratégico:**
+    * **Gestión de Portafolio:** Permite visualizar cómo se despliega una marca a lo largo de los distintos canales, asegurando que existan opciones lógicas para el consumidor en cada punto de contacto.
+    * **Curvas de Precio:** Facilita el análisis de las curvas de valor para identificar desviaciones y asegurar una transición suave entre diferentes tamaños (gramajes) y desembolsos.
+    * **Benchmarking Inter-Canal:** Mediante la comparación de los **Index por Kilo ($/Kg)**, podemos evaluar cómo "jugamos" en cada canal, garantizando que nuestra competitividad sea consistente y evitando la canibalización interna entre canales de venta.
+    """)
+
+    st.divider()
+
+    # --- SECCIÓN: PRECIO POR KILO E INDEX ---
+    st.warning("#### **3. Precio por Kilo ($/Kg) e Index**")
+    st.markdown("""    
+    **¿Qué es el Index $/Kg?**
+    Es una métrica de paridad que mide la distancia porcentual (en precio x kg) entre dos productos:
+    * **Index 100:** Indica paridad absoluta de precio por kilo entre los productos comparados.
+    * **Index > 100:** Indica que nuestro producto es más caro por kilo (ej. un Index de 115 significa que somos 15% más caros).
+    * **Index < 100:** Indica que nuestro producto ofrece un precio por kilo más competitivo que la referencia.
+    
+    Esta métrica es vital para definir si nuestra estrategia de precio está alineada con el posicionamiento de marca (Premium vs. Value) frente a la competencia.
+    """)
+
+    if st.button("Entendido", use_container_width=True):
         st.rerun()
 
 # NAVEGACIÓN
