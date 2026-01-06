@@ -692,11 +692,11 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             use_container_width=True
         )
 
-# --- 11. SIMULADOR DE RESPUESTA TÁCTICA (ESCENARIOS DE ALZA) ---
+# --- 12. SIMULADOR DE RESPUESTA TÁCTICA (ESCENARIOS DE ALZA) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
-    st.subheader("🧪 Laboratorio de Hipótesis: Respuesta ante Alzas de Competencia")
-    st.info("Simula un movimiento de precios en la competencia para calcular tu ajuste necesario en Gramaje o Precio.")
+    st.subheader("🧪 Hipótesis de Mercado")
+    st.info("Simula un incremento de precio en la competencia para determinar el ajuste técnico necesario en Barcel.")
 
     df_sim = st.session_state.data.copy()
     lista_comp = df_sim[df_sim["Fabricante"] != "BARCEL"].sort_values("SOM (%)", ascending=False)
@@ -705,66 +705,66 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         col_s1, col_s2 = st.columns([2, 3])
         
         with col_s1:
-            st.markdown("### 1. Definir Escenario")
-            comp_a_mover = st.selectbox("Seleccionar Competidor a simular:", lista_comp["Producto"].unique())
+            st.markdown("### 1. Escenario de Alza")
+            comp_a_mover = st.selectbox("Seleccionar Benchmark Competidor:", lista_comp["Producto"].unique())
             datos_comp = lista_comp[lista_comp["Producto"] == comp_a_mover].iloc[0]
             
             precio_actual_comp = datos_comp["Precio ($)"]
-            nuevo_precio_comp = st.number_input(f"Nuevo Precio de {comp_a_mover} ($):", 
+            nuevo_precio_comp = st.number_input(f"Nuevo Precio Simulado de {comp_a_mover} ($):", 
                                                 min_value=float(precio_actual_comp), 
                                                 value=float(precio_actual_comp + 2.0), 
                                                 step=1.0)
             
             p_incremento = ((nuevo_precio_comp / precio_actual_comp) - 1) * 100
-            st.metric("Incremento Simulado", f"{nuevo_precio_comp} $", f"{p_incremento:.1f}%")
+            st.metric("Variación en Benchmark", f"${nuevo_precio_comp}", f"+{p_incremento:.1f}%")
 
         with col_s2:
-            st.markdown("### 2. Impacto en Barcel")
+            st.markdown("### 2. Impacto en Paridad Barcel")
             oca_sim = datos_comp["Ocasión"]
             df_barcel_oca = df_sim[(df_sim["Fabricante"] == "BARCEL") & (df_sim["Ocasión"] == oca_sim)]
             
             if not df_barcel_oca.empty:
-                prod_b = st.selectbox("Producto de Barcel a Proteger:", df_barcel_oca["Producto"].unique())
+                prod_b = st.selectbox("Producto Barcel a Proteger:", df_barcel_oca["Producto"].unique())
                 row_b = df_barcel_oca[df_barcel_oca["Producto"] == prod_b].iloc[0]
                 
+                # PKG Competidor Proyectado
                 pkg_comp_nuevo = nuevo_precio_comp / (datos_comp["Gramaje (g)"] / 1000)
                 nuevo_index = (row_b["Precio por Kg ($)"] / pkg_comp_nuevo) * 100
                 
                 c_m1, c_m2 = st.columns(2)
                 c_m1.metric("Index $/Kg Actual", f"{int((row_b['Precio por Kg ($)'] / datos_comp['Precio por Kg ($)']) * 100)}")
-                c_m2.metric("Nuevo Index", f"{int(nuevo_index)}", f"{int(nuevo_index - (row_b['Precio por Kg ($)'] / datos_comp['Precio por Kg ($)']) * 100)} pts")
+                c_m2.metric("Index Proyectado", f"{int(nuevo_index)}", f"{int(nuevo_index - (row_b['Precio por Kg ($)'] / datos_comp['Precio por Kg ($)']) * 100)} pts")
 
                 st.divider()
-                st.markdown(f"#### 🛡️ Estrategias de Ajuste (Meta: Index 90)")
+                st.markdown(f"#### 🛡️ Alternativas de Ajuste (Rango Meta Index: 85-95)")
                 
-                # CÁLCULOS
-                # A. Subir Precio (manteniendo gramaje)
+                # CÁLCULOS TÉCNICOS
+                # A. Subir Precio para mantener Index 90 (punto medio del rango)
                 precio_sugerido = (pkg_comp_nuevo * 0.90) * (row_b["Gramaje (g)"] / 1000)
                 
-                # B. Bajar Gramaje (manteniendo precio actual)
+                # B. Bajar Gramaje para mantener Index 90 con precio actual
                 gramaje_sugerido_b = (row_b["Precio ($)"] / (pkg_comp_nuevo * 0.90)) * 1000
                 g_redondeado_b = int(5 * round(gramaje_sugerido_b / 5))
                 
-                # C. Igualar Precio (Mismo desembolso que el competidor)
-                # Gramaje para Index 95 (Límite eficiencia) y Index 85 (Límite agresividad)
+                # C. Igualar Desembolso (Me-Too Pricing)
                 g_idx_95 = int(5 * round(((nuevo_precio_comp / (pkg_comp_nuevo * 0.95)) * 1000) / 5))
                 g_idx_85 = int(5 * round(((nuevo_precio_comp / (pkg_comp_nuevo * 0.85)) * 1000) / 5))
 
-                tab1, tab2, tab3 = st.tabs(["A. Subir Precio", "B. Ajustar Gramaje", "C. Igualar Desembolso"])
+                tab1, tab2, tab3 = st.tabs(["A. Ajuste de Precio", "B. Ajuste de Gramaje", "C. Paridad de Desembolso"])
                 
                 with tab1:
-                    st.success(f"**Mantener gramaje de {int(row_b['Gramaje (g)'])}g**")
-                    st.markdown(f"Para proteger el margen, subir precio a: **${precio_sugerido:.1f}**")
+                    st.success(f"**Mantener formato de {int(row_b['Gramaje (g)'])}g**")
+                    st.markdown(f"Para sostener competitividad, el nuevo precio debe situarse en: **${precio_sugerido:.1f}**")
                 
                 with tab2:
-                    st.success(f"**Mantener precio de ${int(row_b['Precio ($)'])}**")
-                    st.markdown(f"Para mantener competitividad, ajustar contenido a: **{g_redondeado_b}g**")
+                    st.success(f"**Mantener precio actual de ${int(row_b['Precio ($)'])}**")
+                    st.markdown(f"Para proteger el Index, reducir contenido técnico a: **{g_redondeado_b}g**")
                 
                 with tab3:
-                    st.success(f"**Igualar precio de ${int(nuevo_precio_comp)}**")
-                    st.markdown(f"Para ganar en la góndola con el mismo precio, tu gramaje ideal debe estar entre:")
+                    st.success(f"**Igualar desembolso de ${int(nuevo_precio_comp)}**")
+                    st.markdown(f"Para mantener un posicionamiento competitivo en el PDV con el mismo precio del benchmark, el gramaje debe oscilar entre:")
                     st.subheader(f"🎯 {g_idx_95}g — {g_idx_85}g")
-                    st.caption(f"Esto te asegura un Index entre 85 y 95 frente a {comp_a_mover}.")
+                    st.caption(f"Rango calculado para asegurar un Index $/Kg entre 85 (Agresivo) y 95 (Eficiente) frente a {comp_a_mover}.")
 
             else:
-                st.warning(f"No tienes productos registrados en la ocasión **{oca_sim}**.")
+                st.warning(f"No hay SKUs de Barcel registrados en la ocasión **{oca_sim}**.")
