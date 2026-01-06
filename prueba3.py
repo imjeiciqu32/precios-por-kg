@@ -4,6 +4,7 @@ import base64  # <--- ESTA ES LA LÍNEA QUE FALTA
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
+import io
 
 # --- 1. CONFIGURACIÓN Y CARGA DE PLANTILLAS ---
 try:
@@ -201,6 +202,26 @@ if st.sidebar.button("Cargar Datos"):
         st.session_state.data = calcular_pkg(pd.DataFrame(fuente_plantillas[nombre_plantilla]), modo)
         st.session_state.data.to_csv(DB_FILE, index=False)
         st.rerun()
+
+# --- 4. BARRA LATERAL (CONTINUACIÓN: EXPORTACIÓN) ---
+def to_excel(df):
+    output = io.BytesIO()
+    # Usamos openpyxl como engine para evitar errores de dependencias
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Analisis_Portafolio')
+    return output.getvalue()
+
+if not st.session_state.data.empty:
+    st.sidebar.divider()
+    st.sidebar.subheader("📥 Exportar Catálogo")
+    excel_data = to_excel(st.session_state.data)
+    st.sidebar.download_button(
+        label="📄 Descargar Excel Completo",
+        data=excel_data,
+        file_name=f'barcel_{modo.lower()}_data.xlsx',
+        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        use_container_width=True
+    )
 
 if st.sidebar.button("🗑️ Reset"):
     if os.path.exists(DB_FILE): os.remove(DB_FILE)
@@ -506,7 +527,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             
 
 
-# --- 10. ANALISTA MAESTRO: ESTRATEGIA, GAPS Y R&D (Versión Soft & Flexible) ---
+# --- 11. ANALISTA MAESTRO: ESTRATEGIA, GAPS Y R&D (Versión Soft & Flexible) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("🚀 Master Diagnosis: Estrategia de Precios, Gaps y R&D")
@@ -646,3 +667,28 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
     else:
         st.balloons()
         st.success("✅ **Portafolio Equilibrado:** Posicionamiento competitivo y cobertura de precios óptima.")
+
+# --- GENERADOR DE REPORTE ESTRATÉGICO (PDF) ---
+    if hallazgos:
+        st.divider()
+        st.subheader("📋 Reporte de Decisiones")
+        
+        # Función para crear un reporte simple en formato texto/Markdown descargable
+        # Nota: Usamos un .txt profesional o .md para evitar errores de fuentes PDF en Streamlit Cloud
+        reporte_texto = f"REPORTE ESTRATÉGICO DE PORTAFOLIO - {modo.upper()}\n"
+        reporte_texto += "="*50 + "\n\n"
+        
+        for h in hallazgos:
+            reporte_texto += f"[{h['Prioridad']}] {h['Ocasión']}: {h['Tipo']}\n"
+            reporte_texto += f"Detalle: {h['Msg']}\n"
+            reporte_texto += f"Acción Sugerida: {h['Accion']}\n"
+            reporte_texto += "-"*30 + "\n"
+
+        st.download_button(
+            label="🚩 Descargar Resumen de Acciones (TXT)",
+            data=reporte_texto,
+            file_name=f"acciones_estrategicas_{modo.lower()}.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
+
