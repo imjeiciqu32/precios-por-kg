@@ -530,7 +530,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 # --- 11. ANALISTA MAESTRO: ESTRATEGIA, GAPS Y R&D (Versión Soft & Flexible) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
-    st.subheader("🚀 Master Diagnosis: Estrategia de Precios, Gaps y R&D")
+    st.subheader("🚀 Observaciones y Sugerencias en base al Mercado")
     
     # --- 1. LIMPIEZA DE DATOS (BLINDAJE) ---
     df_p = st.session_state.data.copy()
@@ -671,7 +671,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 # --- GENERADOR DE REPORTE ESTRATÉGICO (PDF) ---
     if hallazgos:
         st.divider()
-        st.subheader("📋 Reporte de Decisiones")
+        st.subheader("📋 Reporte de Sugerencias")
         
         # Función para crear un reporte simple en formato texto/Markdown descargable
         # Nota: Usamos un .txt profesional o .md para evitar errores de fuentes PDF en Streamlit Cloud
@@ -692,3 +692,70 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             use_container_width=True
         )
 
+# --- 11. SIMULADOR DE RESPUESTA TÁCTICA (ESCENARIOS DE ALZA) ---
+if modo == "Price Ladder" and not st.session_state.data.empty:
+    st.divider()
+    st.subheader("🧪 Hipótesis de Mercado")
+    st.info("Simula un movimiento de precios en la competencia para calcular tu ajuste necesario en Gramaje o Precio.")
+
+    df_sim = st.session_state.data.copy()
+    
+    # Filtramos competidores que tengan SOM para que sean benchmarks válidos
+    lista_comp = df_sim[df_sim["Fabricante"] != "BARCEL"].sort_values("SOM (%)", ascending=False)
+    
+    if not lista_comp.empty:
+        col_s1, col_s2 = st.columns([2, 3])
+        
+        with col_s1:
+            st.markdown("### 1. Definir Escenario")
+            comp_a_mover = st.selectbox("Seleccionar Competidor a simular:", lista_comp["Producto"].unique())
+            datos_comp = lista_comp[lista_comp["Producto"] == comp_a_mover].iloc[0]
+            
+            precio_actual_comp = datos_comp["Precio ($)"]
+            nuevo_precio_comp = st.number_input(f"Nuevo Precio de {comp_a_mover} ($):", 
+                                                min_value=float(precio_actual_comp), 
+                                                value=float(precio_actual_comp + 2.0), 
+                                                step=1.0)
+            
+            p_incremento = ((nuevo_precio_comp / precio_actual_comp) - 1) * 100
+            st.metric("Incremento Simulado", f"{nuevo_precio_comp} $", f"{p_incremento:.1f}%")
+
+        with col_s2:
+            st.markdown("### 2. Impacto en Barcel")
+            # Buscamos el producto de Barcel en la misma ocasión para comparar
+            oca_sim = datos_comp["Ocasión"]
+            df_barcel_oca = df_sim[(df_sim["Fabricante"] == "BARCEL") & (df_sim["Ocasión"] == oca_sim)]
+            
+            if not df_barcel_oca.empty:
+                prod_b = st.selectbox("Producto de Barcel a Proteger:", df_barcel_oca["Producto"].unique())
+                row_b = df_barcel_oca[df_barcel_oca["Producto"] == prod_b].iloc[0]
+                
+                # Cálculo de Index $/Kg Actual vs Nuevo
+                pkg_comp_nuevo = nuevo_precio_comp / (datos_comp["Gramaje (g)"] / 1000)
+                nuevo_index = (row_b["Precio por Kg ($)"] / pkg_comp_nuevo) * 100
+                
+                c_m1, c_m2 = st.columns(2)
+                c_m1.metric("Index $/Kg Actual", f"{int((row_b['Precio por Kg ($)'] / datos_comp['Precio por Kg ($)']) * 100)}")
+                c_m2.metric("Nuevo Index (Si no haces nada)", f"{int(nuevo_index)}", f"{int(nuevo_index - (row_b['Precio por Kg ($)'] / datos_comp['Precio por Kg ($)']) * 100)} pts")
+
+                st.divider()
+                st.markdown(f"#### 🛡️ Estrategia de Mantenimiento (Meta: Index 90)")
+                
+                # Opción A: Subir Precio
+                # Precio = (PKG_Comp * 0.90) * (Gramaje_B / 1000)
+                precio_sugerido = (pkg_comp_nuevo * 0.90) * (row_b["Gramaje (g)"] / 1000)
+                
+                # Opción B: Bajar Gramaje
+                # Gramaje = (Precio_B / (PKG_Comp * 0.90)) * 1000
+                gramaje_sugerido = (row_b["Precio ($)"] / (pkg_comp_nuevo * 0.90)) * 1000
+                gramaje_redondeado = int(5 * round(gramaje_sugerido / 5))
+
+                col_res1, col_res2 = st.columns(2)
+                with col_res1:
+                    st.success(f"**A. Ajuste de Precio**\n\nSubir a **${precio_sugerido:.1f}** manteniendo tus {int(row_b['Gramaje (g)'])}g.")
+                with col_res2:
+                    st.success(f"**B. Ajuste de Gramaje**\n\nBajar a **{gramaje_redondeado}g** manteniendo tu precio de ${int(row_b['Precio ($)'])}.")
+            else:
+                st.warning(f"No tienes productos registrados en la ocasión **{oca_sim}** para comparar.")
+    else:
+        st.write("Carga datos de la competencia para habilitar el simulador.")
