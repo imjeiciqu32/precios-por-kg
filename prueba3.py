@@ -663,7 +663,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     st.write(f"**{h['Msg']}**")
                     st.caption(h['Detalle'])
                 with c3:
-                    st.success(f"🧪 **Sugerencia R&D:**\n\n{h['Accion']}")
+                    st.success(f"🧪 **Sugerencia:**\n\n{h['Accion']}")
     else:
         st.balloons()
         st.success("✅ **Portafolio Equilibrado:** Posicionamiento competitivo y cobertura de precios óptima.")
