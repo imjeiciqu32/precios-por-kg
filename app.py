@@ -665,11 +665,11 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         st.balloons()
         st.success("✅ **Portafolio en Paridad Optimizada.**")
 
-# --- 11. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO (V3: RIVALES + FIX ESTÉTICO) ---
+# --- 11. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO (V4: FIX ARQUITECTURA) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     
-    if st.button("📄 Generar Resumen Ejecutivo Detallado", key="btn_exec_v3"):
+    if st.button("📄 Generar Resumen Ejecutivo Detallado", key="btn_exec_v4"):
         with st.spinner("Compilando datos de mercado..."):
             
             if not hallazgos:
@@ -691,18 +691,16 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 
                 # --- A. DIAGNÓSTICO ---
                 num_alta = len([h for h in hallazgos if h["Prioridad"] == "ALTA"])
-                st.write(f"Se han identificado **{len(hallazgos)} hallazgos estratégicos**, con **{num_alta} alertas críticas**. "
-                         "El análisis comparativo se basa en la paridad de valor ($/Kg) frente a los líderes de cada segmento.")
+                st.write(f"Se han identificado **{len(hallazgos)} hallazgos estratégicos**, con **{num_alta} alertas críticas**.")
 
                 # --- B. OPORTUNIDADES (WHITE SPACES) ---
                 ws_items = [h for h in hallazgos if h["Tipo"] == "WHITE SPACE"]
                 if ws_items:
                     st.markdown("#### 🚀 Expansión de Portafolio")
                     for ws in ws_items:
-                        # Extraemos el nombre del rival del mensaje de diagnóstico
                         rival = ws['Detalle'].split('dominado por ')[-1].replace('.', '')
                         sug_data = ws['Accion'].replace("⚡ **Entrada:** Lanzar ", "")
-                        st.write(f"* **{ws['Ocasión']}:** Barcel no participa. Dominio actual de <span class='rival-name'>{rival}</span>. "
+                        st.write(f"* **{ws['Ocasión']}:** Barcel no participa. Dominio de <span class='rival-name'>{rival}</span>. "
                                  f"**Acción:** Introducir SKU de **{sug_data}**.", unsafe_allow_html=True)
 
                 # --- C. COMPETITIVIDAD (DUELOS) ---
@@ -710,53 +708,31 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 if duelos:
                     st.markdown("#### 🛡️ Ajustes de Paridad (Defensa)")
                     for d in duelos:
-                        # Extraemos el rival del tipo de hallazgo "DUELO vs [RIVAL]"
                         rival = d['Tipo'].replace("DUELO vs ", "")
                         sug_data = d['Accion'].replace("⚖️ **R&D:** Ajustar a ", "")
-                        st.write(f"* **{d['Ocasión']}:** {d['Msg']} frente a <span class='rival-name'>{rival}</span>. "
-                                 f"**Recomendación:** {sug_data} para restablecer paridad.", unsafe_allow_html=True)
+                        st.write(f"* **{d['Ocasión']}:** {d['Msg']} vs <span class='rival-name'>{rival}</span>. "
+                                 f"**Rec:** {sug_data}.", unsafe_allow_html=True)
 
-                # --- D. HUECOS EN LA ESCALERA (GAPS) ---
+                # --- D. HUECOS EN LA ESCALERA (GAPS) - CORREGIDO ---
                 gaps = [h for h in hallazgos if h["Tipo"] == "ESCALÓN DE PRECIO"]
                 if gaps:
                     st.markdown("#### 🪜 Arquitectura de Precios")
                     for g in gaps:
-                        # FIX: Añadimos espacios y formato para que no se vea "20y40"
-                        p_min = g['Msg'].split('entre $')[-1].split(' y ')[0]
-                        msg_clean = g['Msg'].replace("Hueco detectado entre ", "").replace(" y ", " y ")
+                        # Extraemos los precios limpiando el mensaje original de forma segura
+                        rango_precios = g['Msg'].replace("Hueco detectado entre ", "").strip()
+                        # Aseguramos que el formato sea "$X y $Y" con espacios
+                        rango_formateado = rango_precios.replace("y", " y ")
                         sug_data = g['Accion'].replace("🪜 **Extensión:** Evaluar SKU de ", "")
-                        st.write(f"* **Puntos de Precio:** Brecha detectada entre **${msg_clean}**. "
+                        
+                        st.write(f"* **Brecha de Salto:** Rango entre **{rango_formateado}**. "
                                  f"**Sugerencia:** SKU puente de **{sug_data}**.")
 
                 st.markdown("---")
-                st.markdown("**💡 Veredicto Final:** Es necesario blindar los segmentos donde el rival directo tiene ventaja competitiva en gramaje, ajustando la arquitectura de empaque sin romper los puntos de precio psicológicos.")
+                st.write("**💡 Veredicto:** Priorizar blindaje en segmentos donde el rival tiene ventaja competitiva en gramaje.")
                 st.markdown('</div>', unsafe_allow_html=True)
 
 
-        
-# --- GENERADOR DE REPORTE ESTRATÉGICO (PDF) ---
-    if hallazgos:
-        st.divider()
-        st.subheader("📋 Reporte de Sugerencias")
-        
-        # Función para crear un reporte simple en formato texto/Markdown descargable
-        # Nota: Usamos un .txt profesional o .md para evitar errores de fuentes PDF en Streamlit Cloud
-        reporte_texto = f"REPORTE ESTRATÉGICO DE PORTAFOLIO - {modo.upper()}\n"
-        reporte_texto += "="*50 + "\n\n"
-        
-        for h in hallazgos:
-            reporte_texto += f"[{h['Prioridad']}] {h['Ocasión']}: {h['Tipo']}\n"
-            reporte_texto += f"Detalle: {h['Msg']}\n"
-            reporte_texto += f"Acción Sugerida: {h['Accion']}\n"
-            reporte_texto += "-"*30 + "\n"
 
-        st.download_button(
-            label="🚩 Descargar Resumen de Acciones (TXT)",
-            data=reporte_texto,
-            file_name=f"acciones_estrategicas_{modo.lower()}.txt",
-            mime="text/plain",
-            use_container_width=True
-        )
 
 # --- 13. VISUALIZACIÓN ESTRATÉGICA PRO: MAPA DE VALOR LIMPIO ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
