@@ -131,29 +131,29 @@ PLANTILLAS = {
   ],
   # 8. PLANTILLA PARA CACAHUATE FRITO / SALADO
   "DT - CACAHUATE FRITO": [
-      {"Producto": "Bokados 100g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 15.0, "Gramaje (g)": 100, "SOM (%)": 7.8},
-      {"Producto": "Cacahuate Leo 80g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 15.0, "Gramaje (g)": 80, "SOM (%)": 12.0},
-      {"Producto": "Kacang Salado 77g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 18.0, "Gramaje (g)": 77, "SOM (%)": 15.8},
-      {"Producto": "Golden Nuts 78g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 20.0, "Gramaje (g)": 78, "SOM (%)": 34.1},
-      {"Producto": "Golden Nuts 110g", "Fabricante": "BARCEL", "Ocasión": "COMPARTIR", "Precio ($)": 25.0, "Gramaje (g)": 110, "SOM (%)": 15.2}
+      {"Producto": "Bokados 100g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 15.0, "Gramaje (g)": 100, "SOM (%)": 4.8},
+      {"Producto": "Cacahuate Leo 80g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 15.0, "Gramaje (g)": 80, "SOM (%)": 7.4},
+      {"Producto": "Kacang Salado 77g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 18.0, "Gramaje (g)": 77, "SOM (%)": 9.9},
+      {"Producto": "Golden Nuts 78g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 20.0, "Gramaje (g)": 78, "SOM (%)": 40.5},
+      {"Producto": "Golden Nuts 110g", "Fabricante": "BARCEL", "Ocasión": "COMPARTIR", "Precio ($)": 25.0, "Gramaje (g)": 110, "SOM (%)": 18.7}
   ],
   
   # 9. PLANTILLA PARA CACAHUATE CUBIERTO
   "DT - CACAHUATE CUBIERTO": [
-      {"Producto": "Kacang Cubierto 77g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 18.0, "Gramaje (g)": 77, "SOM (%)": 39.3},
-      {"Producto": "Kacang Xferas 60g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 18.0, "Gramaje (g)": 60, "SOM (%)": 7.9},
-      {"Producto": "Hot Nuts 75g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 20.0, "Gramaje (g)": 75, "SOM (%)": 8.9},
-      {"Producto": "Kacang Cubierto 130g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 25.0, "Gramaje (g)": 130, "SOM (%)": 0.6},
-      {"Producto": "Hot Nuts 115g", "Fabricante": "BARCEL", "Ocasión": "COMPARTIR", "Precio ($)": 25.0, "Gramaje (g)": 115, "SOM (%)": 43.4}
+      {"Producto": "Kacang Cubierto 77g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 18.0, "Gramaje (g)": 77, "SOM (%)": 29.4},
+      {"Producto": "Kacang Xferas 60g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 18.0, "Gramaje (g)": 60, "SOM (%)": 2.6},
+      {"Producto": "Hot Nuts 75g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 20.0, "Gramaje (g)": 75, "SOM (%)": 36.6},
+      {"Producto": "Kacang Cubierto 130g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 25.0, "Gramaje (g)": 130, "SOM (%)": 17.0},
+      {"Producto": "Hot Nuts 115g", "Fabricante": "BARCEL", "Ocasión": "COMPARTIR", "Precio ($)": 25.0, "Gramaje (g)": 115, "SOM (%)": 14.4}
   ],
  # 10. PLANTILLA PARA CACAHUATE JAPONÉS
   "DT - CACAHUATE JAPONÉS": [
       {"Producto": "Encanto 60g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 10.0, "Gramaje (g)": 60, "SOM (%)": 0.4},
       {"Producto": "Karate 65g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 13.0, "Gramaje (g)": 65, "SOM (%)": 12.2},
-      {"Producto": "Kiyakis 60g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 15.0, "Gramaje (g)": 60, "SOM (%)": 19.5},
-      {"Producto": "Karate 90g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 16.0, "Gramaje (g)": 90, "SOM (%)": 1.8},
-      {"Producto": "Karate 110g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 18.0, "Gramaje (g)": 110, "SOM (%)": 50.4},
-      {"Producto": "Kiyakis 120g", "Fabricante": "BARCEL", "Ocasión": "COMPARTIR", "Precio ($)": 20.0, "Gramaje (g)": 120, "SOM (%)": 15.3},
+      {"Producto": "Kiyakis 60g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 15.0, "Gramaje (g)": 60, "SOM (%)": 19.4},
+      {"Producto": "Karate 90g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 16.0, "Gramaje (g)": 90, "SOM (%)": 2.3},
+      {"Producto": "Karate 110g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 18.0, "Gramaje (g)": 110, "SOM (%)": 50.0},
+      {"Producto": "Kiyakis 120g", "Fabricante": "BARCEL", "Ocasión": "COMPARTIR", "Precio ($)": 20.0, "Gramaje (g)": 120, "SOM (%)": 15.2},
       {"Producto": "Karate 185g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 22.0, "Gramaje (g)": 185, "SOM (%)": 0.4}
   ],
    # 11. PLANTILLA COMPLETA PARA AS - MAÍZ
@@ -635,17 +635,16 @@ PLANTILLAS = {
    ],
    "CNV - CACAHUATE FRITO": [
        # INDIVIDUAL
-       {"Producto": "Coolnuts Frito 50g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 50, "SOM (%)": 0.1},
-       {"Producto": "Mafer Frito 65g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 65, "SOM (%)": 28.2},
+       {"Producto": "Hot Nuts 50g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 50, "SOM (%)": 24.2},
+       {"Producto": "Kacang 77g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 25.0, "Gramaje (g)": 77, "SOM (%)": 33.4},
+       {"Producto": "Kacang Xferas 60g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 25.0, "Gramaje (g)": 60, "SOM (%)": 2.6},
        
        # HAMBRE
-       {"Producto": "Golden Nuts 100g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 27.0, "Gramaje (g)": 100, "SOM (%)": 25.3},
-       {"Producto": "Kacang Frito 100g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 27.0, "Gramaje (g)": 100, "SOM (%)": 0.0},
-       {"Producto": "Mafer Frito 120g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 32.0, "Gramaje (g)": 120, "SOM (%)": 7.8},
+       {"Producto": "Kacang 110g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 35.0, "Gramaje (g)": 110, "SOM (%)": 12.3},
+       {"Producto": "Hot Nuts 100g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 35.0, "Gramaje (g)": 100, "SOM (%)": 18.4},
        
        # FAMILIAR
-       {"Producto": "Golden Nuts 200g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 40.0, "Gramaje (g)": 200, "SOM (%)": 5.2},
-       {"Producto": "Mafer Frito 170g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 46.0, "Gramaje (g)": 170, "SOM (%)": 33.5}
+       {"Producto": "Hot Nuts 160g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 47.0, "Gramaje (g)": 160, "SOM (%)": 9.2},
    ],
    "CNV - CACAHUATE JAPONÉS": [
        # HAMBRE
