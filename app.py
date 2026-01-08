@@ -527,146 +527,103 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             
 
 
-# --- 12. ANALISTA MAESTRO: ESTRATEGIA, GAPS Y R&D (Versión Soft & Flexible) ---
+# --- 12. ANALISTA MAESTRO: ESTRATEGIA DE DUELOS DIRECTOS Y GAPS ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
-    st.subheader("🚀 Observaciones y Sugerencias en base al Mercado")
+    st.subheader("🚀 Inteligencia Competitiva: Análisis de Duelos y Gaps")
     
-    # --- 1. LIMPIEZA DE DATOS (BLINDAJE) ---
     df_p = st.session_state.data.copy()
-    cols_numericas = ["Precio ($)", "SOM (%)", "Precio por Kg ($)"]
-    for col in cols_numericas:
-        if col in df_p.columns:
-            df_p[col] = pd.to_numeric(df_p[col], errors='coerce').fillna(0)
     
+    # 1. MAPEO DE MARCAS (Diccionario de Palabras Clave)
+    mapa_rivales = {
+        "TAKIS": ["DORITO", "DINAMITA"],
+        "CHIPS": ["SABRITA", "RECETA CRUJIENTE", " RC "],
+        "PAPAS BARCEL": ["SABRITA", "RECETA CRUJIENTE", " RC "],
+        "CHIPOTLES": ["RANCHERITO", "FRITO"],
+        "RUNNERS": ["FRITO", "RANCHERITO"],
+        "BIG MIX": ["PAKETAXO"],
+        "POP KARAMELADAS": ["ACT II", "CARAMELO"],
+        "HOT NUTS": ["KACANG"],
+        "GOLDEN NUTS": ["MAFER"],
+        "KIYAKIS": ["KARATE"],
+        "VALENTONES": ["SABRITONE"]
+    }
+
+    def identificar_marca(nombre):
+        nombre = str(nombre).upper()
+        for marca in mapa_rivales.keys():
+            if marca in nombre: return marca
+        return "OTRO"
+
+    def es_rival_de(nombre_comp, marca_barcel):
+        nombre_comp = str(nombre_comp).upper()
+        if marca_barcel in mapa_rivales:
+            for rival in mapa_rivales[marca_barcel]:
+                if rival in nombre_comp: return True
+        return False
+
     hallazgos = []
-    
-    # --- FUNCIÓN DE RANGO FLEXIBLE ---
-    # Calcula un rango de gramaje para estar entre Index 85 (Agresivo) y Index 95 (Rentable)
-    def calcular_rango_gramaje(precio_target, precio_kg_lider):
-        if precio_kg_lider <= 0: return "N/A"
-        
-        # Límite Inferior de Gramaje (Index 95 - Mejor Margen)
-        pkg_95 = precio_kg_lider * 0.95
-        g_min = int((precio_target / pkg_95) * 1000) if pkg_95 > 0 else 0
-        
-        # Límite Superior de Gramaje (Index 85 - Mejor Valor al Consumidor)
-        pkg_85 = precio_kg_lider * 0.85
-        g_max = int((precio_target / pkg_85) * 1000) if pkg_85 > 0 else 0
-        
+
+    # Función de Rango (Se mantiene esencia 85-95)
+    def calcular_rango_gramaje(precio_target, precio_kg_ref):
+        if precio_kg_ref <= 0: return "N/A"
+        g_min = int((precio_target / (precio_kg_ref * 0.95)) * 1000)
+        g_max = int((precio_target / (precio_kg_ref * 0.85)) * 1000)
         return f"{g_min}g - {g_max}g"
 
     try:
-        pesos_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
-
         for oca in df_p["Ocasión"].unique():
-            df_oca = df_p[df_p["Ocasión"] == oca].sort_values("Precio ($)")
+            df_oca = df_p[df_p["Ocasión"] == oca]
             df_barcel = df_oca[df_oca["Fabricante"] == "BARCEL"]
             df_comp = df_oca[df_oca["Fabricante"] != "BARCEL"]
-            
-            peso_segmento = pesos_ocasion.get(oca, 0)
-            importancia_tag = "ALTA" if peso_segmento > 20 else "MEDIA" if peso_segmento > 5 else "BAJA"
 
-            if df_comp.empty: continue 
+            if df_barcel.empty or df_comp.empty: continue
 
-            # Datos del Líder (Benchmark)
-            lider_mercado = df_comp.sort_values("SOM (%)", ascending=False).iloc[0]
-            pkg_lider = lider_mercado["Precio por Kg ($)"]
-            nombre_lider = lider_mercado["Producto"]
-            
-            comp_precios = sorted(df_comp["Precio ($)"].unique())
-            c_min = min(comp_precios)
-            
-            # --- CASO 1: AUSENCIA DE MARCA ---
-            if df_barcel.empty:
-                rango_g = calcular_rango_gramaje(c_min, pkg_lider)
-                hallazgos.append({
-                    "Prioridad": "ALTA" if importancia_tag != "BAJA" else "MEDIA",
-                    "Tipo": "SIN PARTICIPACIÓN", "Ocasión": oca,
-                    "Msg": f"Actualmente no participamos en este segmento ({peso_segmento:.1f}% SOM)",
-                    "Detalle": f"Categoría liderada por {nombre_lider}. Oportunidad de capturar volumen incremental.",
-                    "Accion": f"⚡ **Evaluar Entrada:** Rango sugerido de **{rango_g}** para un precio de **${int(c_min)}**."
-                })
-            
-            else:
-                precios_b = sorted(df_barcel["Precio ($)"].unique())
-                b_min = min(precios_b)
+            for _, row_b in df_barcel.iterrows():
+                marca_b = identificar_marca(row_b["Producto"])
+                
+                # BUSCAR RIVAL DIRECTO
+                rivales_directos = df_comp[df_comp.apply(lambda x: es_rival_de(x["Producto"], marca_b), axis=1)]
+                
+                if not rivales_directos.empty:
+                    # Si hay varios (ej. varios Paketaxo), tomamos el de mayor SOM
+                    benchmark = rivales_directos.sort_values("SOM (%)", ascending=False).iloc[0]
+                    tipo_analisis = f"Duelo Directo: vs {benchmark['Producto']}"
+                else:
+                    # Si no hay rival directo, usamos el Líder de Ocasión (Esencia anterior)
+                    benchmark = df_comp.sort_values("SOM (%)", ascending=False).iloc[0]
+                    tipo_analisis = f"vs Líder de Ocasión ({benchmark['Producto']})"
 
-                # --- CASO 2: GAP DE ENTRADA ---
-                if b_min > c_min + 2:
-                    rango_g = calcular_rango_gramaje(c_min, pkg_lider)
+                # CÁLCULOS DE INDEX
+                pkg_ref = benchmark["Precio por Kg ($)"]
+                idx_actual = int((row_b["Precio por Kg ($)"] / pkg_ref) * 100)
+                rango_sug = calcular_rango_gramaje(row_b["Precio ($)"], pkg_ref)
+
+                # EVALUACIÓN DE REGLAS
+                if idx_actual > 95:
                     hallazgos.append({
-                        "Prioridad": "ALTA" if peso_segmento > 15 else "MEDIA",
-                        "Tipo": "OPORTUNIDAD DE ENTRADA", "Ocasión": oca,
-                        "Msg": f"El precio de entrada del mercado es inferior al nuestro",
-                        "Detalle": f"La competencia inicia en ${int(c_min)}, mientras nosotros iniciamos en ${int(b_min)}.",
-                        "Accion": f"📉 **Opción Táctica:** Considerar formato de **{rango_g}** a **${int(c_min)}**."
+                        "Prioridad": "ALTA", "Ocasión": oca, "Tipo": tipo_analisis,
+                        "Msg": f"{row_b['Producto']} está fuera de rango (Index {idx_actual})",
+                        "Accion": f"⚠️ **Ajuste Sugerido:** Reducir Index mediante gramaje de **{rango_sug}**."
+                    })
+                elif idx_actual < 85:
+                    hallazgos.append({
+                        "Prioridad": "MEDIA", "Ocasión": oca, "Tipo": tipo_analisis,
+                        "Msg": f"Posición agresiva para {row_b['Producto']} (Index {idx_actual})",
+                        "Accion": f"💰 **Oportunidad:** Capturar margen ajustando a **{rango_sug}**."
                     })
 
-                # --- CASO 3: ZONA DE ABANDONO (Gaps internos) ---
-                for i in range(len(precios_b)-1):
-                    p_actual, p_sig = precios_b[i], precios_b[i+1]
-                    salto = p_sig - p_actual
-                    
-                    if salto > 15:
-                        gap_comp = df_comp[(df_comp["Precio ($)"] > p_actual) & (df_comp["Precio ($)"] < p_sig)]
-                        if not gap_comp.empty:
-                            target_p = int(gap_comp["Precio ($)"].mean())
-                            rango_g = calcular_rango_gramaje(target_p, pkg_lider)
-                            hallazgos.append({
-                                "Prioridad": "ALTA" if importancia_tag == "ALTA" else "MEDIA",
-                                "Tipo": "COBERTURA DE PRECIO", "Ocasión": oca,
-                                "Msg": f"Distancia amplia entre puntos de precio (${int(p_actual)} - ${int(p_sig)})",
-                                "Detalle": f"Existe oferta de la competencia en precios intermedios (aprox ${target_p}).",
-                                "Accion": f"🛠️ **Propuesta:** Evaluar SKU intermedio de **{rango_g}** a **${target_p}**."
-                            })
-
-                # --- CASO 4: ANÁLISIS DE INDEX (Suavizado) ---
-                if pkg_lider > 0:
-                    pkg_b_avg = df_barcel["Precio por Kg ($)"].mean()
-                    idx_lider = int((pkg_b_avg / pkg_lider) * 100)
-                    p_ref = precios_b[0] 
-                    rango_g = calcular_rango_gramaje(p_ref, pkg_lider)
-
-                    if idx_lider > 95:
-                        hallazgos.append({
-                            "Prioridad": "ALTA", "Tipo": "COMPETITIVIDAD", "Ocasión": oca,
-                            "Msg": f"Index elevado vs Líder ({idx_lider})",
-                            "Detalle": f"Nuestra propuesta de valor es menor frente a {nombre_lider} (Index > 95).",
-                            "Accion": f"⚖️ **Revisión:** Para mejorar competitividad en ${int(p_ref)}, el rango ideal sería **{rango_g}**."
-                        })
-                    elif idx_lider < 85:
-                        hallazgos.append({
-                            "Prioridad": "MEDIA", "Tipo": "MARGEN POTENCIAL", "Ocasión": oca,
-                            "Msg": f"Posición de precio agresiva (Index {idx_lider})",
-                            "Detalle": "Estamos entregando más contenido por peso que el líder. Existe espacio para mejorar rentabilidad.",
-                            "Accion": f"💰 **Optimizar:** Podríamos ajustar el contenido entre **{rango_g}** manteniendo el precio."
-                        })
-
     except Exception as e:
-        st.error(f"⚠️ Error en cálculo: {e}")
+        st.error(f"Error en Analista de Duelos: {e}")
 
-    # --- RENDERIZADO VISUAL ---
+    # RENDERIZADO
     if hallazgos:
-        orden = {"ALTA": 0, "MEDIA": 1, "BAJA": 2}
-        hallazgos.sort(key=lambda x: orden.get(x["Prioridad"], 2))
-
         for h in hallazgos:
             with st.container(border=True):
-                c1, c2, c3 = st.columns([1.5, 3.5, 3])
-                with c1:
-                    if h["Prioridad"] == "ALTA": st.error(f"🔴 **PRIORIDAD**\n\n{h['Tipo']}")
-                    elif h["Prioridad"] == "MEDIA": st.warning(f"🟡 **ATENCIÓN**\n\n{h['Tipo']}")
-                    else: st.info(f"🔵 **INFO**\n\n{h['Tipo']}")
-                with c2:
-                    st.markdown(f"#### {h['Ocasión']}")
-                    st.write(f"**{h['Msg']}**")
-                    st.caption(h['Detalle'])
-                with c3:
-                    st.success(f"🧪 **Sugerencia:**\n\n{h['Accion']}")
-    else:
-        st.balloons()
-        st.success("✅ **Portafolio Equilibrado:** Posicionamiento competitivo y cobertura de precios óptima.")
+                c1, c2, c3 = st.columns([1, 2, 2])
+                c1.write(f"**{h['Prioridad']}**")
+                c2.markdown(f"**{h['Ocasión']}**\n\n{h['Msg']}")
+                c3.info(f"**{h['Tipo']}**\n\n{h['Accion']}")
 
 # --- GENERADOR DE REPORTE ESTRATÉGICO (PDF) ---
     if hallazgos:
