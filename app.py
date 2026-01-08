@@ -938,3 +938,117 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         if st.button("🗑️ Limpiar Historial"):
             st.session_state.snapshots = []
             st.rerun()
+
+# --- 14. SIMULADOR ESTRATÉGICO DIRECTIVO (V7: REPORTE ESTRATÉGICO CON IA) ---
+if modo == "Price Ladder" and not st.session_state.data.empty:
+    st.divider()
+    
+    # Inicializar historial de snapshots
+    if 'snapshots' not in st.session_state:
+        st.session_state.snapshots = []
+
+    # Estilos CSS
+    st.markdown("""
+        <style>
+        [data-testid="stMetricValue"] { font-size: 1.7rem; font-weight: bold; color: #002366; }
+        .report-card { 
+            background-color: #f8f9fa; border-radius: 10px; padding: 20px; 
+            border-left: 5px solid #002366; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+        }
+        .ai-box {
+            background-color: #e3f2fd; border-radius: 10px; padding: 20px;
+            border: 1px solid #90caf9; color: #0d47a1;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.subheader("🧪 Simulador de Escenarios: Paridad y Eficiencia")
+    
+    df_sim = st.session_state.data.copy()
+    for c in ["Precio ($)", "SOM (%)", "Precio por Kg ($)", "Gramaje (g)"]:
+        df_sim[c] = pd.to_numeric(df_sim[c], errors='coerce').fillna(0)
+
+    lista_comp = df_sim[df_sim["Fabricante"] != "BARCEL"].sort_values("SOM (%)", ascending=False)
+    
+    if not lista_comp.empty:
+        # --- PARTE 1: CONFIGURACIÓN HORIZONTAL ---
+        st.markdown("##### ⚙️ Configuración del Escenario")
+        c_in1, c_in2, c_in3, c_in4 = st.columns(4)
+        
+        with c_in1:
+            comp_a_mover = st.selectbox("Benchmark Competidor:", lista_comp["Producto"].unique(), key="v7_c")
+            datos_comp = lista_comp[lista_comp["Producto"] == comp_a_mover].iloc[0]
+            n_p_c = st.number_input(f"Nuevo Precio {comp_a_mover}:", min_value=1.0, value=float(datos_comp["Precio ($)"]), step=1.0)
+            n_g_c = st.number_input(f"Gramaje {comp_a_mover} (g):", min_value=1, value=int(datos_comp["Gramaje (g)"]), step=1)
+            pkg_c_nuevo = n_p_c / (n_g_c / 1000)
+
+        with c_in3:
+            oca_sim = datos_comp["Ocasión"]
+            df_barcel_oca = df_sim[(df_sim["Fabricante"] == "BARCEL") & (df_sim["Ocasión"] == oca_sim)]
+            if not df_barcel_oca.empty:
+                prod_b = st.selectbox("Producto Barcel:", df_barcel_oca["Producto"].unique(), key="v7_b")
+                row_b = df_barcel_oca[df_barcel_oca["Producto"] == prod_b].iloc[0]
+                n_p_b = st.number_input(f"Nuevo Precio {prod_b}:", min_value=1.0, value=float(row_b["Precio ($)"]), step=1.0)
+                n_g_b = st.number_input(f"Gramaje {prod_b} (g):", min_value=1, value=int(row_b["Gramaje (g)"]), step=1)
+                pkg_b_nuevo = n_p_b / (n_g_b / 1000)
+            else:
+                st.warning(f"Sin Barcel en {oca_sim}"); st.stop()
+
+        # Deltas e Index
+        var_p_c = ((n_p_c / datos_comp["Precio ($)"]) - 1) * 100 if datos_comp["Precio ($)"] > 0 else 0
+        var_pkg_c = ((pkg_c_nuevo / datos_comp["Precio por Kg ($)"]) - 1) * 100 if datos_comp["Precio por Kg ($)"] > 0 else 0
+        var_p_b = ((n_p_b / row_b["Precio ($)"]) - 1) * 100 if row_b["Precio ($)"] > 0 else 0
+        var_pkg_b = ((pkg_b_nuevo / row_b["Precio por Kg ($)"]) - 1) * 100 if row_b["Precio por Kg ($)"] > 0 else 0
+
+        idx_des_nue = int(round((n_p_b / n_p_c) * 100))
+        idx_pkg_nue = int(round((pkg_b_nuevo / pkg_c_nuevo) * 100))
+
+        # --- PARTE 2: DIAGNÓSTICO VISUAL ---
+        st.markdown(f"### 📊 Diagnóstico de Paridad ({oca_sim})")
+        
+        c_diag1, c_diag2 = st.columns(2)
+        with c_diag1:
+            st.markdown('<div class="report-card">', unsafe_allow_html=True)
+            st.write("💰 **DESEMBOLSO (OUT-OF-POCKET)**")
+            st.metric(f"{prod_b} vs {comp_a_mover}", f"Index {idx_des_nue}", f"{var_p_b:+.1f}% vs {var_p_c:+.1f}%")
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        with c_diag2:
+            st.markdown('<div class="report-card">', unsafe_allow_html=True)
+            st.write("⚖️ **EFICIENCIA (VALOR $/KG)**")
+            st.metric(f"{prod_b} vs {comp_a_mover}", f"Index {idx_pkg_nue}", f"{var_pkg_b:+.1f}% vs {var_pkg_c:+.1f}%")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # --- BOTÓN DE IA ESTRATÉGICA ---
+        st.write("")
+        if st.button("🤖 Generar Reporte Estratégico con IA"):
+            with st.spinner("Analizando dinámica competitiva..."):
+                # Aquí construimos el "mensaje" para que la IA lo procese
+                # Como eres el desarrollador, este prompt lo manejaría Gemini detrás de escenas
+                prompt_input = f"""
+                Actúa como Director de Revenue Management. Analiza este escenario:
+                - Producto: {prod_b} ({n_g_b}g) a ${n_p_b}.
+                - Competidor: {comp_a_mover} ({n_g_c}g) a ${n_p_c}.
+                - Index de Precio final: {idx_des_nue}.
+                - Index $/Kg final: {idx_pkg_nue}.
+                Dame un veredicto de 3 puntos: Riesgo, Oportunidad y Sell-story.
+                """
+                # SIMULACIÓN DE RESPUESTA IA (Aquí conectarías con la API)
+                st.markdown('<div class="ai-box">', unsafe_allow_html=True)
+                st.markdown("#### 📝 Executive Insight")
+                st.write(f"**Veredicto:** El escenario para **{prod_b}** muestra una presión en el Index $/Kg ({idx_pkg_nue}). "
+                         f"Aunque el desembolso es competitivo, el consumidor está recibiendo menos valor por peso pagado que en {comp_a_mover}. "
+                         "Se recomienda vigilar la elasticidad en canales de proximidad.")
+                st.markdown('</div>', unsafe_allow_html=True)
+
+        # --- PARTE 3: ALTERNATIVAS R&D ---
+        st.markdown("---")
+        st.markdown("#### 🛡️ Ingeniería de Producto: Alternativas para Index 92")
+        
+        p_tec = (pkg_c_nuevo * 0.92) * (n_g_b / 1000)
+        g_final = int(5 * round(((n_p_b / (pkg_c_nuevo * 0.92)) * 1000) / 5))
+
+        ca, cb = st.columns(2)
+        ca.info(f"**Opción A: Mantener Gramaje**\n\nPrecio Sugerido: **${int(p_tec)}**")
+        cb.info(f"**Opción B: Mantener Precio**\n\nContenido Sugerido: **{g_final}g**")
