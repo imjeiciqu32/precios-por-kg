@@ -577,7 +577,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
         for oca in df_p["Ocasión"].unique():
             df_oca = df_p[df_p["Ocasión"] == oca].copy()
-            df_barcel = df_oca[df_oca["Fabricante"] == "BARCEL"]
+            df_barcel = df_oca[df_oca["Fabricante"] == "BARCEL"].sort_values("Precio ($)")
             df_comp = df_oca[df_oca["Fabricante"] != "BARCEL"]
             
             if df_oca.empty: continue
@@ -586,22 +586,32 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             imp_tag = "ALTA" if peso_seg > 20 else "MEDIA" if peso_seg > 5 else "BAJA"
             
             # --- AJUSTE DEFINITIVO DE LIDERAZGO ---
-            # Buscamos el índice del valor máximo de SOM para identificar al líder real
             idx_lider = df_oca["SOM (%)"].idxmax()
             lider_absoluto = df_oca.loc[idx_lider]
-            
-            # El líder es Barcel solo si el SKU con más SOM es de Barcel
             barcel_es_lider = (lider_absoluto["Fabricante"] == "BARCEL")
             
-            # Identificamos al mejor competidor para usarlo de referencia
             lider_comp = df_comp.sort_values("SOM (%)", ascending=False).iloc[0] if not df_comp.empty else None
             comp_precios = sorted(df_comp["Precio ($)"].unique()) if not df_comp.empty else []
+
+            # --- NUEVA INTELIGENCIA: ESCALONES DE PRECIO (GAPS INTERNOS) ---
+            if len(df_barcel) >= 2:
+                precios_b_list = df_barcel["Precio ($)"].tolist()
+                for i in range(len(precios_b_list) - 1):
+                    gap = precios_b_list[i+1] - precios_b_list[i]
+                    if gap > 10: # Si hay un hueco mayor a $10 entre SKUs de Barcel
+                        precio_intermedio = (precios_b_list[i+1] + precios_b_list[i]) / 2
+                        pkg_ref_escalon = lider_comp["Precio por Kg ($)"] if lider_comp is not None else df_barcel.iloc[i]["Precio por Kg ($)"]
+                        hallazgos.append({
+                            "Prioridad": "BAJA", "Tipo": "ESCALÓN DE PRECIO", "Ocasión": oca,
+                            "Msg": f"Salto de precio excesivo (${gap:.0f}) en Barcel",
+                            "Detalle": f"Espacio vacío entre ${precios_b_list[i]} y ${precios_b_list[i+1]}. Riesgo de fuga de consumidor.",
+                            "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(precio_intermedio, pkg_ref_escalon)}** a **${int(precio_intermedio)}**."
+                        })
 
             # --- CASO 1: BARCEL LÍDER REAL (POR SKU) ---
             if barcel_es_lider:
                 seguidor = df_comp.sort_values("SOM (%)", ascending=False).iloc[0] if not df_comp.empty else None
                 for _, row_b in df_barcel.iterrows():
-                    # Solo sugerimos optimizar margen si el SKU de Barcel es el líder o tiene SOM relevante
                     if row_b["Producto"] == lider_absoluto["Producto"] and seguidor is not None:
                         idx_vs_seguidor = int((row_b["Precio por Kg ($)"] / seguidor["Precio por Kg ($)"]) * 100)
                         if idx_vs_seguidor < 95:
@@ -624,7 +634,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     "Accion": f"⚡ **Entrada:** Sugerido **{calcular_rango_g(c_min, pkg_ref)}** a **${int(c_min)}**."
                 })
             
-            # --- CASO 3: DUELOS Y GAPS (Si Barcel NO es el líder del segmento) ---
+            # --- CASO 3: DUELOS Y GAPS ---
             elif not barcel_es_lider:
                 precios_b = sorted(df_barcel["Precio ($)"].unique())
                 b_min = min(precios_b)
@@ -660,33 +670,24 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
     # --- RENDERIZADO VISUAL ---
     if hallazgos:
-        # Ordenar por Prioridad: ALTA primero
         hallazgos.sort(key=lambda x: {"ALTA": 0, "MEDIA": 1, "BAJA": 2}.get(x["Prioridad"], 2))
-        
         for h in hallazgos:
             with st.container(border=True):
                 col_icon, col_text, col_action = st.columns([1.5, 3.5, 3])
-                
                 with col_icon:
-                    if h["Prioridad"] == "ALTA":
-                        st.error(f"🔴 **PRIORIDAD**\n\n{h['Tipo']}")
-                    elif h["Prioridad"] == "MEDIA":
-                        st.warning(f"🟡 **ATENCIÓN**\n\n{h['Tipo']}")
-                    else:
-                        st.info(f"🔵 **INFO**\n\n{h['Tipo']}")
-                
+                    if h["Prioridad"] == "ALTA": st.error(f"🔴 **PRIORIDAD**\n\n{h['Tipo']}")
+                    elif h["Prioridad"] == "MEDIA": st.warning(f"🟡 **ATENCIÓN**\n\n{h['Tipo']}")
+                    else: st.info(f"🔵 **INFO**\n\n{h['Tipo']}")
                 with col_text:
                     st.markdown(f"#### {h['Ocasión']}")
                     st.write(f"**{h['Msg']}**")
                     st.caption(h['Detalle'])
-                
                 with col_action:
                     st.success(f"🧪 **Sugerencia:**\n\n{h['Accion']}")
     else:
         st.balloons()
         st.success("✅ **Portafolio en Paridad Optimizada.**")
-
-
+        
 # --- GENERADOR DE REPORTE ESTRATÉGICO (PDF) ---
     if hallazgos:
         st.divider()
