@@ -808,15 +808,13 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
     st.caption("💡 **Interpretación:** Las burbujas moradas representan las propuestas de ajuste. El objetivo es que Barcel (Azul) no esté más a la derecha que Sabritas (Amarillo) en el mismo nivel de precio")
 
-# --- 14. SIMULADOR ESTRATÉGICO DIRECTIVO (V6: AJUSTE DE GRAMAJE + SNAPSHOTS) ---
+# --- 14. SIMULADOR ESTRATÉGICO DIRECTIVO (V6.1: VARIACIONES % + AJUSTE GRAMAJE + SNAPSHOTS) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     
-    # Inicializar el historial de snapshots si no existe
     if 'snapshots' not in st.session_state:
         st.session_state.snapshots = []
 
-    # CSS Profesional
     st.markdown("""
         <style>
         [data-testid="stMetricValue"] { font-size: 1.7rem; font-weight: bold; color: #002366; }
@@ -848,7 +846,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             n_g_c = st.number_input(f"Gramaje {comp_a_mover} (g):", min_value=1, value=int(datos_comp["Gramaje (g)"]), step=1)
             pkg_c_nuevo = n_p_c / (n_g_c / 1000)
 
-        with c_in2:
+        with c_in3:
             oca_sim = datos_comp["Ocasión"]
             df_barcel_oca = df_sim[(df_sim["Fabricante"] == "BARCEL") & (df_sim["Ocasión"] == oca_sim)]
             if not df_barcel_oca.empty:
@@ -859,6 +857,13 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 pkg_b_nuevo = n_p_b / (n_g_b / 1000)
             else:
                 st.warning(f"Sin Barcel en {oca_sim}"); st.stop()
+
+        # --- CÁLCULOS DE VARIACIÓN (DELTAS) ---
+        var_p_c = ((n_p_c / datos_comp["Precio ($)"]) - 1) * 100 if datos_comp["Precio ($)"] > 0 else 0
+        var_pkg_c = ((pkg_c_nuevo / datos_comp["Precio por Kg ($)"]) - 1) * 100 if datos_comp["Precio por Kg ($)"] > 0 else 0
+        
+        var_p_b = ((n_p_b / row_b["Precio ($)"]) - 1) * 100 if row_b["Precio ($)"] > 0 else 0
+        var_pkg_b = ((pkg_b_nuevo / row_b["Precio por Kg ($)"]) - 1) * 100 if row_b["Precio por Kg ($)"] > 0 else 0
 
         # Cálculos de Index (Enteros)
         idx_des_ant = int(round((row_b["Precio ($)"] / datos_comp["Precio ($)"]) * 100))
@@ -873,8 +878,8 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             st.markdown('<div class="report-card">', unsafe_allow_html=True)
             st.write("💰 **ANÁLISIS DE DESEMBOLSO (OUT-OF-POCKET)**")
             c1, c2, c3 = st.columns(3)
-            c1.metric(f"{comp_a_mover}", f"${n_p_c:.0f}", f"{n_g_c}g")
-            c2.metric(f"{prod_b}", f"${n_p_b:.0f}", f"{((n_p_b/row_b['Precio ($)'])-1)*100:.1f}% precio")
+            c1.metric(f"{comp_a_mover}", f"${n_p_c:.0f}", f"{var_p_c:+.1f}% vs act.")
+            c2.metric(f"{prod_b}", f"${n_p_b:.0f}", f"{var_p_b:+.1f}% vs act.")
             c3.metric("INDEX PRECIO", f"{idx_des_nue}", f"{idx_des_nue - idx_des_ant} pts")
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -882,21 +887,18 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             st.markdown('<div class="report-card">', unsafe_allow_html=True)
             st.write("⚖️ **ANÁLISIS DE EFICIENCIA (VALOR $/KG)**")
             c1, c2, c3 = st.columns(3)
-            c1.metric(f"$/Kg {comp_a_mover}", f"${pkg_c_nuevo:.2f}")
-            c2.metric(f"$/Kg {prod_b}", f"${pkg_b_nuevo:.2f}", f"{n_g_b}g")
+            c1.metric(f"$/Kg {comp_a_mover}", f"${pkg_c_nuevo:.2f}", f"{var_pkg_c:+.1f}% efec.")
+            c2.metric(f"$/Kg {prod_b}", f"${pkg_b_nuevo:.2f}", f"{var_pkg_b:+.1f}% efec.")
             c3.metric("INDEX $/KG", f"{idx_pkg_nue}", f"{idx_pkg_nue - idx_pkg_ant} pts")
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # Botón para Guardar Escenario
         if st.button("📸 Guardar Snapshot del Escenario"):
             nuevo_snap = {
                 "Escenario": f"Esc {len(st.session_state.snapshots)+1}",
                 "Producto": prod_b,
                 "vs Rival": comp_a_mover,
-                "Precio B": n_p_b,
-                "Gramos B": n_g_b,
-                "Precio C": n_p_c,
-                "Gramos C": n_g_c,
+                "Precio B": n_p_b, "Gramos B": n_g_b,
+                "Precio C": n_p_c, "Gramos C": n_g_c,
                 "Index Desem.": idx_des_nue,
                 "Index $/Kg": idx_pkg_nue
             }
@@ -907,7 +909,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         st.markdown("---")
         st.markdown("#### 🛡️ Ingeniería de Producto: Alternativas para Index 92")
         
-        def a_psicologico_estricto(p_target, p_comp, lider):
+        def a_psicologico_estricto(p_target, p_comp):
             puntos = [10, 12, 15, 18, 20, 22, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80]
             sug = min(puntos, key=lambda x: abs(x - p_target))
             lider_occ = df_sim[df_sim["Ocasión"] == oca_sim].sort_values("SOM (%)", ascending=False).iloc[0]
@@ -917,7 +919,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             return sug
 
         p_tec = (pkg_c_nuevo * 0.92) * (n_g_b / 1000)
-        p_final = a_psicologico_estricto(p_tec, n_p_c, False)
+        p_final = a_psicologico_estricto(p_tec, n_p_c)
         g_final = int(5 * round(((n_p_b / (pkg_c_nuevo * 0.92)) * 1000) / 5))
 
         col_a, col_b = st.columns(2)
@@ -928,7 +930,6 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             st.info(f"**Escenario B: Mantener Precio de ${n_p_b}**\n\nContenido Sugerido: **{g_final}g**")
             st.caption(f"Index $/Kg Proyectado: {int(round(((n_p_b/(g_final/1000))/pkg_c_nuevo)*100))}")
 
-    # --- TABLA DE HISTORIAL (SNAPSHOTS) ---
     if st.session_state.snapshots:
         st.write("---")
         st.markdown("### 📋 Historial de Escenarios Guardados")
