@@ -525,13 +525,13 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
 
-# --- 10. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA (VERSIÓN FINAL) ---
+# --- 10. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA (FIXED FORMAT) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("🚀 Sugerencias / Observaciones en base al Mercado")
     
     df_p = st.session_state.data.copy()
-    # Conversión robusta a números para evitar errores de cálculo
+    # Aseguramos conversión numérica
     for c in ["Precio ($)", "SOM (%)", "Precio por Kg ($)"]:
         df_p[c] = pd.to_numeric(df_p[c], errors='coerce').fillna(0)
 
@@ -572,7 +572,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         return f"{int((p_target/(pkg_ref*0.95))*1000)}g - {int((p_target/(pkg_ref*0.85))*1000)}g"
 
     hallazgos = []
-    vistos = set() # Evita duplicidad de alertas
+    vistos = set()
 
     try:
         pesos_oca = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
@@ -582,17 +582,16 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         if len(df_b_global) >= 2:
             for i in range(len(df_b_global) - 1):
                 p1, p2 = df_b_global.iloc[i]["Precio ($)"], df_b_global.iloc[i+1]["Precio ($)"]
-                # Si el salto entre dos productos Barcel es mayor a $10
                 if (p2 - p1) > 10:
                     id_gap = f"GAP_{int(p1)}_{int(p2)}"
                     if id_gap not in vistos:
                         p_sug = ajustar_precio_psicologico((p1 + p2) / 2)
-                        # FIX: Forzamos int() para evitar el .0 y mejorar la lectura visual
+                        # SOLUCIÓN: Usamos :.0f para forzar la eliminación del decimal en el texto
                         hallazgos.append({
                             "Prioridad": "BAJA", "Tipo": "ESCALÓN DE PRECIO", "Ocasión": "PORTAFOLIO GLOBAL",
-                            "Msg": f"Hueco detectado entre ${int(p1)} y ${int(p2)}",
-                            "Detalle": f"Salto de ${int(p2-p1)} en la escalera. Riesgo de fuga de transacciones.",
-                            "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **${int(p_sug)}**."
+                            "Msg": f"Hueco detectado entre ${p1:.0f} y ${p2:.0f}",
+                            "Detalle": f"Salto de ${p2-p1:.0f} en la escalera. Riesgo de fuga de transacciones.",
+                            "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **${p_sug:.0f}**."
                         })
                         vistos.add(id_gap)
 
@@ -607,20 +606,16 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             lider_abs = df_oca.loc[df_oca["SOM (%)"].idxmax()]
             lider_c = df_comp.sort_values("SOM (%)", ascending=False).iloc[0] if not df_comp.empty else None
 
-            # 1. White Space (Barcel no está presente en la ocasión)
             if df_barcel.empty and lider_c is not None:
                 p_sug = ajustar_precio_psicologico(lider_c["Precio ($)"])
                 hallazgos.append({
                     "Prioridad": "ALTA" if peso_seg > 15 else "MEDIA", "Tipo": "WHITE SPACE", "Ocasión": oca,
                     "Msg": f"Barcel no participa ({peso_seg:.1f}% Occ)",
                     "Detalle": f"Segmento dominado por {lider_abs['Producto']}.",
-                    "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(p_sug, lider_c['Precio por Kg ($)'])}** a **${int(p_sug)}**."
+                    "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(p_sug, lider_c['Precio por Kg ($)'])}** a **${p_sug:.0f}**."
                 })
-
-            # 2. Duelos y Liderazgo (Barcel está presente)
             else:
                 for _, row_b in df_barcel.iterrows():
-                    # Escenario: Barcel es Líder absoluto de la ocasión
                     if row_b["Producto"] == lider_abs["Producto"] and lider_c is not None:
                         idx = int((row_b["Precio por Kg ($)"] / lider_c["Precio por Kg ($)"]) * 100)
                         if idx < 95:
@@ -630,14 +625,11 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                                 "Detalle": f"Index {idx} vs competidor. Oportunidad de rentabilidad.",
                                 "Accion": f"📈 **Modo Líder:** Evaluar ajuste a **{calcular_rango_g(row_b['Precio ($)'], lider_c['Precio por Kg ($)'])}**."
                             })
-                    # Escenario: Barcel es Seguidor (Duelo directo)
                     elif lider_c is not None:
                         marca_b = identificar_marca(row_b["Producto"])
                         rivales = df_comp[df_comp.apply(lambda x: es_rival_de(x["Producto"], marca_b), axis=1)]
-                        # Seleccionamos al rival más fuerte o al líder de categoría
                         bench = rivales.sort_values("SOM (%)", ascending=False).iloc[0] if not rivales.empty else lider_c
                         idx = int((row_b["Precio por Kg ($)"] / bench["Precio por Kg ($)"]) * 100)
-                        
                         if idx > 95:
                             hallazgos.append({
                                 "Prioridad": "ALTA", "Tipo": f"DUELO vs {bench['Producto']}", "Ocasión": oca,
@@ -645,12 +637,10 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                                 "Detalle": f"Index {idx} vs rival. Riesgo de pérdida de preferencia.",
                                 "Accion": f"⚖️ **R&D:** Ajustar a **{calcular_rango_g(row_b['Precio ($)'], bench['Precio por Kg ($)'])}**."
                             })
-
     except Exception as e: st.error(f"Error en Ultra 2.6: {e}")
 
-    # --- RENDERIZADO VISUAL DE TARJETAS ---
+    # --- RENDERIZADO VISUAL ---
     if hallazgos:
-        # Ordenamos por prioridad: ALTA (Rojo) -> MEDIA (Amarillo) -> BAJA (Azul)
         hallazgos.sort(key=lambda x: {"ALTA": 0, "MEDIA": 1, "BAJA": 2}.get(x["Prioridad"], 2))
         for h in hallazgos:
             with st.container(border=True):
@@ -667,7 +657,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     st.success(f"🧪 **Sugerencia:**\n\n{h['Accion']}")
     else:
         st.balloons()
-        st.success("✅ **Portafolio en Paridad Optimizada.** No se detectaron desviaciones.")
+        st.success("✅ **Portafolio en Paridad Optimizada.**")
 
 # --- 11. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO (V4: FIX ARQUITECTURA) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
@@ -734,7 +724,6 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown("---")
                 st.write("**💡 Veredicto:** Priorizar blindaje en segmentos donde el rival tiene ventaja competitiva en gramaje.")
                 st.markdown('</div>', unsafe_allow_html=True)
-
 
 
 
