@@ -625,10 +625,10 @@ PLANTILLAS = {
        
        # HAMBRE
        {"Producto": "Kacang 110g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 35.0, "Gramaje (g)": 110, "SOM (%)": 12.3},
-       {"Producto": "Hot Nuts 100g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 35.0, "Gramaje (g)": 100, "SOM (%)": 18.4},
+       {"Producto": "Hot Nuts 100g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 35.0, "Gramaje (g)": 100, "SOM (%)": 18.4},
        
        # FAMILIAR
-       {"Producto": "Hot Nuts 160g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 47.0, "Gramaje (g)": 160, "SOM (%)": 9.2},
+       {"Producto": "Hot Nuts 160g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 47.0, "Gramaje (g)": 160, "SOM (%)": 9.2},
    ],
    "CNV - CACAHUATE FRITO": [
         # INDIVIDUAL
