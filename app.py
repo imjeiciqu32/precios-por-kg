@@ -691,6 +691,46 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             use_container_width=True
         )
 
+# --- 13. VISUALIZACIÓN ESTRATÉGICA: MAPA DE DUELOS (BURBUJAS) ---
+if modo == "Price Ladder" and not st.session_state.data.empty:
+    st.divider()
+    st.subheader("📊 Mapa Estratégico: Precio vs. Valor (SOM)")
+    
+    import plotly.express as px
+
+    df_plot = st.session_state.data.copy()
+    # Limpieza rápida para gráfica
+    df_plot["Precio ($)"] = pd.to_numeric(df_plot["Precio ($)"], errors='coerce')
+    df_plot["Precio por Kg ($)"] = pd.to_numeric(df_plot["Precio por Kg ($)"], errors='coerce')
+    df_plot["SOM (%)"] = pd.to_numeric(df_plot["SOM (%)"], errors='coerce')
+
+    fig = px.scatter(
+        df_plot,
+        x="Precio por Kg ($)",
+        y="Precio ($)",
+        size="SOM (%)",
+        color="Fabricante",
+        hover_name="Producto",
+        text="Producto",
+        color_discrete_map={"BARCEL": "#E20613", "SABRITAS": "#FFD700", "PEPSICO": "#004B91"},
+        title="Posicionamiento de Valor: Barcel vs Competencia",
+        labels={"Precio por Kg ($)": "Eficiencia (Precio/Kg)", "Precio ($)": "Punto de Precio (Desembolso)"},
+        template="plotly_white",
+        size_max=60
+    )
+
+    fig.update_traces(textposition='top center')
+    fig.update_layout(height=600, showlegend=True)
+
+    # Añadimos líneas de referencia para los "Magic Prices"
+    for p in [15, 25, 35, 50]:
+        fig.add_hline(y=p, line_dash="dot", line_color="gray", annotation_text=f"${p}")
+
+    st.plotly_chart(fig, use_container_width=True)
+    
+    st.caption("💡 **Cómo leer este mapa:** Las burbujas más grandes son los líderes. Si Barcel está muy a la derecha del competidor en el mismo nivel de precio, es 'caro' por gramo (baja eficiencia).")
+
+
 # --- 12. SIMULADOR DE RESPUESTA TÁCTICA (ESCENARIOS DE ALZA) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
