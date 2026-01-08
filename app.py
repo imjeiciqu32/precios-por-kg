@@ -907,7 +907,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
         # --- PARTE 3: ALTERNATIVAS R&D ---
         st.markdown("---")
-        st.markdown("#### 🛡️ Ingeniería de Producto: Alternativas para Index 92")
+        st.markdown("#### 🛡️ Ingeniería de Producto: Alternativas para un Index (85-95) ")
         
         def a_psicologico_estricto(p_target, p_comp):
             puntos = [10, 12, 15, 18, 20, 22, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80]
