@@ -691,7 +691,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             use_container_width=True
         )
 
-# --- 13. VISUALIZACIÓN ESTRATÉGICA PRO: MAPA DE VALOR DINÁMICO ---
+# --- 13. VISUALIZACIÓN ESTRATÉGICA PRO: MAPA DE VALOR LIMPIO ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("📊 Mapa Estratégico de Valor: Barcel vs Competencia")
@@ -702,34 +702,38 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
     df_plot = st.session_state.data.copy()
     
-    # 1. Limpieza y preparación
+    # 1. Limpieza y preparación de datos numéricos
     for c in ["Precio ($)", "Precio por Kg ($)", "SOM (%)"]:
         df_plot[c] = pd.to_numeric(df_plot[c], errors='coerce').fillna(0)
 
-    # 2. Lógica de Colores Personalizada
+    # 2. Lógica de Colores Personalizada (Barcel Azul, Sabritas Amarillo, Otros Gris, Propuesta Morado)
     def asignar_color(row):
         fab = str(row["Fabricante"]).upper()
         prod = str(row["Producto"]).upper()
-        if "PROPUESTA" in prod or "SUGERIDO" in prod: return "PROPUESTA"
-        if "BARCEL" in fab: return "BARCEL"
-        if "SABRITAS" in fab or "PEPSICO" in fab: return "SABRITAS"
+        # Si el nombre del producto contiene "PROPUESTA" (útil para simulaciones)
+        if "PROPUESTA" in prod or "SUGERIDO" in prod: 
+            return "PROPUESTA"
+        if "BARCEL" in fab: 
+            return "BARCEL"
+        if "SABRITAS" in fab or "PEPSICO" in fab: 
+            return "SABRITAS"
         return "OTROS"
 
     df_plot["Categoria_Color"] = df_plot.apply(asignar_color, axis=1)
 
-    # 3. Filtro por Ocasión
+    # 3. Filtro por Ocasión para limpiar la vista
     ocasiones = ["TODAS"] + sorted(df_plot["Ocasión"].unique().tolist())
-    oca_selected = st.selectbox("🎯 Selecciona Momento de Consumo:", ocasiones, key="filtro_oca_viz")
+    oca_selected = st.selectbox("🎯 Selecciona Momento de Consumo:", ocasiones, key="filtro_oca_viz_clean")
     
     if oca_selected != "TODAS":
         df_plot = df_plot[df_plot["Ocasión"] == oca_selected]
 
     if not df_plot.empty:
-        # Jittering para evitar solapamiento
+        # Jittering: Pequeño ruido en el eje Y para separar burbujas con el mismo precio exacto
         stdev = (df_plot["Precio ($)"].std() * 0.03) if len(df_plot) > 1 else 0.5
         df_plot["Precio_Jitter"] = df_plot["Precio ($)"] + np.random.uniform(-stdev, stdev, size=len(df_plot))
 
-        # Mapa de colores solicitado
+        # Mapa de colores solicitado por el usuario
         color_map = {
             "BARCEL": "#002366",    # Azul Fuerte
             "SABRITAS": "#FFD700",  # Amarillo
@@ -737,6 +741,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             "PROPUESTA": "#800080"  # Morado
         }
 
+        # Creación del gráfico Pro
         fig = px.scatter(
             df_plot,
             x="Precio por Kg ($)",
@@ -747,40 +752,61 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             text="Producto",
             color_discrete_map=color_map,
             size_max=55,
-            labels={"Precio por Kg ($)": "Precio por Kg ($)", "Precio_Jitter": "Desembolso ($)"},
+            labels={
+                "Precio por Kg ($)": "Eficiencia (Precio/Kg)", 
+                "Precio_Jitter": "Desembolso ($)",
+                "Categoria_Color": "Leyenda"
+            },
             custom_data=["Precio ($)", "SOM (%)", "Ocasión"]
         )
 
-        # Estilo de burbujas y etiquetas
+        # Ajuste de etiquetas y hover para que no estorben
         fig.update_traces(
             textposition='top center',
             marker=dict(line=dict(width=1, color='white')),
-            hovertemplate="<b>%{hovertext}</b><br>Actual: $%{customdata[0]:.2f}<br>SOM: %{customdata[1]:.1f}%<extra></extra>"
+            hovertemplate="<b>%{hovertext}</b><br>" +
+                          "Ocasión: %{customdata[2]}<br>" +
+                          "Precio Real: $%{customdata[0]:.2f}<br>" +
+                          "Precio/Kg: $%{x:.2f}<br>" +
+                          "SOM: %{customdata[1]:.1f}%<extra></extra>"
         )
 
-        # Diseño del Layout
+        # Configuración Pro del Layout (Ejes con $)
         fig.update_layout(
             template="plotly_white",
-            height=700,
-            xaxis=dict(title="<b>Eficiencia (Precio/Kg)</b>", tickprefix="$", showgrid=True),
-            yaxis=dict(title="<b>Punto de Precio (Eje Y con $)</b>", tickprefix="$", showgrid=True),
-            legend=dict(title="Segmentos", orientation="h", y=1.1, x=0.5, xanchor="center")
+            height=750,
+            xaxis=dict(
+                title="<b>Eficiencia de Valor (Precio por Kg)</b>", 
+                tickprefix="$", 
+                showgrid=True,
+                gridcolor='#F0F0F0'
+            ),
+            yaxis=dict(
+                title="<b>Punto de Precio (Desembolso)</b>", 
+                tickprefix="$", 
+                showgrid=True,
+                gridcolor='#F0F0F0'
+            ),
+            legend=dict(
+                orientation="h", 
+                yanchor="bottom", 
+                y=1.02, 
+                xanchor="center", 
+                x=0.5
+            )
         )
 
-        # PLUS: Línea de "Fair Price" (Tendencia)
-        # Una línea simple que cruza para ver quién está fuera de mercado
-        if len(df_plot) > 1:
-            z = np.polyfit(df_plot["Precio por Kg ($)"], df_plot["Precio ($)"], 1)
-            p = np.poly1d(z)
-            x_range = np.linspace(df_plot["Precio por Kg ($)"].min(), df_plot["Precio por Kg ($)"].max(), 10)
-            fig.add_scatter(x=x_range, y=p(x_range), mode='lines', name='Tendencia Mercado', 
-                            line=dict(color='rgba(100,100,100,0.2)', dash='dot'), showlegend=False)
+        # Líneas sutiles de referencia para los umbrales de precio (Magic Prices)
+        max_p = df_plot["Precio ($)"].max()
+        for p in [15, 25, 35, 50, 70, 100]:
+            if p <= max_p + 15:
+                fig.add_hline(y=p, line_dash="dot", line_color="#E0E0E0", line_width=1)
 
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.warning("Sin datos para esta selección.")
+        st.warning("No hay datos para mostrar en esta selección.")
 
-    st.caption("🔹 **Azul:** Barcel | 🟡 **Amarillo:** Sabritas | ⚪ **Gris:** Otros | 🟣 **Morado:** Tus nuevas propuestas.")
+    st.caption("💡 **Interpretación:** Las burbujas moradas representan las propuestas de ajuste. El objetivo es que Barcel (Azul) no esté más a la derecha que Sabritas (Amarillo) en el mismo
 
 # --- 12. SIMULADOR DE RESPUESTA TÁCTICA (ESCENARIOS DE ALZA) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
