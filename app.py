@@ -525,13 +525,12 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
 
-# --- 12. ANALISTA MAESTRO ULTRA 2.6: CORRECCIÓN DE GAPS GLOBALES ---
+# --- 12. ANALISTA MAESTRO ULTRA 2.6: GAPS GLOBALES Y PRECIOS PSICOLÓGICOS ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("🚀 Inteligencia de Mercado: Duelos Directos y Liderazgo Barcel")
     
     df_p = st.session_state.data.copy()
-    # Aseguramos conversión numérica antes de cualquier cálculo
     cols_num = ["Precio ($)", "SOM (%)", "Precio por Kg ($)"]
     for c in cols_num: 
         df_p[c] = pd.to_numeric(df_p[c], errors='coerce').fillna(0)
@@ -551,6 +550,12 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         "PIX":["CHEETOS TORCIDITOS","TORCIDITOS"]
     }
 
+    # Función para ajustar a Puntos de Precio Psicológicos en México
+    def ajustar_precio_psicologico(p):
+        puntos_magicos = [10, 12, 15, 18, 20, 22, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80, 90, 100]
+        # Retorna el punto mágico más cercano al precio calculado
+        return min(puntos_magicos, key=lambda x: abs(x - p))
+
     def identificar_marca(n):
         n = str(n).upper()
         for m in mapa_rivales.keys():
@@ -566,6 +571,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
     def calcular_rango_g(p_target, pkg_ref):
         if pkg_ref <= 0: return "N/A"
+        # Mantenemos la eficiencia de costo por kilo para el nuevo gramaje
         g_min = int((p_target / (pkg_ref * 0.95)) * 1000)
         g_max = int((p_target / (pkg_ref * 0.85)) * 1000)
         return f"{g_min}g - {g_max}g"
@@ -573,8 +579,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
     hallazgos = []
 
     try:
-        # --- 1. INTELIGENCIA DE ESCALONES (ANÁLISIS GLOBAL DE BARCEL) ---
-        # Extraemos todos los productos de Barcel sin importar la ocasión
+        # --- 1. INTELIGENCIA DE ESCALONES (ANÁLISIS GLOBAL) CON PRECIO PSICOLÓGICO ---
         df_b_global = df_p[df_p["Fabricante"] == "BARCEL"].sort_values("Precio ($)")
         
         if len(df_b_global) >= 2:
@@ -583,17 +588,18 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 p2 = df_b_global.iloc[i+1]["Precio ($)"]
                 gap = p2 - p1
                 
-                # Si el hueco entre dos precios de Barcel es mayor a $10
                 if gap > 10:
-                    precio_mid = (p1 + p2) / 2
-                    # Usamos el Precio/Kg del producto más pequeño como referencia de eficiencia
+                    precio_teorico = (p1 + p2) / 2
+                    # APLICACIÓN DE PRECIO PSICOLÓGICO
+                    precio_final = ajustar_precio_psicologico(precio_teorico)
                     pkg_ref = df_b_global.iloc[i]["Precio por Kg ($)"]
+                    
                     hallazgos.append({
                         "Prioridad": "BAJA", "Tipo": "ESCALÓN DE PRECIO", 
                         "Ocasión": "PORTAFOLIO GLOBAL",
-                        "Msg": f"Hueco detectado entre ${p1} y ${p2}",
-                        "Detalle": f"Salto de ${gap:.0f} en la escalera de Barcel. Riesgo de pérdida de transacciones.",
-                        "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(precio_mid, pkg_ref)}** a **${int(precio_mid)}**."
+                        "Msg": f"Hueco crítico entre ${p1} y ${p2}",
+                        "Detalle": f"Salto de ${gap:.0f}. Sugerimos punto de precio psicológico para maximizar rotación.",
+                        "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(precio_final, pkg_ref)}** a **${int(precio_final)}**."
                     })
 
         # --- 2. LÓGICA POR OCASIÓN (DUELOS Y LIDERAZGO) ---
@@ -624,20 +630,21 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                             hallazgos.append({
                                 "Prioridad": "MEDIA", "Tipo": "DOMINANCIA Y MARGEN", "Ocasión": oca,
                                 "Msg": f"Barcel lidera con {row_b['Producto']}",
-                                "Detalle": f"Index {idx_vs} vs seguidor. Oportunidad de rentabilidad.",
+                                "Detalle": f"Index {idx_vs} vs competidor. Oportunidad de captura de valor.",
                                 "Accion": f"📈 **Modo Líder:** Evaluar ajuste a **{calcular_rango_g(row_b['Precio ($)'], lider_comp['Precio por Kg ($)'])}**."
                             })
             
-            # CASO 2: SIN PARTICIPACIÓN
+            # CASO 2: WHITE SPACE
             if df_barcel.empty:
                 pkg_ref = lider_comp["Precio por Kg ($)"] if lider_comp is not None else 0
                 c_min = min(comp_precios) if comp_precios else 0
+                precio_f = ajustar_precio_psicologico(c_min)
                 hallazgos.append({
                     "Prioridad": "ALTA" if imp_tag != "BAJA" else "MEDIA",
                     "Tipo": "WHITE SPACE", "Ocasión": oca,
                     "Msg": f"Barcel no participa ({peso_seg:.1f}% SOM)",
-                    "Detalle": f"Segmento dominado por {lider_absoluto['Producto']}.",
-                    "Accion": f"⚡ **Entrada:** Sugerido **{calcular_rango_g(c_min, pkg_ref)}** a **${int(c_min)}**."
+                    "Detalle": f"Competencia inicia en ${c_min}. Sugerimos entrada en punto de precio óptimo.",
+                    "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(precio_f, pkg_ref)}** a **${int(precio_f)}**."
                 })
             
             # CASO 3: DUELOS
@@ -653,8 +660,8 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                         hallazgos.append({
                             "Prioridad": "ALTA", "Tipo": f"DUELO: vs {bench['Producto']}", "Ocasión": oca,
                             "Msg": f"{row_b['Producto']} fuera de rango",
-                            "Detalle": f"Index {idx} vs rival. Líder: {lider_absoluto['Producto']}.",
-                            "Accion": f"⚖️ **R&D:** Ajustar a **{calcular_rango_g(row_b['Precio ($)'], bench['Precio por Kg ($)'])}**."
+                            "Detalle": f"Index {idx} vs rival. Riesgo de pérdida de preferencia.",
+                            "Accion": f"⚖️ **R&D:** Ajustar a **{calcular_rango_g(row_b['Precio ($)'], bench['Precio por Kg ($)'])}** para paridad."
                         })
 
     except Exception as e: st.error(f"Error en Ultra 2.6: {e}")
