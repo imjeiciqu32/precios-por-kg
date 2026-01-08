@@ -525,10 +525,10 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
 
-# --- 12. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA ---
+# --- 10. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
-    st.subheader("🚀 Inteligencia de Mercado: Duelos Directos y Liderazgo Barcel")
+    st.subheader("🚀 Sugerencias / Observaciones en base al Mercado")
     
     df_p = st.session_state.data.copy()
     # Conversión robusta a números
@@ -610,7 +610,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 p_sug = ajustar_precio_psicologico(lider_c["Precio ($)"])
                 hallazgos.append({
                     "Prioridad": "ALTA" if peso_seg > 15 else "MEDIA", "Tipo": "WHITE SPACE", "Ocasión": oca,
-                    "Msg": f"Barcel no participa (Aporte Occ: {peso_seg:.1f}%)",
+                    "Msg": f"Barcel no participa ({peso_seg:.1f}% Occ)",
                     "Detalle": f"Segmento dominado por {lider_abs['Producto']}.",
                     "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(p_sug, lider_c['Precio por Kg ($)'])}** a **${int(p_sug)}**."
                 })
