@@ -572,7 +572,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
     hallazgos = []
 
     try:
-        # 1. Calculamos el peso total de cada ocasión (esto se mostrará en todas las tarjetas)
+        # 1. Calculamos el peso total de cada ocasión
         pesos_oca = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
         for oca in df_p["Ocasión"].unique():
@@ -582,20 +582,19 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             
             if df_comp.empty and df_barcel.empty: continue
 
-            # Valor de aporte de la ocasión (fijo para este loop)
+            # Valor de aporte de la ocasión
             peso_seg = pesos_oca.get(oca, 0)
             imp_tag = "ALTA" if peso_seg > 20 else "MEDIA" if peso_seg > 5 else "BAJA"
             
-            # --- CORRECCIÓN LIDERAZGO ---
-            # Buscamos al líder real de TODA la ocasión (incluyendo competencia)
+            # --- CORRECCIÓN LIDERAZGO POR SKU ---
+            # El SKU con el SOM más alto de toda la ocasión
             lider_absoluto = df_oca.sort_values("SOM (%)", ascending=False).iloc[0]
-            # Solo somos líderes si Barcel tiene el SOM más alto Y una ventaja clara
             barcel_es_lider = (lider_absoluto["Fabricante"] == "BARCEL")
             
             lider_comp = df_comp.sort_values("SOM (%)", ascending=False).iloc[0] if not df_comp.empty else None
             comp_precios = sorted(df_comp["Precio ($)"].unique()) if not df_comp.empty else []
 
-            # --- CASO 1: BARCEL LÍDER REAL ---
+            # --- CASO 1: BARCEL LÍDER REAL (POR SKU) ---
             if barcel_es_lider:
                 seguidor = df_comp.sort_values("SOM (%)", ascending=False).iloc[0] if not df_comp.empty else None
                 for _, row_b in df_barcel.iterrows():
@@ -604,8 +603,8 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                         if idx_vs_seguidor < 95:
                             hallazgos.append({
                                 "Prioridad": "MEDIA", "Tipo": "DOMINANCIA Y MARGEN", "Ocasión": oca,
-                                "Msg": f"Barcel lidera con {row_b['Producto']} (Index {idx_vs_seguidor} vs {seguidor['Producto']})",
-                                "Detalle": f"Como líderes en este segmento ({peso_seg:.1f}% SOM), podemos optimizar el valor.",
+                                "Msg": f"Barcel lidera con {row_b['Producto']} (Aporte Occ: {peso_seg:.1f}%)",
+                                "Detalle": f"Index {idx_vs_seguidor} vs {seguidor['Producto']}. Como líderes del segmento, podemos optimizar el valor.",
                                 "Accion": f"📈 **Modo Líder:** Evaluar ajuste a **{calcular_rango_g(row_b['Precio ($)'], seguidor['Precio por Kg ($)'])}**."
                             })
             
@@ -621,7 +620,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     "Accion": f"⚡ **Entrada:** Sugerido **{calcular_rango_g(c_min, pkg_ref)}** a **${int(c_min)}**."
                 })
             
-            # --- CASO 3: DUELOS Y GAPS (Si no somos líderes o para productos específicos) ---
+            # --- CASO 3: DUELOS Y GAPS (Si no somos líderes por SKU) ---
             elif not barcel_es_lider:
                 precios_b = sorted(df_barcel["Precio ($)"].unique())
                 b_min = min(precios_b)
@@ -649,13 +648,29 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     if idx > 95:
                         hallazgos.append({
                             "Prioridad": "ALTA", "Tipo": f"DUELO: vs {bench['Producto']}", "Ocasión": oca,
-                            "Msg": f"{row_b['Producto']} fuera de rango (Index {idx})",
-                            "Detalle": f"Aportación de Ocasión: {peso_seg:.1f}%. Valor débil vs rival.",
+                            "Msg": f"{row_b['Producto']} fuera de rango (Aporte Occ: {peso_seg:.1f}%)",
+                            "Detalle": f"Index {idx} vs rival. Propuesta de valor débil frente al competidor.",
                             "Accion": f"⚖️ **R&D:** Ajustar a **{rango}** para recuperar paridad."
                         })
 
     except Exception as e: st.error(f"Error en Ultra 2.6: {e}")
 
+    # --- RENDERIZADO VISUAL ---
+    if hallazgos:
+        hallazgos.sort(key=lambda x: {"ALTA": 0, "MEDIA": 1, "BAJA": 2}.get(x["Prioridad"], 2))
+        for h in hallazgos:
+            with st.container(border=True):
+                c1, c2, c3 = st.columns([1.5, 3.5, 3])
+                with c1:
+                    if h["Prioridad"] == "ALTA": st.error(f"🔴 **PRIORIDAD**\n\n{h['Tipo']}")
+                    elif h["Prioridad"] == "MEDIA": st.warning(f"🟡 **ATENCIÓN**\n\n{h['Tipo']}")
+                    else: st.info(f"🔵 **INFO**\n\n{h['Tipo']}")
+                with c2:
+                    st.markdown(f"#### {h['Ocasión']}")
+                    st.write(f"**{h['Msg']}**")
+                    st.caption(h['Detalle'])
+                with c3:
+                    st.success(f"🧪 **Sugerencia:**\n\n{h['Accion']}")
     # --- RENDERIZADO VISUAL ---
     if hallazgos:
         hallazgos.sort(key=lambda x: {"ALTA": 0, "MEDIA": 1, "BAJA": 2}.get(x["Prioridad"], 2))
