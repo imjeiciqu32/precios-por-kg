@@ -665,25 +665,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         st.balloons()
         st.success("✅ **Portafolio en Paridad Optimizada.**")
 
-    # --- RENDERIZADO VISUAL ---
-    if hallazgos:
-        hallazgos.sort(key=lambda x: {"ALTA": 0, "MEDIA": 1, "BAJA": 2}.get(x["Prioridad"], 2))
-        for h in hallazgos:
-            with st.container(border=True):
-                col_i, col_t, col_a = st.columns([1.5, 3.5, 3])
-                with col_i:
-                    if h["Prioridad"] == "ALTA": st.error(f"🔴 **{h['Tipo']}**")
-                    elif h["Prioridad"] == "MEDIA": st.warning(f"🟡 **{h['Tipo']}**")
-                    else: st.info(f"🔵 **{h['Tipo']}**")
-                with col_t:
-                    st.markdown(f"#### {h['Ocasión']}")
-                    st.write(f"**{h['Msg']}**")
-                    st.caption(h['Detalle'])
-                with col_a:
-                    st.success(f"🧪 **Sugerencia:**\n\n{h['Accion']}")
-    else:
-        st.balloons()
-        st.success("✅ **Portafolio en Paridad Optimizada.**")
+
         
 # --- GENERADOR DE REPORTE ESTRATÉGICO (PDF) ---
     if hallazgos:
