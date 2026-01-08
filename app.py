@@ -665,6 +665,72 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         st.balloons()
         st.success("✅ **Portafolio en Paridad Optimizada.**")
 
+# --- 11. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO (V1) ---
+if modo == "Price Ladder" and not st.session_state.data.empty:
+    st.divider()
+    
+    # 1. Botón de Activación
+    if st.button("📄 Generar Resumen Ejecutivo para Dirección"):
+        with st.spinner("Sintetizando estrategia de portafolio..."):
+            
+            # 2. Recolectamos la data de los 'hallazgos' generados en el bloque 10
+            # (Asegúrate de que la variable 'hallazgos' sea accesible)
+            
+            if not hallazgos:
+                st.success("✅ **Estado de Mercado:** El portafolio actual no presenta desviaciones críticas. Mantener estrategia de precios vigente.")
+            else:
+                st.markdown("""
+                    <style>
+                    .exec-box {
+                        background-color: #ffffff; padding: 25px; border-radius: 15px;
+                        border: 2px solid #002366; color: #002366; line-height: 1.6;
+                    }
+                    </style>
+                """, unsafe_allow_html=True)
+                
+                # 3. Lógica de Síntesis del Consultor
+                st.markdown('<div class="exec-box">', unsafe_allow_html=True)
+                st.subheader("📝 Resumen Ejecutivo: Estrategia de Precios y Portafolio")
+                
+                # Clasificamos hallazgos para la narrativa
+                white_spaces = [h for h in hallazgos if h["Tipo"] == "WHITE SPACE"]
+                duelos = [h for h in hallazgos if "DUELO" in h["Tipo"]]
+                gaps = [h for h in hallazgos if h["Tipo"] == "ESCALÓN DE PRECIO"]
+
+                # --- Sección A: Diagnóstico ---
+                st.markdown("### 🔍 Diagnóstico de Situación")
+                total_hallazgos = len(hallazgos)
+                st.write(f"Tras analizar la arquitectura de precios, se han detectado **{total_hallazgos} puntos de intervención** clave. "
+                         f"La prioridad se centra en corregir brechas de valor frente a competidores directos y capturar demanda en segmentos no atendidos.")
+
+                # --- Sección B: Oportunidades de Crecimiento (White Spaces) ---
+                if white_spaces:
+                    st.markdown("#### 🚀 Oportunidades de Expansión (White Spaces)")
+                    for ws in white_spaces[:2]: # Top 2
+                        st.write(f"- En la ocasión **{ws['Ocasión']}**, Barcel presenta una ausencia crítica. "
+                                 f"Se recomienda la entrada inmediata en el escalón de **{ws['Accion'].split('**')[2]}** para bloquear la dominancia del rival.")
+
+                # --- Sección C: Defensa de Precio (Duelos) ---
+                if duelos:
+                    st.markdown("#### 🛡️ Defensa de Valor y Paridad")
+                    for d in duelos[:2]:
+                        st.write(f"- **{d['Ocasión']}:** Existe un riesgo de pérdida de preferencia por Index elevado. "
+                                 f"Es imperativo ejecutar el ajuste sugerido hacia **{d['Accion'].split('**')[1]}** para recuperar competitividad.")
+
+                # --- Sección D: Recomendación Final ---
+                st.markdown("---")
+                st.markdown("### 💡 Recomendación Estratégica Final")
+                if gaps:
+                    st.write("Priorizar la **re-estructuración de la escalera de precios** para evitar fugas de transacciones entre los puntos de precio bajos y medios.")
+                else:
+                    st.write("Focalizar esfuerzos en **eficiencia de gramaje (R&D)** para defender los márgenes sin romper los puntos de precio psicológicos establecidos.")
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                # 4. Botón de Exportación (Simulado)
+                st.download_button("📥 Descargar Reporte (PDF)", data="...", file_name="Resumen_Ejecutivo_Barcel.pdf", disabled=True)
+
+
 
         
 # --- GENERADOR DE REPORTE ESTRATÉGICO (PDF) ---
