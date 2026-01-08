@@ -691,45 +691,100 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             use_container_width=True
         )
 
-# --- 13. VISUALIZACIÓN ESTRATÉGICA: MAPA DE DUELOS (BURBUJAS) ---
+# --- 13. VISUALIZACIÓN ESTRATÉGICA PRO: MAPA DE VALOR INTERACTIVO ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
-    st.subheader("📊 Mapa Estratégico: Precio vs. Valor (SOM)")
+    st.subheader("📊 Mapa Estratégico de Valor: Barcel vs Competencia")
     
     import plotly.express as px
+    import pandas as pd
+    import numpy as np
 
     df_plot = st.session_state.data.copy()
-    # Limpieza rápida para gráfica
-    df_plot["Precio ($)"] = pd.to_numeric(df_plot["Precio ($)"], errors='coerce')
-    df_plot["Precio por Kg ($)"] = pd.to_numeric(df_plot["Precio por Kg ($)"], errors='coerce')
-    df_plot["SOM (%)"] = pd.to_numeric(df_plot["SOM (%)"], errors='coerce')
+    
+    # Limpieza y preparación de datos
+    for c in ["Precio ($)", "Precio por Kg ($)", "SOM (%)"]:
+        df_plot[c] = pd.to_numeric(df_plot[c], errors='coerce').fillna(0)
 
+    # --- PLUS: JITTERING (Evita que las burbujas se encimen totalmente) ---
+    # Añadimos un pequeño ruido aleatorio controlado al eje Y para separar productos con mismo precio
+    stdev = df_plot["Precio ($)"].std() * 0.02
+    df_plot["Precio_Jitter"] = df_plot["Precio ($)"] + np.random.uniform(-stdev, stdev, size=len(df_plot))
+
+    # Definir paleta de colores oficial
+    colores = {"BARCEL": "#E20613", "SABRITAS": "#FFD700", "PEPSICO": "#004B91", "OTROS": "#A0A0A0"}
+
+    # Crear el gráfico pro
     fig = px.scatter(
         df_plot,
         x="Precio por Kg ($)",
-        y="Precio ($)",
+        y="Precio_Jitter", # Usamos el eje con jitter para visibilidad
         size="SOM (%)",
         color="Fabricante",
         hover_name="Producto",
-        text="Producto",
-        color_discrete_map={"BARCEL": "#E20613", "SABRITAS": "#FFD700", "PEPSICO": "#004B91"},
-        title="Posicionamiento de Valor: Barcel vs Competencia",
-        labels={"Precio por Kg ($)": "Eficiencia (Precio/Kg)", "Precio ($)": "Punto de Precio (Desembolso)"},
-        template="plotly_white",
-        size_max=60
+        text="Producto", # Etiquetas visibles
+        color_discrete_map=colores,
+        size_max=50,
+        labels={
+            "Precio por Kg ($)": "Eficiencia de Valor (Precio/Kg)",
+            "Precio_Jitter": "Punto de Precio (Desembolso)",
+            "Fabricante": "Marca"
+        },
+        custom_data=["Precio ($)", "SOM (%)"] # Datos reales para el hover
     )
 
-    fig.update_traces(textposition='top center')
-    fig.update_layout(height=600, showlegend=True)
+    # --- PLUS: FORMATO DE EJES Y ESTILO ---
+    fig.update_traces(
+        textposition='top center',
+        hovertemplate="<b>%{hovertext}</b><br>" +
+                      "Desembolso Real: $%{customdata[0]:.2f}<br>" +
+                      "Precio/Kg: $%{x:.2f}<br>" +
+                      "SOM: %{customdata[1]:.1f}%<extra></extra>"
+    )
 
-    # Añadimos líneas de referencia para los "Magic Prices"
-    for p in [15, 25, 35, 50]:
-        fig.add_hline(y=p, line_dash="dot", line_color="gray", annotation_text=f"${p}")
+    fig.update_layout(
+        template="plotly_white",
+        height=700,
+        xaxis=dict(
+            title="<b>Mayor Eficiencia (Precio/Kg) ⮕</b>",
+            tickprefix="$",
+            showgrid=True,
+            gridcolor='lightgray'
+        ),
+        yaxis=dict(
+            title="<b>Punto de Precio (Desembolso)</b>",
+            tickprefix="$", # PLUS: Símbolo de pesos en eje Y
+            tickformat=".0f",
+            showgrid=True,
+            gridcolor='lightgray'
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
+    )
+
+    # --- PLUS: LÍNEAS DE PRECIO PSICOLÓGICO ---
+    # Añadimos bandas de color sutiles para los niveles de precio clave
+    for precio in [15, 25, 35, 50, 70]:
+        fig.add_hline(y=precio, line_dash="dash", line_color="#D3D3D3", line_width=1)
+        fig.add_annotation(x=df_plot["Precio por Kg ($)"].min(), y=precio, 
+                           text=f"Umbral ${precio}", showarrow=False, 
+                           yshift=10, font=dict(color="gray", size=10))
 
     st.plotly_chart(fig, use_container_width=True)
     
-    st.caption("💡 **Cómo leer este mapa:** Las burbujas más grandes son los líderes. Si Barcel está muy a la derecha del competidor en el mismo nivel de precio, es 'caro' por gramo (baja eficiencia).")
-
+    # Resumen Ejecutivo del Mapa
+    with st.expander("📝 Guía de Lectura Estratégica"):
+        st.write("""
+        * **Eje Vertical (Y):** Es el 'bolsillo' del cliente. Cuanto más arriba, mayor desembolso.
+        * **Eje Horizontal (X):** Es el valor por dinero. Si estás muy a la derecha, eres caro por gramo.
+        * **Tamaño de Burbuja:** Es tu cuota de mercado. Buscamos burbujas grandes en la zona inferior-izquierda.
+        * **Separación:** Si ves productos ligeramente movidos de su línea de precio, es el *Jittering* para que puedas leer los nombres de los que compiten en el mismo nivel.
+        """)
 
 # --- 12. SIMULADOR DE RESPUESTA TÁCTICA (ESCENARIOS DE ALZA) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
