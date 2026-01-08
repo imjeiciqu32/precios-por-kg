@@ -808,18 +808,18 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
     st.caption("💡 **Interpretación:** Las burbujas moradas representan las propuestas de ajuste. El objetivo es que Barcel (Azul) no esté más a la derecha que Sabritas (Amarillo) en el mismo nivel de precio")
 
-# --- 14. SIMULADOR ESTRATÉGICO DIRECTIVO (DASHBOARD FINANCIERO) ---
+# --- 14. SIMULADOR ESTRATÉGICO DIRECTIVO (V5: FLUJO LINEAL Y LIMPIO) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     
-    # CSS para mejorar el look de las métricas (Look Pro)
+    # CSS para el look de tarjetas y métricas
     st.markdown("""
         <style>
         [data-testid="stMetricValue"] { font-size: 1.8rem; font-weight: bold; color: #002366; }
         .report-card { 
             background-color: #f8f9fa; border-radius: 10px; padding: 20px; 
             border-left: 5px solid #002366; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -827,111 +827,100 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
     st.subheader("🧪 Simulador de Escenarios: Paridad y Eficiencia")
     
     df_sim = st.session_state.data.copy()
-    # Asegurar que las columnas sean numéricas para evitar errores de cálculo
     for c in ["Precio ($)", "SOM (%)", "Precio por Kg ($)", "Gramaje (g)"]:
         df_sim[c] = pd.to_numeric(df_sim[c], errors='coerce').fillna(0)
 
     lista_comp = df_sim[df_sim["Fabricante"] != "BARCEL"].sort_values("SOM (%)", ascending=False)
     
     if not lista_comp.empty:
-        col_inp, col_res = st.columns([1.5, 3.5])
+        # --- PARTE 1: ENTRADAS EN HORIZONTAL (Para menos ruido visual) ---
+        st.markdown("##### ⚙️ Configuración del Escenario")
+        c_in1, c_in2, c_in3, c_in4 = st.columns(4)
         
-        with col_inp:
-            st.info("📌 **Entradas de Escenario**")
-            # Selección Benchmark
-            comp_a_mover = st.selectbox("Benchmark Competidor:", lista_comp["Producto"].unique(), key="v4_c_final")
+        with c_in1:
+            comp_a_mover = st.selectbox("Benchmark Competidor:", lista_comp["Producto"].unique(), key="v5_c")
             datos_comp = lista_comp[lista_comp["Producto"] == comp_a_mover].iloc[0]
-            
+        
+        with c_in2:
             p_act_c = datos_comp["Precio ($)"]
             n_p_c = st.number_input(f"Nuevo Precio {comp_a_mover}:", min_value=1.0, value=float(p_act_c + 2.0), step=1.0)
-            
-            # Cálculos Competencia Proyectados
             pkg_c_nuevo = n_p_c / (datos_comp["Gramaje (g)"] / 1000) if datos_comp["Gramaje (g)"] > 0 else 0
-            
-            st.divider()
-            
-            # Selección Barcel
+
+        with c_in3:
             oca_sim = datos_comp["Ocasión"]
             df_barcel_oca = df_sim[(df_sim["Fabricante"] == "BARCEL") & (df_sim["Ocasión"] == oca_sim)]
-            
             if not df_barcel_oca.empty:
-                prod_b = st.selectbox("Producto Barcel a Proteger:", df_barcel_oca["Producto"].unique(), key="v4_b_final")
+                prod_b = st.selectbox("Producto Barcel:", df_barcel_oca["Producto"].unique(), key="v5_b")
                 row_b = df_barcel_oca[df_barcel_oca["Producto"] == prod_b].iloc[0]
-                n_p_b = st.number_input(f"Nuevo Precio Proyectado {prod_b}:", min_value=1.0, value=float(row_b["Precio ($)"]), step=1.0)
-                
-                pkg_b_nuevo = n_p_b / (row_b["Gramaje (g)"] / 1000) if row_b["Gramaje (g)"] > 0 else 0
             else:
-                st.warning(f"No hay productos Barcel en la ocasión: {oca_sim}")
-                st.stop()
+                st.warning(f"Sin Barcel en {oca_sim}"); st.stop()
 
-        with col_res:
-            # --- CÁLCULOS DE INDEX ---
-            idx_des_ant = (row_b["Precio ($)"] / p_act_c) * 100 if p_act_c > 0 else 0
-            idx_des_nue = (n_p_b / n_p_c) * 100 if n_p_c > 0 else 0
-            
-            idx_pkg_ant = (row_b["Precio por Kg ($)"] / datos_comp["Precio por Kg ($)"]) * 100 if datos_comp["Precio por Kg ($)"] > 0 else 0
-            idx_pkg_nue = (pkg_b_nuevo / pkg_c_nuevo) * 100 if pkg_c_nuevo > 0 else 0
+        with c_in4:
+            n_p_b = st.number_input(f"Nuevo Precio {prod_b}:", min_value=1.0, value=float(row_b["Precio ($)"]), step=1.0)
+            pkg_b_nuevo = n_p_b / (row_b["Gramaje (g)"] / 1000) if row_b["Gramaje (g)"] > 0 else 0
 
-            st.markdown(f"### 📊 Diagnóstico de Paridad ({oca_sim})")
-            
-            # TARJETA 1: DESEMBOLSO
-            with st.container():
-                st.markdown('<div class="report-card">', unsafe_allow_html=True)
-                st.write("💰 **ANÁLISIS DE DESEMBOLSO (OUT-OF-POCKET)**")
-                c1, c2, c3 = st.columns(3)
-                c1.metric(f"{comp_a_mover}", f"${n_p_c:.0f}")
-                c2.metric(f"{prod_b}", f"${n_p_b:.0f}", f"{((n_p_b/row_b['Precio ($)'])-1)*100:.1f}%")
-                c3.metric("INDEX PRECIO", f"{idx_des_nue:.0f}", f"{idx_des_nue - idx_des_ant:.1f} pts")
-                st.markdown('</div>', unsafe_allow_html=True)
+        st.divider()
 
-            # TARJETA 2: EFICIENCIA $/KG
-            with st.container():
-                st.markdown('<div class="report-card">', unsafe_allow_html=True)
-                st.write("⚖️ **ANÁLISIS DE EFICIENCIA (VALOR $/KG)**")
-                c1, c2, c3 = st.columns(3)
-                c1.metric(f"$/Kg {comp_a_mover}", f"${pkg_c_nuevo:.2f}")
-                c2.metric(f"$/Kg {prod_b}", f"${pkg_b_nuevo:.2f}", f"{((pkg_b_nuevo/row_b['Precio por Kg ($)'])-1)*100:.1f}%")
-                c3.metric("INDEX $/KG", f"{idx_pkg_nue:.0f}", f"{idx_pkg_nue - idx_pkg_ant:.1f} pts")
-                st.markdown('</div>', unsafe_allow_html=True)
+        # --- PARTE 2: ANÁLISIS DE IMPACTO (TARJETAS GRANDES) ---
+        # Cálculos de Index (Redondeados a Enteros)
+        idx_des_ant = int(round((row_b["Precio ($)"] / p_act_c) * 100)) if p_act_c > 0 else 0
+        idx_des_nue = int(round((n_p_b / n_p_c) * 100)) if n_p_c > 0 else 0
+        idx_pkg_ant = int(round((row_b["Precio por Kg ($)"] / datos_comp["Precio por Kg ($)"]) * 100)) if datos_comp["Precio por Kg ($)"] > 0 else 0
+        idx_pkg_nue = int(round((pkg_b_nuevo / pkg_c_nuevo) * 100)) if pkg_c_nuevo > 0 else 0
 
-            # VEREDICTO BASADO EN LIDERAZGO
-            lider_occ = df_sim[df_sim["Ocasión"] == oca_sim].sort_values("SOM (%)", ascending=False).iloc[0]
-            es_lider = (lider_occ["Fabricante"] == "BARCEL")
+        st.markdown(f"### 📊 Diagnóstico de Paridad ({oca_sim})")
+        
+        # Tarjeta Desembolso
+        with st.container():
+            st.markdown('<div class="report-card">', unsafe_allow_html=True)
+            st.write("💰 **ANÁLISIS DE DESEMBOLSO (OUT-OF-POCKET)**")
+            c1, c2, c3 = st.columns(3)
+            c1.metric(f"{comp_a_mover}", f"${n_p_c:.0f}")
+            c2.metric(f"{prod_b}", f"${n_p_b:.0f}", f"{((n_p_b/row_b['Precio ($)'])-1)*100:.1f}%")
+            c3.metric("INDEX PRECIO", f"{idx_des_nue}", f"{idx_des_nue - idx_des_ant} pts")
+            st.markdown('</div>', unsafe_allow_html=True)
 
-            if not es_lider and n_p_b > n_p_c:
-                st.error(f"❌ **ALERTA COMERCIAL:** Precio proyectado (${n_p_b}) superior al competidor (${n_p_c}) en una ocasión donde NO eres líder.")
-            elif idx_pkg_nue > 103:
-                st.warning("⚠️ **ALERTA DE VALOR:** Estás ofreciendo menos gramaje/valor que la competencia por cada peso pagado.")
-            else:
-                st.success("✅ **ESCENARIO SALUDABLE:** El posicionamiento se mantiene dentro de los rangos de competitividad.")
+        # Tarjeta Eficiencia
+        with st.container():
+            st.markdown('<div class="report-card">', unsafe_allow_html=True)
+            st.write("⚖️ **ANÁLISIS DE EFICIENCIA (VALOR $/KG)**")
+            c1, c2, c3 = st.columns(3)
+            c1.metric(f"$/Kg {comp_a_mover}", f"${pkg_c_nuevo:.2f}")
+            c2.metric(f"$/Kg {prod_b}", f"${pkg_b_nuevo:.2f}", f"{((pkg_b_nuevo/row_b['Precio por Kg ($)'])-1)*100:.1f}%")
+            c3.metric("INDEX $/KG", f"{idx_pkg_nue}", f"{idx_pkg_nue - idx_pkg_ant} pts")
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        # --- SECCIÓN INFERIOR: ALTERNATIVAS R&D ---
+        # Veredicto
+        lider_occ = df_sim[df_sim["Ocasión"] == oca_sim].sort_values("SOM (%)", ascending=False).iloc[0]
+        es_lider = (lider_occ["Fabricante"] == "BARCEL")
+
+        if not es_lider and n_p_b > n_p_c:
+            st.error(f"❌ **ALERTA COMERCIAL:** Precio proyectado (${n_p_b}) superior al competidor (${n_p_c}) en ocasión donde Barcel no lidera.")
+        elif idx_pkg_nue > 103:
+            st.warning("⚠️ **ALERTA DE VALOR:** Tu $/Kg es ineficiente frente al rival.")
+        else:
+            st.success("✅ **ESCENARIO SALUDABLE:** Posicionamiento competitivo.")
+
+        # --- PARTE 3: ALTERNATIVAS R&D ---
         st.markdown("---")
-        st.markdown("#### 🛡️ Ingeniería de Producto: Alternativas para Index $/Kg Objetivo (92)")
+        st.markdown("#### 🛡️ Ingeniería de Producto: Alternativas para Index 92")
         
         def a_psicologico_estricto(p_target, p_comp, lider):
             puntos = [10, 12, 15, 18, 20, 22, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80]
             sug = min(puntos, key=lambda x: abs(x - p_target))
             if not lider and sug > p_comp:
-                p_bajos = [p for p in puntos if p <= p_comp]
-                return p_bajos[-1] if p_bajos else p_comp
+                p_debajo = [p for p in puntos if p <= p_comp]
+                return p_debajo[-1] if p_debajo else p_comp
             return sug
 
-        # Opción A: Subir Precio manteniendo gramos
         p_tec = (pkg_c_nuevo * 0.92) * (row_b["Gramaje (g)"] / 1000)
-        p_final_psic = a_psicologico_estricto(p_tec, n_p_c, es_lider)
-        
-        # Opción B: Bajar Gramaje manteniendo el precio nuevo proyectado
-        g_tec = (n_p_b / (pkg_c_nuevo * 0.92)) * 1000
-        g_final_redondeado = int(5 * round(g_tec / 5))
+        p_final = a_psicologico_estricto(p_tec, n_p_c, es_lider)
+        g_final = int(5 * round(((n_p_b / (pkg_c_nuevo * 0.92)) * 1000) / 5))
 
         col_a, col_b = st.columns(2)
         with col_a:
-            st.markdown(f"**Escenario A: Mantener {int(row_b['Gramaje (g)'])}g**")
-            st.info(f"Para proteger el valor, el precio sugerido es: **${p_final_psic}**")
-            st.caption(f"Index $/Kg Proyectado: {((p_final_psic/(row_b['Gramaje (g)']/1000))/pkg_c_nuevo)*100:.1f}")
-
+            st.info(f"**Escenario A: Mantener {int(row_b['Gramaje (g)'])}g**\n\nPrecio Sugerido: **${p_final}**")
+            st.caption(f"Index $/Kg Proyectado: {int(round(((p_final/(row_b['Gramaje (g)']/1000))/pkg_c_nuevo)*100))}")
         with col_b:
-            st.markdown(f"**Escenario B: Mantener Precio de ${n_p_b}**")
-            st.info(f"Para proteger el valor, el contenido debe ser: **{g_final_redondeado}g**")
-            st.caption(f"Index $/Kg Proyectado: {((n_p_b/(g_final_redondeado/1000))/pkg_c_nuevo)*100:.1f}")
+            st.info(f"**Escenario B: Mantener Precio de ${n_p_b}**\n\nContenido Sugerido: **{g_final}g**")
+            st.caption(f"Index $/Kg Proyectado: {int(round(((n_p_b/(g_final/1000))/pkg_c_nuevo)*100))}")
