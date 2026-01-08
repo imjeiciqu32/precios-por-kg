@@ -617,23 +617,7 @@ PLANTILLAS = {
        {"Producto": "Act Ii Queso Chipotle 160g", "Fabricante": "OTROS", "Ocasión": "FAMILIAR", "Precio ($)": 60.0, "Gramaje (g)": 160, "SOM (%)": 0.7},
        {"Producto": "Act Ii Infierno Extremo 150g", "Fabricante": "OTROS", "Ocasión": "FAMILIAR", "Precio ($)": 60.0, "Gramaje (g)": 150, "SOM (%)": 1.4}
    ],
-      "CNV - CACAHUATE CUBIERTO": [
-       # INDIVIDUAL
-       {"Producto": "Kacang (Pp) 60g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 10.0, "Gramaje (g)": 60, "SOM (%)": 36.2},
-       
-       # HAMBRE
-       {"Producto": "Kacang Xferas 80g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 25.0, "Gramaje (g)": 80, "SOM (%)": 0.4},
-       {"Producto": "Hot Nuts 100g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 27.0, "Gramaje (g)": 100, "SOM (%)": 23.9},
-       {"Producto": "Kacang 110g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 27.0, "Gramaje (g)": 110, "SOM (%)": 7.7},
-       
-       # COMPARTIR
-       {"Producto": "Kacang Xferas 137g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 37.0, "Gramaje (g)": 137, "SOM (%)": 0.0},
-       
-       # FAMILIAR
-       {"Producto": "Hot Nuts 200g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 42.0, "Gramaje (g)": 200, "SOM (%)": 19.3},
-       {"Producto": "Kacang 185g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 44.0, "Gramaje (g)": 185, "SOM (%)": 12.5}
-   ],
-   "CNV - CACAHUATE FRITO": [
+      "CNV - CACAHUATE CUBIERTO":  [
        # INDIVIDUAL
        {"Producto": "Hot Nuts 50g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 50, "SOM (%)": 24.2},
        {"Producto": "Kacang 77g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 25.0, "Gramaje (g)": 77, "SOM (%)": 33.4},
@@ -646,6 +630,22 @@ PLANTILLAS = {
        # FAMILIAR
        {"Producto": "Hot Nuts 160g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 47.0, "Gramaje (g)": 160, "SOM (%)": 9.2},
    ],
+   "CNV - CACAHUATE FRITO": [
+        # INDIVIDUAL
+        {"Producto": "Golden Nuts 78g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 22.0, "Gramaje (g)": 78, "SOM (%)": 9.1},
+        {"Producto": "Mafer 65g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 22.0, "Gramaje (g)": 65, "SOM (%)": 21.2},
+
+        # HAMBRE
+        {"Producto": "Cacahuate Bokados 100g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 26.0, "Gramaje (g)": 100, "SOM (%)": 10.3},
+        {"Producto": "Golden Nuts 100g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 27.0, "Gramaje (g)": 100, "SOM (%)": 41.8},
+        {"Producto": "Mafer 120g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 35.0, "Gramaje (g)": 120, "SOM (%)": 13.3},
+
+        # COMPARTIR
+        {"Producto": "Golden Nuts 150g", "Fabricante": "BARCEL", "Ocasión": "COMPARTIR", "Precio ($)": 40.0, "Gramaje (g)": 150, "SOM (%)": 4.2},
+
+        # FAMILIAR
+        {"Producto": "Mafer 170g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 50.0, "Gramaje (g)": 170, "SOM (%)": 0.0},
+    ],
    "CNV - CACAHUATE JAPONÉS": [
        # HAMBRE
        {"Producto": "Karate 90g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 20.0, "Gramaje (g)": 90, "SOM (%)": 25.4},
