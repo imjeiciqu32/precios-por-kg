@@ -691,7 +691,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             use_container_width=True
         )
 
-# --- 13. VISUALIZACIÓN ESTRATÉGICA PRO: MAPA DE VALOR INTERACTIVO ---
+# --- 13. VISUALIZACIÓN ESTRATÉGICA PRO: MAPA DE VALOR CON FILTRO DINÁMICO ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("📊 Mapa Estratégico de Valor: Barcel vs Competencia")
@@ -706,85 +706,98 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
     for c in ["Precio ($)", "Precio por Kg ($)", "SOM (%)"]:
         df_plot[c] = pd.to_numeric(df_plot[c], errors='coerce').fillna(0)
 
-    # --- PLUS: JITTERING (Evita que las burbujas se encimen totalmente) ---
-    # Añadimos un pequeño ruido aleatorio controlado al eje Y para separar productos con mismo precio
-    stdev = df_plot["Precio ($)"].std() * 0.02
-    df_plot["Precio_Jitter"] = df_plot["Precio ($)"] + np.random.uniform(-stdev, stdev, size=len(df_plot))
-
-    # Definir paleta de colores oficial
-    colores = {"BARCEL": "#E20613", "SABRITAS": "#FFD700", "PEPSICO": "#004B91", "OTROS": "#A0A0A0"}
-
-    # Crear el gráfico pro
-    fig = px.scatter(
-        df_plot,
-        x="Precio por Kg ($)",
-        y="Precio_Jitter", # Usamos el eje con jitter para visibilidad
-        size="SOM (%)",
-        color="Fabricante",
-        hover_name="Producto",
-        text="Producto", # Etiquetas visibles
-        color_discrete_map=colores,
-        size_max=50,
-        labels={
-            "Precio por Kg ($)": "Eficiencia de Valor (Precio/Kg)",
-            "Precio_Jitter": "Punto de Precio (Desembolso)",
-            "Fabricante": "Marca"
-        },
-        custom_data=["Precio ($)", "SOM (%)"] # Datos reales para el hover
-    )
-
-    # --- PLUS: FORMATO DE EJES Y ESTILO ---
-    fig.update_traces(
-        textposition='top center',
-        hovertemplate="<b>%{hovertext}</b><br>" +
-                      "Desembolso Real: $%{customdata[0]:.2f}<br>" +
-                      "Precio/Kg: $%{x:.2f}<br>" +
-                      "SOM: %{customdata[1]:.1f}%<extra></extra>"
-    )
-
-    fig.update_layout(
-        template="plotly_white",
-        height=700,
-        xaxis=dict(
-            title="<b>Mayor Eficiencia (Precio/Kg) ⮕</b>",
-            tickprefix="$",
-            showgrid=True,
-            gridcolor='lightgray'
-        ),
-        yaxis=dict(
-            title="<b>Punto de Precio (Desembolso)</b>",
-            tickprefix="$", # PLUS: Símbolo de pesos en eje Y
-            tickformat=".0f",
-            showgrid=True,
-            gridcolor='lightgray'
-        ),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        )
-    )
-
-    # --- PLUS: LÍNEAS DE PRECIO PSICOLÓGICO ---
-    # Añadimos bandas de color sutiles para los niveles de precio clave
-    for precio in [15, 25, 35, 50, 70]:
-        fig.add_hline(y=precio, line_dash="dash", line_color="#D3D3D3", line_width=1)
-        fig.add_annotation(x=df_plot["Precio por Kg ($)"].min(), y=precio, 
-                           text=f"Umbral ${precio}", showarrow=False, 
-                           yshift=10, font=dict(color="gray", size=10))
-
-    st.plotly_chart(fig, use_container_width=True)
+    # --- PLUS: FILTRO POR OCASIÓN DENTRO DE LA SECCIÓN ---
+    ocasiones = ["TODAS"] + sorted(df_plot["Ocasión"].unique().tolist())
+    oca_selected = st.selectbox("🎯 Filtrar por Momento de Consumo (Ocasión):", ocasiones)
     
-    # Resumen Ejecutivo del Mapa
-    with st.expander("📝 Guía de Lectura Estratégica"):
-        st.write("""
-        * **Eje Vertical (Y):** Es el 'bolsillo' del cliente. Cuanto más arriba, mayor desembolso.
-        * **Eje Horizontal (X):** Es el valor por dinero. Si estás muy a la derecha, eres caro por gramo.
-        * **Tamaño de Burbuja:** Es tu cuota de mercado. Buscamos burbujas grandes en la zona inferior-izquierda.
-        * **Separación:** Si ves productos ligeramente movidos de su línea de precio, es el *Jittering* para que puedas leer los nombres de los que compiten en el mismo nivel.
-        """)
+    if oca_selected != "TODAS":
+        df_plot = df_plot[df_plot["Ocasión"] == oca_selected]
+
+    if not df_plot.empty:
+        # --- PLUS: JITTERING PRO (Evita solapamiento de burbujas) ---
+        # El jittering es proporcional a la escala para mantener la legibilidad
+        rango_y = df_plot["Precio ($)"].max() - df_plot["Precio ($)"].min()
+        stdev = (rango_y * 0.03) if rango_y > 0 else 0.5
+        df_plot["Precio_Jitter"] = df_plot["Precio ($)"] + np.random.uniform(-stdev, stdev, size=len(df_plot))
+
+        # Colores corporativos con énfasis en BARCEL
+        colores = {
+            "BARCEL": "#E20613",      # Rojo Barcel
+            "SABRITAS": "#FFD700",    # Amarillo Sabritas
+            "PEPSICO": "#004B91",     # Azul Pepsico
+            "FRITO LAY": "#004B91",
+            "OTRO": "#A0A0A0"         # Gris para el resto
+        }
+
+        # Crear el gráfico
+        fig = px.scatter(
+            df_plot,
+            x="Precio por Kg ($)",
+            y="Precio_Jitter",
+            size="SOM (%)",
+            color="Fabricante",
+            hover_name="Producto",
+            text="Producto",
+            color_discrete_map=colores,
+            size_max=55,
+            labels={
+                "Precio por Kg ($)": "Eficiencia de Valor (Precio/Kg)",
+                "Precio_Jitter": "Punto de Precio (Desembolso)",
+                "Fabricante": "Marca"
+            },
+            custom_data=["Precio ($)", "SOM (%)", "Ocasión"]
+        )
+
+        # Configuración de Etiquetas y Hover
+        fig.update_traces(
+            textposition='top center',
+            marker=dict(line=dict(width=1, color='DarkSlateGrey')),
+            hovertemplate="<b>%{hovertext}</b><br>" +
+                          "Ocasión: %{customdata[2]}<br>" +
+                          "Desembolso Real: $%{customdata[0]:.2f}<br>" +
+                          "Precio/Kg: $%{x:.2f}<br>" +
+                          "SOM: %{customdata[1]:.1f}%<extra></extra>"
+        )
+
+        # Formato Pro de Ejes y Layout
+        fig.update_layout(
+            template="plotly_white",
+            height=750,
+            xaxis=dict(
+                title="<b>Valor x Dinero: Mayor Eficiencia (Precio/Kg) ⮕</b>",
+                tickprefix="$",
+                showgrid=True,
+                gridcolor='#F0F0F0'
+            ),
+            yaxis=dict(
+                title="<b>Punto de Precio (Desembolso)</b>",
+                tickprefix="$",
+                tickformat=".0f",
+                showgrid=True,
+                gridcolor='#F0F0F0'
+            ),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="center",
+                x=0.5,
+                title=None
+            )
+        )
+
+        # Líneas de referencia para precios psicológicos
+        precios_clave = [10, 15, 20, 25, 30, 40, 50, 70, 100]
+        max_p = df_plot["Precio ($)"].max()
+        for p in [x for x in precios_clave if x <= max_p + 10]:
+            fig.add_hline(y=p, line_dash="dot", line_color="#CCCCCC", line_width=1)
+
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("No hay datos disponibles para la ocasión seleccionada.")
+
+    # Guía rápida para el usuario
+    st.info("💡 **Tip de Análisis:** Busca a Barcel (Burbuja Roja). Si está sola en un nivel de precio, es dueña del escalón. Si hay burbujas amarillas o azules más a la izquierda en el mismo nivel, el competidor ofrece más producto por el mismo dinero.")
 
 # --- 12. SIMULADOR DE RESPUESTA TÁCTICA (ESCENARIOS DE ALZA) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
