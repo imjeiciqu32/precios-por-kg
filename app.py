@@ -525,33 +525,33 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
 
-# --- 12. ANALISTA MAESTRO ULTRA 2.6: GAPS GLOBALES + PRECIOS PSICOLÓGICOS + PESO DE OCASIÓN ---
+# --- 12. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("🚀 Inteligencia de Mercado: Duelos Directos y Liderazgo Barcel")
     
     df_p = st.session_state.data.copy()
-    cols_num = ["Precio ($)", "SOM (%)", "Precio por Kg ($)"]
-    for c in cols_num: 
+    # Conversión robusta a números
+    for c in ["Precio ($)", "SOM (%)", "Precio por Kg ($)"]:
         df_p[c] = pd.to_numeric(df_p[c], errors='coerce').fillna(0)
 
     mapa_rivales = {
         "TAKIS": ["DORITO", "DINAMITA"],
-        "CHIPS": ["SABRITA", "RECETA CRUJIENTE", " RC "],
-        "PAPAS BARCEL": ["SABRITA", "RECETA CRUJIENTE", " RC "],
+        "CHIPS": ["SABRITA", "RECETA CRUJIENTE"],
+        "PAPAS BARCEL": ["SABRITA", "RECETA CRUJIENTE"],
         "CHIPOTLES": ["RANCHERITO", "FRITO"],
         "RUNNERS": ["FRITO", "RANCHERITO"],
         "BIG MIX": ["PAKETAXO"],
-        "POP KARAMELADAS": ["ACT II", "CARAMELO"],
+        "POP KARAMELADAS": ["ACT II"],
         "HOT NUTS": ["KACANG"],
         "GOLDEN NUTS": ["MAFER"],
         "KIYAKIS": ["KARATE"],
         "VALENTONES": ["SABRITONE"],
-        "PIX":["CHEETOS TORCIDITOS","TORCIDITOS"]
+        "PIX":["TORCIDITOS"]
     }
 
     def ajustar_precio_psicologico(p):
-        puntos_magicos = [10, 12, 15, 18, 20, 22, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80, 90, 100]
+        puntos_magicos = [10, 12, 15, 18, 20, 22, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80]
         return min(puntos_magicos, key=lambda x: abs(x - p))
 
     def identificar_marca(n):
@@ -569,103 +569,84 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
     def calcular_rango_g(p_target, pkg_ref):
         if pkg_ref <= 0: return "N/A"
-        g_min = int((p_target / (pkg_ref * 0.95)) * 1000)
-        g_max = int((p_target / (pkg_ref * 0.85)) * 1000)
-        return f"{g_min}g - {g_max}g"
+        return f"{int((p_target/(pkg_ref*0.95))*1000)}g - {int((p_target/(pkg_ref*0.85))*1000)}g"
 
     hallazgos = []
+    vistos = set() # Evita duplicados "al cuadrado"
 
     try:
-        # Cálculo de pesos por ocasión para dimensionar oportunidad
         pesos_oca = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-        # --- 1. INTELIGENCIA DE ESCALONES (ANÁLISIS GLOBAL) ---
+        # --- BLOQUE A: ESTRATEGIA DE PORTAFOLIO (GAPS) ---
         df_b_global = df_p[df_p["Fabricante"] == "BARCEL"].sort_values("Precio ($)")
-        
         if len(df_b_global) >= 2:
             for i in range(len(df_b_global) - 1):
-                p1 = df_b_global.iloc[i]["Precio ($)"]
-                p2 = df_b_global.iloc[i+1]["Precio ($)"]
-                oca_ref = df_b_global.iloc[i]["Ocasión"]
-                peso_ref = pesos_oca.get(oca_ref, 0)
-                gap = p2 - p1
-                
-                if gap > 10:
-                    precio_f = ajustar_precio_psicologico((p1 + p2) / 2)
-                    pkg_ref = df_b_global.iloc[i]["Precio por Kg ($)"]
-                    
-                    hallazgos.append({
-                        "Prioridad": "BAJA", "Tipo": "ESCALÓN DE PRECIO", 
-                        "Ocasión": "PORTAFOLIO GLOBAL",
-                        "Msg": f"Hueco crítico entre ${p1} y ${p2} (Ref: {oca_ref} {peso_ref:.1f}%)",
-                        "Detalle": f"Salto de ${gap:.0f}. Sugerimos precio psicológico para evitar fuga de consumidores.",
-                        "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(precio_f, pkg_ref)}** a **${int(precio_f)}**."
-                    })
+                p1, p2 = df_b_global.iloc[i]["Precio ($)"], df_b_global.iloc[i+1]["Precio ($)"]
+                if (p2 - p1) > 10:
+                    id_gap = f"GAP_{int(p1)}_{int(p2)}"
+                    if id_gap not in vistos:
+                        p_sug = ajustar_precio_psicologico((p1 + p2) / 2)
+                        hallazgos.append({
+                            "Prioridad": "BAJA", "Tipo": "ESCALÓN DE PRECIO", "Ocasión": "PORTAFOLIO GLOBAL",
+                            "Msg": f"Hueco detectado entre ${p1} y ${p2}",
+                            "Detalle": f"Salto de ${p2-p1:.0f} en la escalera. Riesgo de fuga de transacciones.",
+                            "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **${int(p_sug)}**."
+                        })
+                        vistos.add(id_gap)
 
-        # --- 2. LÓGICA POR OCASIÓN (DUELOS Y LIDERAZGO) ---
+        # --- BLOQUE B: ANÁLISIS TÁCTICO POR OCASIÓN ---
         for oca in df_p["Ocasión"].unique():
             df_oca = df_p[df_p["Ocasión"] == oca].copy()
             df_barcel = df_oca[df_oca["Fabricante"] == "BARCEL"]
             df_comp = df_oca[df_oca["Fabricante"] != "BARCEL"]
-            
             if df_oca.empty: continue
+            
             peso_seg = pesos_oca.get(oca, 0)
-            imp_tag = "ALTA" if peso_seg > 20 else "MEDIA" if peso_seg > 5 else "BAJA"
-            
-            idx_lider = df_oca["SOM (%)"].idxmax()
-            lider_absoluto = df_oca.loc[idx_lider]
-            barcel_es_lider = (lider_absoluto["Fabricante"] == "BARCEL")
-            
-            lider_comp = df_comp.sort_values("SOM (%)", ascending=False).iloc[0] if not df_comp.empty else None
-            comp_precios = sorted(df_comp["Precio ($)"].unique()) if not df_comp.empty else []
+            lider_abs = df_oca.loc[df_oca["SOM (%)"].idxmax()]
+            lider_c = df_comp.sort_values("SOM (%)", ascending=False).iloc[0] if not df_comp.empty else None
 
-            # CASO 1: BARCEL LÍDER
-            if barcel_es_lider and lider_comp is not None:
-                for _, row_b in df_barcel.iterrows():
-                    if row_b["Producto"] == lider_absoluto["Producto"]:
-                        idx_vs = int((row_b["Precio por Kg ($)"] / lider_comp["Precio por Kg ($)"]) * 100)
-                        if idx_vs < 95:
-                            hallazgos.append({
-                                "Prioridad": "MEDIA", "Tipo": "DOMINANCIA Y MARGEN", "Ocasión": oca,
-                                "Msg": f"Barcel lidera (Aporte Occ: {peso_seg:.1f}%)",
-                                "Detalle": f"Index {idx_vs} vs seguidor. Oportunidad de optimizar valor en líder.",
-                                "Accion": f"📈 **Modo Líder:** Evaluar ajuste a **{calcular_rango_g(row_b['Precio ($)'], lider_comp['Precio por Kg ($)'])}**."
-                            })
-            
-            # CASO 2: WHITE SPACE
-            if df_barcel.empty:
-                pkg_ref = lider_comp["Precio por Kg ($)"] if lider_comp is not None else 0
-                c_min = min(comp_precios) if comp_precios else 0
-                precio_f = ajustar_precio_psicologico(c_min)
+            # 1. White Space
+            if df_barcel.empty and lider_c is not None:
+                p_sug = ajustar_precio_psicologico(lider_c["Precio ($)"])
                 hallazgos.append({
-                    "Prioridad": "ALTA" if imp_tag != "BAJA" else "MEDIA",
-                    "Tipo": "WHITE SPACE", "Ocasión": oca,
+                    "Prioridad": "ALTA" if peso_seg > 15 else "MEDIA", "Tipo": "WHITE SPACE", "Ocasión": oca,
                     "Msg": f"Barcel no participa (Aporte Occ: {peso_seg:.1f}%)",
-                    "Detalle": f"Segmento liderado por {lider_absoluto['Producto']}.",
-                    "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(precio_f, pkg_ref)}** a **${int(precio_f)}**."
+                    "Detalle": f"Segmento dominado por {lider_abs['Producto']}.",
+                    "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(p_sug, lider_c['Precio por Kg ($)'])}** a **${int(p_sug)}**."
                 })
-            
-            # CASO 3: DUELOS
-            elif not barcel_es_lider:
+
+            # 2. Duelos y Liderazgo
+            else:
                 for _, row_b in df_barcel.iterrows():
-                    marca_b = identificar_marca(row_b["Producto"])
-                    rivales = df_comp[df_comp.apply(lambda x: es_rival_de(x["Producto"], marca_b), axis=1)]
-                    bench = rivales.sort_values("SOM (%)", ascending=False).iloc[0] if not rivales.empty else lider_comp
-                    if bench is None: continue
-                    
-                    idx = int((row_b["Precio por Kg ($)"] / bench["Precio por Kg ($)"]) * 100)
-                    if idx > 95:
-                        hallazgos.append({
-                            "Prioridad": "ALTA", "Tipo": f"DUELO: vs {bench['Producto']}", "Ocasión": oca,
-                            "Msg": f"{row_b['Producto']} fuera de rango (Aporte Occ: {peso_seg:.1f}%)",
-                            "Detalle": f"Index {idx} vs rival directo. Riesgo de pérdida de preferencia.",
-                            "Accion": f"⚖️ **R&D:** Ajustar a **{calcular_rango_g(row_b['Precio ($)'], bench['Precio por Kg ($)'])}**."
-                        })
+                    # Si Barcel es Líder
+                    if row_b["Producto"] == lider_abs["Producto"] and lider_c is not None:
+                        idx = int((row_b["Precio por Kg ($)"] / lider_c["Precio por Kg ($)"]) * 100)
+                        if idx < 95:
+                            hallazgos.append({
+                                "Prioridad": "MEDIA", "Tipo": "DOMINANCIA", "Ocasión": oca,
+                                "Msg": f"Barcel lidera (Aporte Occ: {peso_seg:.1f}%)",
+                                "Detalle": f"Index {idx} vs competidor. Oportunidad de rentabilidad.",
+                                "Accion": f"📈 **Modo Líder:** Evaluar ajuste a **{calcular_rango_g(row_b['Precio ($)'], lider_c['Precio por Kg ($)'])}**."
+                            })
+                    # Si Barcel es Seguidor (Duelo)
+                    elif lider_c is not None:
+                        marca_b = identificar_marca(row_b["Producto"])
+                        rivales = df_comp[df_comp.apply(lambda x: es_rival_de(x["Producto"], marca_b), axis=1)]
+                        bench = rivales.sort_values("SOM (%)", ascending=False).iloc[0] if not rivales.empty else lider_c
+                        idx = int((row_b["Precio por Kg ($)"] / bench["Precio por Kg ($)"]) * 100)
+                        if idx > 95:
+                            hallazgos.append({
+                                "Prioridad": "ALTA", "Tipo": f"DUELO vs {bench['Producto']}", "Ocasión": oca,
+                                "Msg": f"{row_b['Producto']} fuera de rango ({peso_seg:.1f}% Occ)",
+                                "Detalle": f"Index {idx} vs rival. Riesgo de pérdida de preferencia.",
+                                "Accion": f"⚖️ **R&D:** Ajustar a **{calcular_rango_g(row_b['Precio ($)'], bench['Precio por Kg ($)'])}**."
+                            })
 
     except Exception as e: st.error(f"Error en Ultra 2.6: {e}")
 
     # --- RENDERIZADO VISUAL ---
     if hallazgos:
+        # Ordenamos por prioridad: ALTA -> MEDIA -> BAJA
         hallazgos.sort(key=lambda x: {"ALTA": 0, "MEDIA": 1, "BAJA": 2}.get(x["Prioridad"], 2))
         for h in hallazgos:
             with st.container(border=True):
