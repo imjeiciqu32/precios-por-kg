@@ -546,7 +546,8 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         "HOT NUTS": ["KACANG"],
         "GOLDEN NUTS": ["MAFER"],
         "KIYAKIS": ["KARATE"],
-        "VALENTONES": ["SABRITONE"]
+        "VALENTONES": ["SABRITONE"],
+        "PIX":["CHEETOS TORCIDITOS","TORCIDITOS"]
     }
 
     def identificar_marca(n):
@@ -614,7 +615,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 c_min = min(comp_precios) if comp_precios else 0
                 hallazgos.append({
                     "Prioridad": "ALTA" if imp_tag != "BAJA" else "MEDIA",
-                    "Tipo": "SIN PARTICIPACIÓN", "Ocasión": oca,
+                    "Tipo": "WHITE SPACE", "Ocasión": oca,
                     "Msg": f"Barcel no participa en este segmento ({peso_seg:.1f}% SOM)",
                     "Detalle": f"Segmento liderado por {lider_comp['Producto'] if lider_comp is not None else 'Competencia'}.",
                     "Accion": f"⚡ **Entrada:** Sugerido **{calcular_rango_g(c_min, pkg_ref)}** a **${int(c_min)}**."
