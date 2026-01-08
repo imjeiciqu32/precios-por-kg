@@ -806,7 +806,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
     else:
         st.warning("No hay datos para mostrar en esta selección.")
 
-    st.caption("💡 **Interpretación:** Las burbujas moradas representan las propuestas de ajuste. El objetivo es que Barcel (Azul) no esté más a la derecha que Sabritas (Amarillo) en el mismo
+    st.caption("💡 **Interpretación:** Las burbujas moradas representan las propuestas de ajuste. El objetivo es que Barcel (Azul) no esté más a la derecha que Sabritas (Amarillo) en el mismo nivel de precio")
 
 # --- 12. SIMULADOR DE RESPUESTA TÁCTICA (ESCENARIOS DE ALZA) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
