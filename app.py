@@ -819,6 +819,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         .report-card { 
             background-color: #f8f9fa; border-radius: 10px; padding: 20px; 
             border-left: 5px solid #002366; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -826,6 +827,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
     st.subheader("🧪 Simulador de Escenarios: Paridad y Eficiencia")
     
     df_sim = st.session_state.data.copy()
+    # Asegurar que las columnas sean numéricas para evitar errores de cálculo
     for c in ["Precio ($)", "SOM (%)", "Precio por Kg ($)", "Gramaje (g)"]:
         df_sim[c] = pd.to_numeric(df_sim[c], errors='coerce').fillna(0)
 
@@ -837,7 +839,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         with col_inp:
             st.info("📌 **Entradas de Escenario**")
             # Selección Benchmark
-            comp_a_mover = st.selectbox("Benchmark Competidor:", lista_comp["Producto"].unique(), key="v4_c")
+            comp_a_mover = st.selectbox("Benchmark Competidor:", lista_comp["Producto"].unique(), key="v4_c_final")
             datos_comp = lista_comp[lista_comp["Producto"] == comp_a_mover].iloc[0]
             
             p_act_c = datos_comp["Precio ($)"]
@@ -853,22 +855,23 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             df_barcel_oca = df_sim[(df_sim["Fabricante"] == "BARCEL") & (df_sim["Ocasión"] == oca_sim)]
             
             if not df_barcel_oca.empty:
-                prod_b = st.selectbox("Producto Barcel:", df_barcel_oca["Producto"].unique(), key="v4_b")
+                prod_b = st.selectbox("Producto Barcel a Proteger:", df_barcel_oca["Producto"].unique(), key="v4_b_final")
                 row_b = df_barcel_oca[df_barcel_oca["Producto"] == prod_b].iloc[0]
-                n_p_b = st.number_input(f"Nuevo Precio {prod_b}:", min_value=1.0, value=float(row_b["Precio ($)"]), step=1.0)
+                n_p_b = st.number_input(f"Nuevo Precio Proyectado {prod_b}:", min_value=1.0, value=float(row_b["Precio ($)"]), step=1.0)
                 
-                pkg_b_nuevo = n_p_b / (row_b["Gramaje (g)"] / 1000)
+                pkg_b_nuevo = n_p_b / (row_b["Gramaje (g)"] / 1000) if row_b["Gramaje (g)"] > 0 else 0
             else:
-                st.warning(f"Sin SKU Barcel en {oca_sim}"); st.stop()
+                st.warning(f"No hay productos Barcel en la ocasión: {oca_sim}")
+                st.stop()
 
         with col_res:
             # --- CÁLCULOS DE INDEX ---
-            idx_des_ant = (row_b["Precio ($)"] / p_act_c) * 100
-            idx_des_nue = (n_p_b / n_p_c) * 100
-            idx_pkg_ant = (row_b["Precio por Kg ($)"] / datos_comp["Precio por Kg ($)"]) * 100
-            idx_pkg_nue = (pkg_b_nuevo / pkg_c_nuevo) * 100
+            idx_des_ant = (row_b["Precio ($)"] / p_act_c) * 100 if p_act_c > 0 else 0
+            idx_des_nue = (n_p_b / n_p_c) * 100 if n_p_c > 0 else 0
+            
+            idx_pkg_ant = (row_b["Precio por Kg ($)"] / datos_comp["Precio por Kg ($)"]) * 100 if datos_comp["Precio por Kg ($)"] > 0 else 0
+            idx_pkg_nue = (pkg_b_nuevo / pkg_c_nuevo) * 100 if pkg_c_nuevo > 0 else 0
 
-            # --- HEADER DE RESULTADOS ---
             st.markdown(f"### 📊 Diagnóstico de Paridad ({oca_sim})")
             
             # TARJETA 1: DESEMBOLSO
@@ -876,12 +879,10 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown('<div class="report-card">', unsafe_allow_html=True)
                 st.write("💰 **ANÁLISIS DE DESEMBOLSO (OUT-OF-POCKET)**")
                 c1, c2, c3 = st.columns(3)
-                c1.metric(f"{comp_a_mover}", f"${n_p_c}")
-                c2.metric(f"{prod_b}", f"${n_p_b}", f"{((n_p_b/row_b['Precio ($)'])-1)*100:.1f}%")
-                c3.metric("INDEX DESEMBOLSO", f"{idx_des_nue:.0f}", f"{idx_des_nue - idx_des_ant:.1f} pts")
+                c1.metric(f"{comp_a_mover}", f"${n_p_c:.0f}")
+                c2.metric(f"{prod_b}", f"${n_p_b:.0f}", f"{((n_p_b/row_b['Precio ($)'])-1)*100:.1f}%")
+                c3.metric("INDEX PRECIO", f"{idx_des_nue:.0f}", f"{idx_des_nue - idx_des_ant:.1f} pts")
                 st.markdown('</div>', unsafe_allow_html=True)
-
-            st.write("") # Espaciador
 
             # TARJETA 2: EFICIENCIA $/KG
             with st.container():
@@ -893,35 +894,44 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 c3.metric("INDEX $/KG", f"{idx_pkg_nue:.0f}", f"{idx_pkg_nue - idx_pkg_ant:.1f} pts")
                 st.markdown('</div>', unsafe_allow_html=True)
 
-            # VEREDICTO
+            # VEREDICTO BASADO EN LIDERAZGO
             lider_occ = df_sim[df_sim["Ocasión"] == oca_sim].sort_values("SOM (%)", ascending=False).iloc[0]
             es_lider = (lider_occ["Fabricante"] == "BARCEL")
 
             if not es_lider and n_p_b > n_p_c:
-                st.error(f"❌ **ALERTA COMERCIAL:** Estás por encima del precio de {comp_a_mover} (${n_p_c}) sin ser líder de la ocasión.")
-            elif idx_pkg_nue > 102:
-                st.warning("⚠️ **ALERTA DE VALOR:** Tu precio por kilo es menos eficiente que la competencia. Riesgo de migración.")
+                st.error(f"❌ **ALERTA COMERCIAL:** Precio proyectado (${n_p_b}) superior al competidor (${n_p_c}) en una ocasión donde NO eres líder.")
+            elif idx_pkg_nue > 103:
+                st.warning("⚠️ **ALERTA DE VALOR:** Estás ofreciendo menos gramaje/valor que la competencia por cada peso pagado.")
             else:
-                st.success("✅ **ESCENARIO COMPETITIVO:** El posicionamiento proyectado es saludable.")
+                st.success("✅ **ESCENARIO SALUDABLE:** El posicionamiento se mantiene dentro de los rangos de competitividad.")
 
         # --- SECCIÓN INFERIOR: ALTERNATIVAS R&D ---
         st.markdown("---")
-        st.markdown("#### 🛡️ Ingeniería de Producto: Alternativas para Index 92")
+        st.markdown("#### 🛡️ Ingeniería de Producto: Alternativas para Index $/Kg Objetivo (92)")
         
         def a_psicologico_estricto(p_target, p_comp, lider):
             puntos = [10, 12, 15, 18, 20, 22, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80]
             sug = min(puntos, key=lambda x: abs(x - p_target))
             if not lider and sug > p_comp:
-                p_bajos = [p for p in puntos if p <= p_comp]; return p_bajos[-1] if p_bajos else p_comp
+                p_bajos = [p for p in puntos if p <= p_comp]
+                return p_bajos[-1] if p_bajos else p_comp
             return sug
 
+        # Opción A: Subir Precio manteniendo gramos
         p_tec = (pkg_c_nuevo * 0.92) * (row_b["Gramaje (g)"] / 1000)
-        p_final = a_psicologico_estricto(p_tec, n_p_c, es_lider)
-        g_final = int(5 * round(((n_p_b / (pkg_c_nuevo * 0.92)) * 1000) / 5))
+        p_final_psic = a_psicologico_estricto(p_tec, n_p_c, es_lider)
+        
+        # Opción B: Bajar Gramaje manteniendo el precio nuevo proyectado
+        g_tec = (n_p_b / (pkg_c_nuevo * 0.92)) * 1000
+        g_final_redondeado = int(5 * round(g_tec / 5))
 
         col_a, col_b = st.columns(2)
         with col_a:
-            st.markdown(f"**A. Mantener {int(row_b['Gramaje (g)'])}
-        with tab_b:
-            st.write(f"Para mantener el precio de **${n_p_b}**, el gramaje debe ser **{g_final}g**.")
-            st.caption(f"Index $/Kg Proyectado con este cambio: {((n_p_b/(g_final/1000))/pkg_c_nuevo)*100:.1f}")
+            st.markdown(f"**Escenario A: Mantener {int(row_b['Gramaje (g)'])}g**")
+            st.info(f"Para proteger el valor, el precio sugerido es: **${p_final_psic}**")
+            st.caption(f"Index $/Kg Proyectado: {((p_final_psic/(row_b['Gramaje (g)']/1000))/pkg_c_nuevo)*100:.1f}")
+
+        with col_b:
+            st.markdown(f"**Escenario B: Mantener Precio de ${n_p_b}**")
+            st.info(f"Para proteger el valor, el contenido debe ser: **{g_final_redondeado}g**")
+            st.caption(f"Index $/Kg Proyectado: {((n_p_b/(g_final_redondeado/1000))/pkg_c_nuevo)*100:.1f}")
