@@ -665,12 +665,11 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         st.balloons()
         st.success("✅ **Portafolio en Paridad Optimizada.**")
 
-# --- 11. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO (V2: EXTRACCIÓN DE DATOS) ---
+# --- 11. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO (V3: RIVALES + FIX ESTÉTICO) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     
-    # Botón con ID único para evitar errores de duplicado
-    if st.button("📄 Generar Resumen Ejecutivo Detallado", key="btn_exec_v2"):
+    if st.button("📄 Generar Resumen Ejecutivo Detallado", key="btn_exec_v3"):
         with st.spinner("Compilando datos de mercado..."):
             
             if not hallazgos:
@@ -683,49 +682,55 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                         border: 1px solid #d1d1d1; box-shadow: 4px 4px 15px rgba(0,0,0,0.05);
                         color: #1a1a1a;
                     }
-                    .priority-tag { font-weight: bold; color: #d32f2f; }
+                    .rival-name { font-weight: bold; color: #d32f2f; }
                     </style>
                 """, unsafe_allow_html=True)
                 
                 st.markdown('<div class="exec-box">', unsafe_allow_html=True)
                 st.subheader("📝 Resumen Ejecutivo: Estrategia de Portafolio")
                 
-                # --- A. DIAGNÓSTICO CUANTITATIVO ---
+                # --- A. DIAGNÓSTICO ---
                 num_alta = len([h for h in hallazgos if h["Prioridad"] == "ALTA"])
-                st.write(f"Se han identificado **{len(hallazgos)} hallazgos estratégicos**, de los cuales **{num_alta} requieren atención inmediata** por pérdida de competitividad o ausencia en segmentos clave.")
+                st.write(f"Se han identificado **{len(hallazgos)} hallazgos estratégicos**, con **{num_alta} alertas críticas**. "
+                         "El análisis comparativo se basa en la paridad de valor ($/Kg) frente a los líderes de cada segmento.")
 
                 # --- B. OPORTUNIDADES (WHITE SPACES) ---
                 ws_items = [h for h in hallazgos if h["Tipo"] == "WHITE SPACE"]
                 if ws_items:
                     st.markdown("#### 🚀 Expansión de Portafolio")
                     for ws in ws_items:
-                        # Limpieza del texto de la acción para obtener solo los datos
+                        # Extraemos el nombre del rival del mensaje de diagnóstico
+                        rival = ws['Detalle'].split('dominado por ')[-1].replace('.', '')
                         sug_data = ws['Accion'].replace("⚡ **Entrada:** Lanzar ", "")
-                        st.write(f"* **{ws['Ocasión']}:** Barcel no tiene presencia (dominio de {ws['Msg'].split('(')[0]}). "
-                                 f"**Acción:** Introducir SKU de **{sug_data}**.")
+                        st.write(f"* **{ws['Ocasión']}:** Barcel no participa. Dominio actual de <span class='rival-name'>{rival}</span>. "
+                                 f"**Acción:** Introducir SKU de **{sug_data}**.", unsafe_allow_html=True)
 
                 # --- C. COMPETITIVIDAD (DUELOS) ---
                 duelos = [h for h in hallazgos if "DUELO" in h["Tipo"]]
                 if duelos:
                     st.markdown("#### 🛡️ Ajustes de Paridad (Defensa)")
                     for d in duelos:
+                        # Extraemos el rival del tipo de hallazgo "DUELO vs [RIVAL]"
+                        rival = d['Tipo'].replace("DUELO vs ", "")
                         sug_data = d['Accion'].replace("⚖️ **R&D:** Ajustar a ", "")
-                        st.write(f"* **{d['Ocasión']}:** {d['Msg']}. Actualmente en {d['Detalle'].split('vs')[0]}. "
-                                 f"**Recomendación:** {sug_data} para restablecer paridad.")
+                        st.write(f"* **{d['Ocasión']}:** {d['Msg']} frente a <span class='rival-name'>{rival}</span>. "
+                                 f"**Recomendación:** {sug_data} para restablecer paridad.", unsafe_allow_html=True)
 
                 # --- D. HUECOS EN LA ESCALERA (GAPS) ---
                 gaps = [h for h in hallazgos if h["Tipo"] == "ESCALÓN DE PRECIO"]
                 if gaps:
                     st.markdown("#### 🪜 Arquitectura de Precios")
                     for g in gaps:
+                        # FIX: Añadimos espacios y formato para que no se vea "20y40"
+                        p_min = g['Msg'].split('entre $')[-1].split(' y ')[0]
+                        msg_clean = g['Msg'].replace("Hueco detectado entre ", "").replace(" y ", " y ")
                         sug_data = g['Accion'].replace("🪜 **Extensión:** Evaluar SKU de ", "")
-                        st.write(f"* **{g['Msg']}:** Riesgo de fuga de consumidores. "
+                        st.write(f"* **Puntos de Precio:** Brecha detectada entre **${msg_clean}**. "
                                  f"**Sugerencia:** SKU puente de **{sug_data}**.")
 
                 st.markdown("---")
-                st.markdown("**💡 Veredicto Final:** Priorizar los ajustes en los segmentos de ALTA prioridad para proteger el Market Share en las ocasiones de mayor volumen.")
+                st.markdown("**💡 Veredicto Final:** Es necesario blindar los segmentos donde el rival directo tiene ventaja competitiva en gramaje, ajustando la arquitectura de empaque sin romper los puntos de precio psicológicos.")
                 st.markdown('</div>', unsafe_allow_html=True)
-
 
 
         
