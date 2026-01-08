@@ -525,13 +525,13 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
 
-# --- 12. ANALISTA MAESTRO ULTRA 2.6: CORRECCIÓN DE LIDERAZGO Y APORTE TOTAL ---
+# --- 12. ANALISTA MAESTRO ULTRA 2.6: CORRECCIÓN DE GAPS GLOBALES ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("🚀 Inteligencia de Mercado: Duelos Directos y Liderazgo Barcel")
     
     df_p = st.session_state.data.copy()
-    # Aseguramos conversión numérica antes de cualquier cálculo para evitar errores de ordenamiento
+    # Aseguramos conversión numérica antes de cualquier cálculo
     cols_num = ["Precio ($)", "SOM (%)", "Precio por Kg ($)"]
     for c in cols_num: 
         df_p[c] = pd.to_numeric(df_p[c], errors='coerce').fillna(0)
@@ -573,19 +573,41 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
     hallazgos = []
 
     try:
+        # --- 1. INTELIGENCIA DE ESCALONES (ANÁLISIS GLOBAL DE BARCEL) ---
+        # Extraemos todos los productos de Barcel sin importar la ocasión
+        df_b_global = df_p[df_p["Fabricante"] == "BARCEL"].sort_values("Precio ($)")
+        
+        if len(df_b_global) >= 2:
+            for i in range(len(df_b_global) - 1):
+                p1 = df_b_global.iloc[i]["Precio ($)"]
+                p2 = df_b_global.iloc[i+1]["Precio ($)"]
+                gap = p2 - p1
+                
+                # Si el hueco entre dos precios de Barcel es mayor a $10
+                if gap > 10:
+                    precio_mid = (p1 + p2) / 2
+                    # Usamos el Precio/Kg del producto más pequeño como referencia de eficiencia
+                    pkg_ref = df_b_global.iloc[i]["Precio por Kg ($)"]
+                    hallazgos.append({
+                        "Prioridad": "BAJA", "Tipo": "ESCALÓN DE PRECIO", 
+                        "Ocasión": "PORTAFOLIO GLOBAL",
+                        "Msg": f"Hueco detectado entre ${p1} y ${p2}",
+                        "Detalle": f"Salto de ${gap:.0f} en la escalera de Barcel. Riesgo de pérdida de transacciones.",
+                        "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(precio_mid, pkg_ref)}** a **${int(precio_mid)}**."
+                    })
+
+        # --- 2. LÓGICA POR OCASIÓN (DUELOS Y LIDERAZGO) ---
         pesos_oca = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
         for oca in df_p["Ocasión"].unique():
             df_oca = df_p[df_p["Ocasión"] == oca].copy()
-            df_barcel = df_oca[df_oca["Fabricante"] == "BARCEL"].sort_values("Precio ($)")
+            df_barcel = df_oca[df_oca["Fabricante"] == "BARCEL"]
             df_comp = df_oca[df_oca["Fabricante"] != "BARCEL"]
             
             if df_oca.empty: continue
-
             peso_seg = pesos_oca.get(oca, 0)
             imp_tag = "ALTA" if peso_seg > 20 else "MEDIA" if peso_seg > 5 else "BAJA"
             
-            # --- AJUSTE DEFINITIVO DE LIDERAZGO ---
             idx_lider = df_oca["SOM (%)"].idxmax()
             lider_absoluto = df_oca.loc[idx_lider]
             barcel_es_lider = (lider_absoluto["Fabricante"] == "BARCEL")
@@ -593,62 +615,33 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             lider_comp = df_comp.sort_values("SOM (%)", ascending=False).iloc[0] if not df_comp.empty else None
             comp_precios = sorted(df_comp["Precio ($)"].unique()) if not df_comp.empty else []
 
-            # --- NUEVA INTELIGENCIA: ESCALONES DE PRECIO (GAPS INTERNOS) ---
-            if len(df_barcel) >= 2:
-                precios_b_list = df_barcel["Precio ($)"].tolist()
-                for i in range(len(precios_b_list) - 1):
-                    gap = precios_b_list[i+1] - precios_b_list[i]
-                    if gap > 10: # Si hay un hueco mayor a $10 entre SKUs de Barcel
-                        precio_intermedio = (precios_b_list[i+1] + precios_b_list[i]) / 2
-                        pkg_ref_escalon = lider_comp["Precio por Kg ($)"] if lider_comp is not None else df_barcel.iloc[i]["Precio por Kg ($)"]
-                        hallazgos.append({
-                            "Prioridad": "BAJA", "Tipo": "ESCALÓN DE PRECIO", "Ocasión": oca,
-                            "Msg": f"Salto de precio excesivo (${gap:.0f}) en Barcel",
-                            "Detalle": f"Espacio vacío entre ${precios_b_list[i]} y ${precios_b_list[i+1]}. Riesgo de fuga de consumidor.",
-                            "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(precio_intermedio, pkg_ref_escalon)}** a **${int(precio_intermedio)}**."
-                        })
-
-            # --- CASO 1: BARCEL LÍDER REAL (POR SKU) ---
-            if barcel_es_lider:
-                seguidor = df_comp.sort_values("SOM (%)", ascending=False).iloc[0] if not df_comp.empty else None
+            # CASO 1: BARCEL LÍDER
+            if barcel_es_lider and lider_comp is not None:
                 for _, row_b in df_barcel.iterrows():
-                    if row_b["Producto"] == lider_absoluto["Producto"] and seguidor is not None:
-                        idx_vs_seguidor = int((row_b["Precio por Kg ($)"] / seguidor["Precio por Kg ($)"]) * 100)
-                        if idx_vs_seguidor < 95:
+                    if row_b["Producto"] == lider_absoluto["Producto"]:
+                        idx_vs = int((row_b["Precio por Kg ($)"] / lider_comp["Precio por Kg ($)"]) * 100)
+                        if idx_vs < 95:
                             hallazgos.append({
                                 "Prioridad": "MEDIA", "Tipo": "DOMINANCIA Y MARGEN", "Ocasión": oca,
-                                "Msg": f"Barcel lidera con {row_b['Producto']} (Aporte Occ: {peso_seg:.1f}%)",
-                                "Detalle": f"Index {idx_vs_seguidor} vs {seguidor['Producto']}. Oportunidad de rentabilidad en líder de categoría.",
-                                "Accion": f"📈 **Modo Líder:** Evaluar ajuste a **{calcular_rango_g(row_b['Precio ($)'], seguidor['Precio por Kg ($)'])}**."
+                                "Msg": f"Barcel lidera con {row_b['Producto']}",
+                                "Detalle": f"Index {idx_vs} vs seguidor. Oportunidad de rentabilidad.",
+                                "Accion": f"📈 **Modo Líder:** Evaluar ajuste a **{calcular_rango_g(row_b['Precio ($)'], lider_comp['Precio por Kg ($)'])}**."
                             })
             
-            # --- CASO 2: SIN PARTICIPACIÓN ---
+            # CASO 2: SIN PARTICIPACIÓN
             if df_barcel.empty:
                 pkg_ref = lider_comp["Precio por Kg ($)"] if lider_comp is not None else 0
                 c_min = min(comp_precios) if comp_precios else 0
                 hallazgos.append({
                     "Prioridad": "ALTA" if imp_tag != "BAJA" else "MEDIA",
                     "Tipo": "WHITE SPACE", "Ocasión": oca,
-                    "Msg": f"Barcel no participa en este segmento ({peso_seg:.1f}% SOM)",
-                    "Detalle": f"Segmento liderado por {lider_absoluto['Producto']}.",
+                    "Msg": f"Barcel no participa ({peso_seg:.1f}% SOM)",
+                    "Detalle": f"Segmento dominado por {lider_absoluto['Producto']}.",
                     "Accion": f"⚡ **Entrada:** Sugerido **{calcular_rango_g(c_min, pkg_ref)}** a **${int(c_min)}**."
                 })
             
-            # --- CASO 3: DUELOS Y GAPS ---
+            # CASO 3: DUELOS
             elif not barcel_es_lider:
-                precios_b = sorted(df_barcel["Precio ($)"].unique())
-                b_min = min(precios_b)
-                c_min = min(comp_precios) if comp_precios else b_min
-
-                if b_min > c_min + 2:
-                    hallazgos.append({
-                        "Prioridad": "ALTA" if peso_seg > 15 else "MEDIA",
-                        "Tipo": "GAP DE ENTRADA", "Ocasión": oca,
-                        "Msg": f"Mercado inicia en ${int(c_min)} (Aportación Occ: {peso_seg:.1f}%)",
-                        "Detalle": f"Nuestra entrada es en ${int(b_min)}. Liderado por {lider_absoluto['Producto']}.",
-                        "Accion": f"📉 **Táctica:** Formato de **{calcular_rango_g(c_min, lider_comp['Precio por Kg ($)'])}** a **${int(c_min)}**."
-                    })
-
                 for _, row_b in df_barcel.iterrows():
                     marca_b = identificar_marca(row_b["Producto"])
                     rivales = df_comp[df_comp.apply(lambda x: es_rival_de(x["Producto"], marca_b), axis=1)]
@@ -656,14 +649,12 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     if bench is None: continue
                     
                     idx = int((row_b["Precio por Kg ($)"] / bench["Precio por Kg ($)"]) * 100)
-                    rango = calcular_rango_g(row_b["Precio ($)"], bench["Precio por Kg ($)"])
-
                     if idx > 95:
                         hallazgos.append({
                             "Prioridad": "ALTA", "Tipo": f"DUELO: vs {bench['Producto']}", "Ocasión": oca,
-                            "Msg": f"{row_b['Producto']} fuera de rango (Aporte Occ: {peso_seg:.1f}%)",
-                            "Detalle": f"Index {idx} vs rival. Líder de segmento: {lider_absoluto['Producto']}.",
-                            "Accion": f"⚖️ **R&D:** Ajustar a **{rango}** para recuperar paridad."
+                            "Msg": f"{row_b['Producto']} fuera de rango",
+                            "Detalle": f"Index {idx} vs rival. Líder: {lider_absoluto['Producto']}.",
+                            "Accion": f"⚖️ **R&D:** Ajustar a **{calcular_rango_g(row_b['Precio ($)'], bench['Precio por Kg ($)'])}**."
                         })
 
     except Exception as e: st.error(f"Error en Ultra 2.6: {e}")
@@ -673,16 +664,16 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         hallazgos.sort(key=lambda x: {"ALTA": 0, "MEDIA": 1, "BAJA": 2}.get(x["Prioridad"], 2))
         for h in hallazgos:
             with st.container(border=True):
-                col_icon, col_text, col_action = st.columns([1.5, 3.5, 3])
-                with col_icon:
-                    if h["Prioridad"] == "ALTA": st.error(f"🔴 **PRIORIDAD**\n\n{h['Tipo']}")
-                    elif h["Prioridad"] == "MEDIA": st.warning(f"🟡 **ATENCIÓN**\n\n{h['Tipo']}")
-                    else: st.info(f"🔵 **INFO**\n\n{h['Tipo']}")
-                with col_text:
+                col_i, col_t, col_a = st.columns([1.5, 3.5, 3])
+                with col_i:
+                    if h["Prioridad"] == "ALTA": st.error(f"🔴 **{h['Tipo']}**")
+                    elif h["Prioridad"] == "MEDIA": st.warning(f"🟡 **{h['Tipo']}**")
+                    else: st.info(f"🔵 **{h['Tipo']}**")
+                with col_t:
                     st.markdown(f"#### {h['Ocasión']}")
                     st.write(f"**{h['Msg']}**")
                     st.caption(h['Detalle'])
-                with col_action:
+                with col_a:
                     st.success(f"🧪 **Sugerencia:**\n\n{h['Accion']}")
     else:
         st.balloons()
