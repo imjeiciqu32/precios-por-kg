@@ -469,10 +469,14 @@ if not st.session_state.data.empty:
                 textfont=dict(size=t_precios, color="black")
             ), row=2, col=1)
 
-            # Anotaciones de Precio por Kg dentro de las barras
+            # Anotaciones de Precio por Kg dentro de las barras (ETIQUETAS INTELIGENTES)
             for i, row in df_p.iterrows():
+                val_pkg = row['Precio por Kg ($)']
+                # Lógica inteligente: 1 decimal si es < 10, entero si es >= 10
+                txt_pkg = f"${val_pkg:.1f}" if val_pkg < 10 else f"${int(val_pkg)}"
+                
                 fig.add_annotation(
-                    x=i, y=2.5, text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
+                    x=i, y=2.5, text=f"<b>{txt_pkg}</b>",
                     showarrow=False, 
                     font=dict(size=t_pkg, color="white" if row["Fabricante"] == "BARCEL" else "black"),
                     bgcolor="rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)",
@@ -570,9 +574,13 @@ if not st.session_state.data.empty:
                     ) 
         
                 for i, r in df_p.iterrows():
+                    # ETIQUETAS INTELIGENTES PARA PRICE PACK
+                    val_pkg_pp = r['Precio por Kg ($)']
+                    txt_pkg_pp = f"${val_pkg_pp:,.1f}" if val_pkg_pp < 10 else f"${val_pkg_pp:,.0f}"
+
                     fig.add_annotation(
                         x=i, y=r["Precio por Kg ($)"], 
-                        text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", 
+                        text=f"<b>{txt_pkg_pp}</b>", 
                         yshift=15, 
                         showarrow=False, 
                         font=dict(size=t_pkg, color="#212121"),
@@ -638,7 +646,7 @@ if not st.session_state.data.empty:
                 })
             else:
                 st.info("Utiliza los filtros para visualizar los datos del Price Pack.")
-
+                
 # --- 8. COMPARATIVAS INDEX (UNIFICADO: LADDER + ARQUITECTURA PPT) ---
 if not st.session_state.data.empty:
     st.divider()
