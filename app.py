@@ -628,7 +628,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                         if idx < 95:
                             hallazgos.append({
                                 "Prioridad": "MEDIA", "Tipo": "DOMINANCIA", "Ocasión": oca,
-                                "Msg": f"Barcel lidera (Aporte Occ: {peso_seg:.1f}%)",
+                                "Msg": f"Barcel lidera ({peso_seg:.1f}% Occ)",
                                 "Detalle": f"Index {idx} vs competidor. Oportunidad de rentabilidad.",
                                 "Accion": f"📈 **Modo Líder:** Evaluar ajuste a **{calcular_rango_g(row_b['Precio ($)'], lider_c['Precio por Kg ($)'])}**."
                             })
