@@ -480,65 +480,8 @@ if not st.session_state.data.empty:
 
         st.plotly_chart(fig, use_container_width=True)
 
-# --- 8. EXPORTAR DATOS ---
-st.markdown("---")
-st.write("### 📥 Descargar Reporte")
-
-import io
-from fpdf import FPDF
-
-# --- FUNCIÓN CORREGIDA PARA EL PDF (Sin errores de bytearray) ---
-def generar_pdf(df, titulo_modo):
-    pdf = FPDF()
-    pdf.add_page()
-    # Usamos Helvetica que es una fuente estándar muy estable
-    pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 10, f"Reporte de Precios: {titulo_modo}", ln=True, align='C')
-    pdf.ln(10)
-    
-    # Encabezados de la tabla
-    pdf.set_font("Helvetica", "B", 10)
-    pdf.cell(75, 10, "Producto", 1)
-    pdf.cell(40, 10, "Fabricante", 1)
-    pdf.cell(35, 10, "Precio ($)", 1)
-    pdf.cell(35, 10, "Precio/Kg", 1)
-    pdf.ln()
-    
-    # Filas de la tabla
-    pdf.set_font("Helvetica", size=10)
-    for _, row in df.iterrows():
-        # Limpieza de caracteres para evitar errores de codificación
-        p_nom = str(row['Producto'])[:35].encode('latin-1', 'replace').decode('latin-1')
-        f_nom = str(row['Fabricante']).encode('latin-1', 'replace').decode('latin-1')
-        
-        pdf.cell(75, 10, p_nom, 1)
-        pdf.cell(40, 10, f_nom, 1)
-        pdf.cell(35, 10, f"${row['Precio ($)']:,.1f}", 1)
-        pdf.cell(35, 10, f"${row['Precio por Kg ($)']:,.0f}", 1)
-        pdf.ln()
-    
-    # IMPORTANTE: En fpdf2, output() ya devuelve los bytes necesarios
-    return pdf.output()
-
-# --- BOTONES DE DESCARGA ---
-if not df_p.empty:
-    col_exp1, col_exp2 = st.columns(2)
-
-    with col_exp1:
-        # EXCEL
-        buffer_excel = io.BytesIO()
-        with pd.ExcelWriter(buffer_excel, engine='xlsxwriter') as writer:
-            df_p.to_excel(writer, index=False)
-        
-        st.download_button(
-            label="📊 Descargar Excel",
-            data=buffer_excel.getvalue(),
-            file_name=f"Analisis_{modo}.xlsx",
-            mime="application/vnd.ms-excel",
-            use_container_width=True
-        )
             
-# --- 9. COMPARATIVAS INDEX (DOBLE FILA: DESEMBOLSO Y $/KG) ---
+# --- 8. COMPARATIVAS INDEX (DOBLE FILA: DESEMBOLSO Y $/KG) ---
 if not st.session_state.data.empty:
     st.divider()
     st.subheader(f"📈 Comparativas Index ({modo})")
