@@ -386,7 +386,7 @@ if not st.session_state.data.empty:
             st.session_state["slider_nombres"] = 14
             st.session_state["slider_precios"] = 18
             st.session_state["slider_pkg"] = 16
-            st.session_state["slider_som"] = 13
+            st.session_state["slider_som"] = 13 # <--- NUEVO
             st.session_state["slider_ancho"] = 0.6
             st.session_state["slider_opacidad"] = 1.0
             st.session_state["slider_alto"] = 950
@@ -402,7 +402,7 @@ if not st.session_state.data.empty:
             "slider_nombres": 14, "slider_precios": 18, "slider_pkg": 16,
             "slider_som": 13, "slider_ancho": 0.6, "slider_opacidad": 1.0, 
             "slider_alto": 950, "slider_espacio": 0.03, "slider_margen_b": 400, 
-            "slider_angulo": -90, "slider_aire": 20 # <--- NUEVO DEFAULT
+            "slider_angulo": -90
         }
         for key, val in defaults.items():
             if key not in st.session_state: st.session_state[key] = val
@@ -419,7 +419,7 @@ if not st.session_state.data.empty:
             t_nombres = st.slider("Tamaño Nombres", 8, 30, key="slider_nombres")
             t_precios = st.slider("Tamaño Precios ($)", 10, 40, key="slider_precios")
             t_pkg = st.slider("Tamaño $/Kg", 10, 40, key="slider_pkg")
-            t_som = st.slider("Tamaño SOM (%)", 8, 25, key="slider_som")
+            t_som = st.slider("Tamaño SOM (%)", 8, 25, key="slider_som") # <--- NUEVO
             angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, key="slider_angulo")
     
     # --- INSERCIÓN DE FILTROS (MODO LADDER) ---
@@ -454,7 +454,7 @@ if not st.session_state.data.empty:
                 line=dict(color="#BBBBBB", width=1.5), 
                 marker=dict(size=30, color="#E5E5E5", symbol="square", line=dict(color="#CCCCCC", width=1)), 
                 text=[f"<b>{row['SOM (%)']}%</b>" for _, row in df_p.iterrows()],
-                textposition="middle center", textfont=dict(size=t_som, color="black"),
+                textposition="middle center", textfont=dict(size=t_som, color="black"), # <--- t_som APLICADO
             ), row=1, col=1)
 
             # --- TRACE 2: BARRAS DE PRECIO ---
@@ -510,12 +510,8 @@ if not st.session_state.data.empty:
                 row=2, col=1
             )
             
-            # --- AJUSTE DE AIRE SUPERIOR DINÁMICO ---
-            max_som = df_p["SOM (%)"].max() if not df_p.empty else 100
-            max_precio = df_p["Precio ($)"].max() if not df_p.empty else 100
-            
-            fig.update_yaxes(range=[0, max_som * (1 + aire_superior/100)], showticklabels=False, row=1, col=1)
-            fig.update_yaxes(range=[0, max_precio * (1 + aire_superior/100)], showgrid=True, gridcolor="#DCDCDC", tickprefix="$", tickfont=dict(size=14), row=2, col=1)
+            fig.update_yaxes(showticklabels=False, row=1, col=1)
+            fig.update_yaxes(showgrid=True, gridcolor="#DCDCDC", tickprefix="$", tickfont=dict(size=14), row=2, col=1)
             
             # --- RENDERIZADO CON BOTÓN DE DESCARGA ---
             st.plotly_chart(fig, use_container_width=True, config={
@@ -611,9 +607,6 @@ if not st.session_state.data.empty:
                         font=dict(size=14, color="#424242", family="Verdana")
                     )
                 
-                # --- AJUSTE DE RANGO PARA PRICE PACK ---
-                max_pkg = df_p["Precio por Kg ($)"].max() if not df_p.empty else 100
-                
                 fig.update_layout(
                     height=alto_grafico,
                     margin=dict(b=margen_b, t=50, l=50, r=50),
@@ -627,7 +620,6 @@ if not st.session_state.data.empty:
                         showgrid=False
                     ),
                     yaxis=dict(
-                        range=[0, max_pkg * (1 + aire_superior/100)], # <--- AIRE APLICADO
                         tickprefix="$", 
                         showgrid=True, 
                         gridcolor="#F5F5F5"
@@ -646,7 +638,6 @@ if not st.session_state.data.empty:
                 })
             else:
                 st.info("Utiliza los filtros para visualizar los datos del Price Pack.")
-
 
 # --- 8. COMPARATIVAS INDEX (UNIFICADO: LADDER + ARQUITECTURA PPT) ---
 if not st.session_state.data.empty:
