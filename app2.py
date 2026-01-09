@@ -1056,15 +1056,18 @@ if not st.session_state.data.empty:
         st.success("✅ **Estrategia en Paridad Optimizada (Sin hallazgos críticos).**")
 
 
-# --- 12. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO (V4: FIX ARQUITECTURA) ---
-if modo == "Price Ladder" and not st.session_state.data.empty:
+# --- 12. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO ---
+if not st.session_state.data.empty:
     st.divider()
     
-    if st.button("📄 Generar Resumen Ejecutivo Detallado", key="btn_exec_v4"):
-        with st.spinner("Compilando datos de mercado..."):
+    # Título dinámico según el modo
+    btn_label = "📄 Generar Resumen de Mercado" if modo == "Price Ladder" else "🏛️ Generar Resumen de Arquitectura"
+    
+    if st.button(btn_label, key="btn_exec_v4"):
+        with st.spinner("Compilando diagnóstico..."):
             
             if not hallazgos:
-                st.success("✅ **Estado de Mercado:** El portafolio actual no presenta desviaciones críticas.")
+                st.success("✅ **Estado Óptimo:** No se detectan desviaciones en la estrategia actual.")
             else:
                 st.markdown("""
                     <style>
@@ -1074,54 +1077,64 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                         color: #1a1a1a;
                     }
                     .rival-name { font-weight: bold; color: #d32f2f; }
+                    .barcel-blue { font-weight: bold; color: #003399; }
                     </style>
                 """, unsafe_allow_html=True)
                 
                 st.markdown('<div class="exec-box">', unsafe_allow_html=True)
-                st.subheader("📝 Resumen Ejecutivo: Estrategia de Portafolio")
                 
-                # --- A. DIAGNÓSTICO ---
-                num_alta = len([h for h in hallazgos if h["Prioridad"] == "ALTA"])
-                st.write(f"Se han identificado **{len(hallazgos)} hallazgos estratégicos**, con **{num_alta} alertas críticas**.")
+                # --- CASO A: RESUMEN PRICE LADDER ---
+                if modo == "Price Ladder":
+                    st.subheader("📝 Resumen Ejecutivo: Estrategia de Portafolio")
+                    num_alta = len([h for h in hallazgos if h["Prioridad"] == "ALTA"])
+                    st.write(f"Se han identificado **{len(hallazgos)} hallazgos estratégicos**, con **{num_alta} alertas críticas**.")
 
-                # --- B. OPORTUNIDADES (WHITE SPACES) ---
-                ws_items = [h for h in hallazgos if h["Tipo"] == "WHITE SPACE"]
-                if ws_items:
-                    st.markdown("#### 🚀 Expansión de Portafolio")
-                    for ws in ws_items:
-                        rival = ws['Detalle'].split('dominado por ')[-1].replace('.', '')
-                        sug_data = ws['Accion'].replace("⚡ **Entrada:** Lanzar ", "")
-                        st.write(f"* **{ws['Ocasión']}:** Barcel no participa. Dominio de <span class='rival-name'>{rival}</span>. "
-                                 f"**Acción:** Introducir SKU de **{sug_data}**.", unsafe_allow_html=True)
+                    # Oportunidades (White Spaces)
+                    ws_items = [h for h in hallazgos if h["Tipo"] == "WHITE SPACE"]
+                    if ws_items:
+                        st.markdown("#### 🚀 Expansión de Portafolio")
+                        for ws in ws_items:
+                            rival = ws['Detalle'].split('dominado por ')[-1].replace('.', '')
+                            sug_data = ws['Accion'].replace("⚡ **Entrada:** Lanzar ", "")
+                            st.write(f"* **{ws['Ocasión']}:** Barcel no participa. Dominio de <span class='rival-name'>{rival}</span>. Acción: Introducir SKU de **{sug_data}**.", unsafe_allow_html=True)
 
-                # --- C. COMPETITIVIDAD (DUELOS) ---
-                duelos = [h for h in hallazgos if "DUELO" in h["Tipo"]]
-                if duelos:
-                    st.markdown("#### 🛡️ Ajustes de Paridad (Defensa)")
-                    for d in duelos:
-                        rival = d['Tipo'].replace("DUELO vs ", "")
-                        sug_data = d['Accion'].replace("⚖️ **R&D:** Ajustar a ", "")
-                        st.write(f"* **{d['Ocasión']}:** {d['Msg']} vs <span class='rival-name'>{rival}</span>. "
-                                 f"**Rec:** {sug_data}.", unsafe_allow_html=True)
+                    # Competitividad (Duelos)
+                    duelos = [h for h in hallazgos if "DUELO" in h["Tipo"]]
+                    if duelos:
+                        st.markdown("#### 🛡️ Ajustes de Paridad (Defensa)")
+                        for d in duelos:
+                            rival = d['Tipo'].replace("DUELO vs ", "")
+                            sug_data = d['Accion'].replace("⚖️ **R&D:** Ajustar a ", "")
+                            st.write(f"* **{d['Ocasión']}:** {d['Msg']} vs <span class='rival-name'>{rival}</span>. Rec: {sug_data}.", unsafe_allow_html=True)
 
-                # --- D. HUECOS EN LA ESCALERA (GAPS) - CORREGIDO ---
-                gaps = [h for h in hallazgos if h["Tipo"] == "ESCALÓN DE PRECIO"]
-                if gaps:
-                    st.markdown("#### 🪜 Arquitectura de Precios")
-                    for g in gaps:
-                        # Extraemos los precios limpiando el mensaje original de forma segura
-                        rango_precios = g['Msg'].replace("Hueco detectado entre ", "").strip()
-                        # Aseguramos que el formato sea "$X y $Y" con espacios
-                        rango_formateado = rango_precios.replace("y", " y ")
-                        sug_data = g['Accion'].replace("🪜 **Extensión:** Evaluar SKU de ", "")
-                        
-                        st.write(f"* **Brecha de Salto:** Rango entre **{rango_formateado}**. "
-                                 f"**Sugerencia:** SKU puente de **{sug_data}**.")
+                    st.markdown("---")
+                    st.write("**💡 Veredicto:** Priorizar blindaje en segmentos donde el rival tiene ventaja competitiva en gramaje.")
 
-                st.markdown("---")
-                st.write("**💡 Veredicto:** Priorizar blindaje en segmentos donde el rival tiene ventaja competitiva en gramaje.")
+                # --- CASO B: RESUMEN ARQUITECTURA PRO ---
+                else:
+                    st.subheader("📝 Diagnóstico de Arquitectura y Curva de Precios")
+                    st.write(f"Se detectaron **{len(hallazgos)} puntos de atención** en la estructura interna de precios.")
+
+                    # 1. Curva de Precio (Cascada)
+                    curvas = [h for h in hallazgos if h["Tipo"] == "CURVA DE PRECIO"]
+                    if curvas:
+                        st.markdown("#### 📉 Eficiencia en Curva de Precios")
+                        for c in curvas:
+                            st.write(f"* **{c['Ocasión']}:** {c['Msg']}. {c['Detalle']}")
+                            st.caption(f"↳ Sugerencia: {c['Accion']}")
+
+                    # 2. Corredores Estratégicos (Index)
+                    indices = [h for h in hallazgos if h["Tipo"] in ["BAJO INDEX", "SOBREPRECIO"]]
+                    if indices:
+                        st.markdown("#### 💰 Corredores por Canal (vs Detalle)")
+                        for i in indices:
+                            color_tag = "🔴" if i["Prioridad"] == "ALTA" else "🟡"
+                            st.write(f"{color_tag} **{i['Ocasión']}:** {i['Msg']}. (Index {i['Detalle'].split('Index ')[1].split(' vs')[0]})")
+
+                    st.markdown("---")
+                    st.write("**💡 Veredicto Interno:** Asegurar la consistencia de la curva para incentivar el 'upsize' y proteger la rentabilidad de los canales estratégicos.")
+
                 st.markdown('</div>', unsafe_allow_html=True)
-
 
 
 
