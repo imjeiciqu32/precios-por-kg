@@ -482,41 +482,72 @@ if not st.session_state.data.empty:
 
 # --- 8. EXPORTAR DATOS ---
 st.markdown("---")
-st.markdown("### 📥 Descargar Reporte")
+st.write("### 📥 Descargar Reporte")
 
-# Preparamos el archivo Excel en memoria
 import io
+from fpdf import FPDF
 
-# 1. Lógica para EXCEL
-buffer = io.BytesIO()
-with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-    df_p.to_excel(writer, index=False, sheet_name='Price_Analysis')
-    # Podrías agregar más hojas si quisieras
+# --- FUNCIÓN PARA GENERAR EL PDF ---
+def generar_pdf(df, titulo_modo):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, f"Reporte de Precios: {titulo_modo}", ln=True, align='C')
+    pdf.ln(10)
     
-col_exp1, col_exp2, _ = st.columns([1, 1, 2])
+    # Encabezados de tabla en el PDF
+    pdf.set_font("Arial", "B", 10)
+    pdf.cell(80, 10, "Producto", 1)
+    pdf.cell(40, 10, "Fabricante", 1)
+    pdf.cell(35, 10, "Precio ($)", 1)
+    pdf.cell(35, 10, "Precio/Kg", 1)
+    pdf.ln()
+    
+    # Filas de la tabla
+    pdf.set_font("Arial", size=10)
+    for _, row in df.iterrows():
+        pdf.cell(80, 10, str(row['Producto'])[:40], 1)
+        pdf.cell(40, 10, str(row['Fabricante']), 1)
+        pdf.cell(35, 10, f"${row['Precio ($)']:,.1f}", 1)
+        pdf.cell(35, 10, f"${row['Precio por Kg ($)']:,.0f}", 1)
+        pdf.ln()
+    
+    # Retornamos los bytes del PDF
+    return pdf.output(dest='S').encode('latin-1', errors='replace')
 
-with col_exp1:
-    st.download_button(
-        label="📊 Descargar en Excel",
-        data=buffer.getvalue(),
-        file_name=f"Analisis_Precios_{modo}.xlsx",
-        mime="application/vnd.ms-excel"
-    )
+# --- LÓGICA DE EXPORTACIÓN ---
+if not df_p.empty:
+    col_exp1, col_exp2 = st.columns(2)
 
-with col_exp2:
-    # 2. Lógica simplificada para PDF (Tabla de datos)
-    # Nota: Exportar el gráfico Plotly a PDF requiere librerías pesadas (kaleido).
-    # Por ahora, exportaremos la tabla de datos analizados en formato CSV legible por PDF.
-    pdf_data = df_p.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="📄 Descargar Datos (CSV)",
-        data=pdf_data,
-        file_name=f"Datos_Analisis_{modo}.csv",
-        mime="text/csv",
-        help="Exporta los datos filtrados que ves en el gráfico"
-    )
+    with col_exp1:
+        # EXPORTAR EXCEL
+        buffer_excel = io.BytesIO()
+        with pd.ExcelWriter(buffer_excel, engine='xlsxwriter') as writer:
+            df_p.to_excel(writer, index=False, sheet_name='Analisis')
         
-# --- 8. COMPARATIVAS INDEX (DOBLE FILA: DESEMBOLSO Y $/KG) ---
+        st.download_button(
+            label="📊 Descargar Excel",
+            data=buffer_excel.getvalue(),
+            file_name=f"Analisis_Precios_{modo}.xlsx",
+            mime="application/vnd.ms-excel",
+            use_container_width=True
+        )
+
+    with col_exp2:
+        # EXPORTAR PDF
+        try:
+            pdf_bytes = generar_pdf(df_p, modo)
+            st.download_button(
+                label="📄 Descargar PDF",
+                data=pdf_bytes,
+                file_name=f"Reporte_{modo}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+        except Exception as e:
+            st.error("Error al generar PDF. Asegúrate de tener 'fpdf2' en requirements.txt")
+        
+# --- 9. COMPARATIVAS INDEX (DOBLE FILA: DESEMBOLSO Y $/KG) ---
 if not st.session_state.data.empty:
     st.divider()
     st.subheader(f"📈 Comparativas Index ({modo})")
