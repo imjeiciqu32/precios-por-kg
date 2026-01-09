@@ -6,6 +6,7 @@ from plotly.subplots import make_subplots
 import os
 import io
 
+
 # --- 1. CONFIGURACIÓN Y CARGA DE PLANTILLAS ---
 try:
     from plantillas import PLANTILLAS 
@@ -478,6 +479,42 @@ if not st.session_state.data.empty:
             )
 
         st.plotly_chart(fig, use_container_width=True)
+
+# --- 8. EXPORTAR DATOS ---
+st.markdown("---")
+st.markdown("### 📥 Descargar Reporte")
+
+# Preparamos el archivo Excel en memoria
+import io
+
+# 1. Lógica para EXCEL
+buffer = io.BytesIO()
+with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+    df_p.to_excel(writer, index=False, sheet_name='Price_Analysis')
+    # Podrías agregar más hojas si quisieras
+    
+col_exp1, col_exp2, _ = st.columns([1, 1, 2])
+
+with col_exp1:
+    st.download_button(
+        label="📊 Descargar en Excel",
+        data=buffer.getvalue(),
+        file_name=f"Analisis_Precios_{modo}.xlsx",
+        mime="application/vnd.ms-excel"
+    )
+
+with col_exp2:
+    # 2. Lógica simplificada para PDF (Tabla de datos)
+    # Nota: Exportar el gráfico Plotly a PDF requiere librerías pesadas (kaleido).
+    # Por ahora, exportaremos la tabla de datos analizados en formato CSV legible por PDF.
+    pdf_data = df_p.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="📄 Descargar Datos (CSV)",
+        data=pdf_data,
+        file_name=f"Datos_Analisis_{modo}.csv",
+        mime="text/csv",
+        help="Exporta los datos filtrados que ves en el gráfico"
+    )
         
 # --- 8. COMPARATIVAS INDEX (DOBLE FILA: DESEMBOLSO Y $/KG) ---
 if not st.session_state.data.empty:
