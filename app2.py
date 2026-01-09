@@ -378,23 +378,32 @@ if not st.session_state.data.empty:
     # --- CONFIGURACIÓN DE INTERFAZ EN SIDEBAR ---
     with st.sidebar:
         st.divider()
-        st.subheader("📏 Tamaño de Etiquetas")
+        st.subheader("🎨 Controles de Diseño")
         
-        # Botón para resetear valores por defecto
-        if st.button("Resetear Tamaños"):
-            st.session_state.t_nombres = 14
-            st.session_state.t_precios = 18
-            st.session_state.t_pkg = 16
-        
-        # Inicializar llaves en session_state si no existen
-        if 't_nombres' not in st.session_state: st.session_state.t_nombres = 14
-        if 't_precios' not in st.session_state: st.session_state.t_precios = 18
-        if 't_pkg' not in st.session_state: st.session_state.t_pkg = 16
+        # Lógica de reseteo funcional
+        def reset_diseno():
+            st.session_state["slider_nombres"] = 14
+            st.session_state["slider_precios"] = 18
+            st.session_state["slider_pkg"] = 16
+            st.session_state["slider_ancho"] = 0.6
+            st.session_state["slider_opacidad"] = 1.0
 
-        # Sliders vinculados al session_state
-        t_nombres = st.slider("Nombres de Producto", 8, 30, st.session_state.t_nombres)
-        t_precios = st.slider("Precios ($)", 10, 40, st.session_state.t_precios)
-        t_pkg = st.slider("Precio por Kg", 10, 40, st.session_state.t_pkg)
+        if st.button("Resetear Diseño"):
+            reset_diseno()
+        
+        # Inicialización de estados
+        if "slider_nombres" not in st.session_state: st.session_state["slider_nombres"] = 14
+        if "slider_precios" not in st.session_state: st.session_state["slider_precios"] = 18
+        if "slider_pkg" not in st.session_state: st.session_state["slider_pkg"] = 16
+        if "slider_ancho" not in st.session_state: st.session_state["slider_ancho"] = 0.6
+        if "slider_opacidad" not in st.session_state: st.session_state["slider_opacidad"] = 1.0
+
+        # Controles Dinámicos
+        t_nombres = st.slider("Tamaño Nombres", 8, 30, key="slider_nombres")
+        t_precios = st.slider("Tamaño Precios ($)", 10, 40, key="slider_precios")
+        t_pkg = st.slider("Tamaño $/Kg", 10, 40, key="slider_pkg")
+        ancho_barras = st.slider("Ancho de Barras", 0.1, 1.0, key="slider_ancho")
+        opacidad_barras = st.slider("Opacidad", 0.1, 1.0, key="slider_opacidad")
     
     # --- INSERCIÓN DE FILTROS (MODO LADDER) ---
     if modo == "Price Ladder":
@@ -435,6 +444,8 @@ if not st.session_state.data.empty:
             fig.add_trace(go.Bar(
                 x=df_p["Producto"], y=df_p["Precio ($)"],
                 marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]],
+                marker_opacity=opacidad_barras, # <--- NUEVO
+                width=ancho_barras,             # <--- NUEVO
                 text=[f"<b>${p:.1f}</b>" for p in df_p["Precio ($)"]], 
                 textposition="outside", 
                 textfont=dict(size=t_precios, color="black")
@@ -517,6 +528,8 @@ if not st.session_state.data.empty:
                     y=df_p["Precio por Kg ($)"], 
                     marker_color="#F8F9FA",
                     marker_line=dict(color="#D1D1D1", width=1),
+                    marker_opacity=opacidad_barras, # <--- NUEVO
+                    width=ancho_barras,             # <--- NUEVO
                     showlegend=False
                 ))
                 
