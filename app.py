@@ -334,53 +334,36 @@ else:
     # Si no es Price Ladder, creamos df_p sin filtros para evitar errores en otras secciones
     df_p = st.session_state.data.copy()
 
-# --- 6.8 PANEL EJECUTIVO DINÁMICO POR OCASIÓN ---
+# --- 6.8 PANEL EJECUTIVO MINIMALISTA ---
 if modo == "Price Ladder" and not df_p.empty:
-    st.markdown("### 📊 Snapshot por Ocasión de Consumo")
+    st.write("### 📈 Resumen por Ocasión")
     
-    # Agrupamos los datos por Ocasión usando el df_p ya filtrado
+    # Agrupamos los datos
     resumen_oca = df_p.groupby("Ocasión").agg({
         "Producto": "count",
         "Precio ($)": "mean",
         "Precio por Kg ($)": "mean"
     }).reset_index()
 
-    # Orden lógico
+    # Orden lógico de las ocasiones
     ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5, "REUNIÓN": 6, "FIESTA": 7, "TRANSFORMADOR": 8}
     resumen_oca["Orden"] = resumen_oca["Ocasión"].str.upper().map(ord_oca).fillna(99)
     resumen_oca = resumen_oca.sort_values("Orden")
 
-    # Layout de tarjetas (4 por fila)
-    rows = [resumen_oca[i:i + 4] for i in range(0, len(resumen_oca), 4)]
-
-    for row_data in rows:
-        cols = st.columns(4)
-        for i, (idx, row) in enumerate(row_data.iterrows()):
-            with cols[i]:
-                st.markdown(f"""
-                    <div style="
-                        background-color: #f8f9fa;
-                        border-left: 5px solid #0B3C8C;
-                        padding: 15px;
-                        border-radius: 8px;
-                        box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
-                        margin-bottom: 10px;
-                    ">
-                        <p style="margin:0; font-size:0.8rem; color:#666; font-weight:bold; text-transform:uppercase;">{row['Ocasión']}</p>
-                        <h3 style="margin:5px 0; color:#111;">{row['Producto']} <span style="font-size:0.9rem; font-weight:normal; color:#888;">SKUs</span></h3>
-                        <hr style="margin:8px 0; border:0; border-top:1px solid #ddd;">
-                        <div style="display:flex; justify-content:space-between;">
-                            <div>
-                                <p style="margin:0; font-size:0.7rem; color:#999;">P. PROM</p>
-                                <p style="margin:0; font-size:1.1rem; font-weight:bold; color:#0B3C8C;">${row['Precio ($)']:,.1f}</p>
-                            </div>
-                            <div style="text-align:right;">
-                                <p style="margin:0; font-size:0.7rem; color:#999;">$/KG PROM</p>
-                                <p style="margin:0; font-size:1.1rem; font-weight:bold; color:#4B207E;">${row['Precio por Kg ($)']:,.0f}</p>
-                            </div>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
+    # Mostrar en una tabla limpia y pequeña en lugar de tarjetas
+    # Esto quita todo el "ruido" de colores y sombras
+    st.dataframe(
+        resumen_oca[["Ocasión", "Producto", "Precio ($)", "Precio por Kg ($)"]].rename(
+            columns={
+                "Producto": "SKUs", 
+                "Precio ($)": "P. Prom ($)", 
+                "Precio por Kg ($)": "$/kg Prom"
+            }
+        ),
+        hide_index=True,
+        use_container_width=True
+    )
+    st.write("") # Espaciado simple
 
 # --- 7. GRÁFICO FINAL (CON FILTROS DINÁMICOS INTEGRADOS) ---
 
