@@ -501,7 +501,7 @@ if not st.session_state.data.empty:
                 fig.add_trace(go.Bar(
                     x=df_p.index, 
                     y=df_p["Precio por Kg ($)"], 
-                    marker_color="#F2F2F2", 
+                    marker_color="#F8F9FA", # Un gris aún más sutil para limpieza
                     showlegend=False
                 ))
                 
@@ -511,32 +511,32 @@ if not st.session_state.data.empty:
                         type="line", x0=i-0.5, x1=i-0.5, 
                         y0=-0.45, y1=0, 
                         xref="x", yref="paper",
-                        line=dict(color="#DDDDDD", width=1)
+                        line=dict(color="#EEEEEE", width=1)
                     ) 
         
                 # 3. ANOTACIONES (ETIQUETAS)
                 for i, r in df_p.iterrows():
-                    # PRECIO POR KG (Arriba): Negritas y tamaño 14
+                    # PRECIO POR KG (Arriba)
                     fig.add_annotation(
                         x=i, y=r["Precio por Kg ($)"], 
                         text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", 
                         yshift=15, 
                         showarrow=False, 
-                        font=dict(size=14, color="black"),
+                        font=dict(size=14, color="#212121"),
                         bgcolor="rgba(255,255,255,0.9)", 
-                        bordercolor="#444444", 
+                        bordercolor="#616161", 
                         borderwidth=1
                     )
                     
-                    # DESEMBOLSO EN LA BASE: Azul cielo, letras blancas
+                    # DESEMBOLSO EN LA BASE: Con contorno (bordercolor) y letras blancas
                     fig.add_annotation(
                         x=i, y=15, 
                         text=f"<b>${r['Precio ($)']:.1f}</b>", 
                         showarrow=False, 
                         font=dict(size=12, color="white"),
                         bgcolor="#00B0F0", 
-                        bordercolor="#00B0F0", 
-                        borderwidth=1, 
+                        bordercolor="white", # Contorno blanco para resaltar sobre la barra
+                        borderwidth=2,       # Grosor del contorno
                         borderpad=4
                     )
                 
@@ -555,7 +555,7 @@ if not st.session_state.data.empty:
                         x=center, y=-0.6, xref="x", yref="paper", 
                         text=cat, 
                         showarrow=False, 
-                        font=dict(size=14, color="#333333")
+                        font=dict(size=14, color="#424242", family="Verdana") # Fuente limpia
                     )
                 
                 # 5. CONFIGURACIÓN DEL LAYOUT
@@ -568,15 +568,16 @@ if not st.session_state.data.empty:
                         tickvals=list(df_p.index), 
                         ticktext=df_p["Producto"], 
                         tickangle=-90, 
-                        tickfont=dict(color="#333333", size=12, family="Arial"),
+                        # CAMBIO DE LETRA: Verdana es más legible en vertical
+                        tickfont=dict(color="#333333", size=11, family="Verdana"), 
                         showgrid=False
                     ),
-                    yaxis=dict(showgrid=True, gridcolor="#F0F0F0")
+                    yaxis=dict(showgrid=True, gridcolor="#F5F5F5")
                 )
         
                 st.plotly_chart(fig, use_container_width=True)
             else:
-                st.info("Selecciona canales o productos para visualizar el Price Pack.")
+                st.info("Utiliza los filtros para visualizar los datos del Price Pack.")
                     
 # --- 8. COMPARATIVAS INDEX (DOBLE FILA: DESEMBOLSO Y $/KG) ---
 if not st.session_state.data.empty:
