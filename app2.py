@@ -978,8 +978,8 @@ if not st.session_state.data.empty:
         hallazgos = [] 
         
         objetivos = {
-            "INSTITUCIONALES": (55, 65), "MAYOREO": (65, 75), "CLUBES": (75, 85), 
-            "AUTOSERVICIO": (110, 125), "CONVENIENCIA": (120, 140)
+            "INSTITUCIONALES": (55, 60), "MAYOREO": (61, 70), "CLUBES": (75, 82), 
+            "AUTOSERVICIO": (110, 120), "CONVENIENCIA": (121, 130)
         }
 
         # 1. Semáforo de Objetivos
