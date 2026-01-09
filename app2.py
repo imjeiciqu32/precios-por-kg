@@ -126,30 +126,33 @@ def mostrar_glosario():
     if st.button("Entendido", use_container_width=True):
         st.rerun()
 
-# NAVEGACIÓN
-st.sidebar.header("🚀 Modo de Visualización")
-modo = st.sidebar.radio("Seleccionar Herramienta:", ["Price Ladder", "Price Pack"])
-
-# Botón limpio para el Glosario
-if st.sidebar.button("❓ Ver Glosario Técnico", use_container_width=True):
-    mostrar_glosario()
+# --- 1. NAVEGACIÓN Y CONFIGURACIÓN ---
+with st.sidebar:
+    st.header("🚀 Modo de Visualización")
+    modo = st.radio("Seleccionar Herramienta:", ["Price Ladder", "Price Pack"], label_visibility="collapsed")
     
-# LÓGICA DE MODOS
+    # Botón limpio para el Glosario
+    if st.button("❓ Ver Glosario Técnico", use_container_width=True):
+        if 'mostrar_glosario' in globals(): # Verificación de seguridad
+            mostrar_glosario()
+        else:
+            st.info("Función de glosario no definida aún.")
 
+# LÓGICA DE MODOS (Mantenida intacta)
 if modo == "Price Ladder":
     DB_FILE = "historico_productos.csv"
     label_agru = "Ocasión"
     opciones_agru = ["BITES", "INDIVIDUAL", "HAMBRE", "COMPARTIR", "FAMILIAR", "REUNIÓN", "FIESTA", "TRANSFORMADOR"]
-    fuente_plantillas = PLANTILLAS
+    fuente_plantillas = PLANTILLAS if 'PLANTILLAS' in globals() else {}
     columnas_tabla = ["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)", "SOM (%)"]
 else:
     DB_FILE = "historico_price_pack.csv"
     label_agru = "Canal"
     opciones_agru = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "DETALLE", "AUTOSERVICIO", "CONVENIENCIA"]
-    fuente_plantillas = PLANTILLAS_PP
+    fuente_plantillas = PLANTILLAS_PP if 'PLANTILLAS_PP' in globals() else {}
     columnas_tabla = ["Producto", "Familia", "Canal", "Precio ($)", "Gramaje (g)"]
 
-# --- 2. FUNCIONES CORE ---
+# --- 2. FUNCIONES CORE (Mantenidas intactas) ---
 def calcular_pkg(df, modo_actual):
     if df.empty: return df
     df["Precio ($)"] = pd.to_numeric(df["Precio ($)"], errors='coerce').fillna(0)
@@ -161,19 +164,12 @@ def calcular_pkg(df, modo_actual):
     return df
 
 def procesar_datos_piramide(df):
-    """Calcula los Tiers basados en un Producto Referencia (Index 100 = Mayor SOM de la Ocasión)"""
     if df.empty: return df
-    
     df_py = df.copy()
-    # Identificamos el producto con mayor SOM por cada Ocasión para que sea el Index 100
     idx_referencia = df_py.groupby("Ocasión")["SOM (%)"].idxmax()
     df_ref = df_py.loc[idx_referencia, ["Ocasión", "Precio por Kg ($)"]]
     df_ref = df_ref.rename(columns={"Precio por Kg ($)": "Precio_Ref"})
-    
-    # Unimos para tener el precio de referencia en cada fila
     df_py = df_py.merge(df_ref, on="Ocasión", how="left")
-    
-    # Calculamos el Index real comparado contra el líder (Mainstream)
     df_py["Idx_P"] = (df_py["Precio por Kg ($)"] / df_py["Precio_Ref"]) * 100
     
     def definir_tier(idx):
@@ -194,42 +190,65 @@ if "data" not in st.session_state or st.session_state.get("last_modo") != modo:
         st.session_state.data = pd.DataFrame(columns=columnas_tabla)
     st.session_state.last_modo = modo
 
-# --- 4. BARRA LATERAL ---
-st.sidebar.header("📁 Gestión de Datos")
-nombre_plantilla = st.sidebar.selectbox("Cargar Plantilla:", ["-- Seleccionar --"] + list(fuente_plantillas.keys()))
+# --- 4. BARRA LATERAL (GESTIÓN MEJORADA) ---
+with st.sidebar:
+    st.markdown("---")
+    st.header("📁 Gestión de Datos")
+    
+    with st.container(border=True):
+        nombre_plantilla = st.selectbox("Cargar Plantilla:", ["-- Seleccionar --"] + list(fuente_plantillas.keys()))
+        if st.button("📥 Cargar Datos", use_container_width=True, type="primary"):
+            if nombre_plantilla != "-- Seleccionar --":
+                st.session_state.data = calcular_pkg(pd.DataFrame(fuente_plantillas[nombre_plantilla]), modo)
+                st.session_state.data.to_csv(DB_FILE, index=False)
+                st.success("¡Datos cargados!")
+                st.rerun()
 
-if st.sidebar.button("Cargar Datos"):
-    if nombre_plantilla != "-- Seleccionar --":
-        st.session_state.data = calcular_pkg(pd.DataFrame(fuente_plantillas[nombre_plantilla]), modo)
-        st.session_state.data.to_csv(DB_FILE, index=False)
+    # EXPORTACIÓN
+    def to_excel(df):
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Analisis_Portafolio')
+        return output.getvalue()
+
+    if not st.session_state.data.empty:
+        st.divider()
+        st.subheader("📥 Exportar Catálogo")
+        excel_data = to_excel(st.session_state.data)
+        st.download_button(
+            label="📄 Descargar Excel Completo",
+            data=excel_data,
+            file_name=f'barcel_{modo.lower()}_data.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            use_container_width=True
+        )
+
+    if st.button("🗑️ Reset Sistema", use_container_width=True):
+        if os.path.exists(DB_FILE): os.remove(DB_FILE)
+        st.session_state.data = pd.DataFrame(columns=columnas_tabla)
         st.rerun()
 
-# --- 4. BARRA LATERAL (CONTINUACIÓN: EXPORTACIÓN) ---
-def to_excel(df):
-    output = io.BytesIO()
-    # Usamos openpyxl como engine para evitar errores de dependencias
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Analisis_Portafolio')
-    return output.getvalue()
-
-if not st.session_state.data.empty:
-    st.sidebar.divider()
-    st.sidebar.subheader("📥 Exportar Catálogo")
-    excel_data = to_excel(st.session_state.data)
-    st.sidebar.download_button(
-        label="📄 Descargar Excel Completo",
-        data=excel_data,
-        file_name=f'barcel_{modo.lower()}_data.xlsx',
-        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        use_container_width=True
-    )
-
-if st.sidebar.button("🗑️ Reset"):
-    if os.path.exists(DB_FILE): os.remove(DB_FILE)
-    st.session_state.data = pd.DataFrame(columns=columnas_tabla)
-    st.rerun()
-
+# --- 5. PANEL PRINCIPAL ---
 st.title(f"📊 {modo.upper()}")
+
+# RESUMEN RÁPIDO (Métricas Pro)
+if not st.session_state.data.empty:
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        st.metric("Total Productos", len(st.session_state.data))
+    with m2:
+        avg_p = st.session_state.data["Precio ($)"].mean()
+        st.metric("Precio Promedio", f"${avg_p:.1f}")
+    with m3:
+        avg_kg = st.session_state.data["Precio por Kg ($)"].mean()
+        st.metric("Avg $/Kg", f"${avg_kg:,.0f}")
+    with m4:
+        if modo == "Price Ladder":
+            st.metric("Líder SOM", f"{st.session_state.data['SOM (%)'].max()}%")
+        else:
+            st.metric("Canales", st.session_state.data['Canal'].nunique())
+    
+    st.markdown("---")
 
 # --- 5. FORMULARIOS DE AGREGAR ---
 with st.expander(f"➕ Agregar nuevo SKU a {modo}", expanded=False):
