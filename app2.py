@@ -673,25 +673,23 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
 
-# --- 11. MAPA DE VALOR ESTRATÉGICO (DISEÑO PREMIUM) ---
+# --- 11. MAPA DE VALOR ESTRATÉGICO (DISEÑO CLEAN) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
-    st.markdown("<h2 style='text-align: center; color: #0B3C8C;'>🏔️ Mapa Estratégico de Valor</h2>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; color: #0B3C8C;'>🏔️ Mapa de Posicionamiento: Desembolso vs. Eficiencia</h3>", unsafe_allow_html=True)
     
     import plotly.express as px
 
     df_plot = st.session_state.data.copy()
     
-    # 1. Limpieza de datos (Asegurar números)
+    # 1. Asegurar formato numérico
     for c in ["Precio ($)", "Precio por Kg ($)", "SOM (%)"]:
         df_plot[c] = pd.to_numeric(df_plot[c], errors='coerce').fillna(0)
 
-    # 2. Lógica de Colores (Ajustada a tu marca)
+    # 2. Mapa de Colores
     color_map = {
-        "BARCEL": "#0B3C8C",      # Azul Corporativo
-        "SABRITAS": "#F5C400",    # Amarillo Sabritas
-        "OTROS": "#7F8C8D",       # Gris Neutro
-        "PROPUESTA": "#4B207E"    # Morado Estratégico
+        "BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", 
+        "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"
     }
 
     def asignar_color(row):
@@ -704,93 +702,61 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
     df_plot["Categoria_Color"] = df_plot.apply(asignar_color, axis=1)
 
-    # 3. Filtro por Ocasión (Opcional para el usuario)
+    # 3. Filtro por Ocasión
     ocasiones = ["TODAS"] + sorted(df_plot["Ocasión"].unique().tolist())
-    oca_selected = st.selectbox("🎯 Filtrar Ocasión:", ocasiones, key="filtro_oca_final")
+    oca_selected = st.selectbox("🎯 Filtrar Ocasión:", ocasiones, key="filtro_oca_final_clean")
     
     if oca_selected != "TODAS":
         df_plot = df_plot[df_plot["Ocasión"] == oca_selected]
 
     if not df_plot.empty:
-        # --- CÁLCULO DE RANGOS DINÁMICOS PARA EVITAR "DESPLAZAMIENTOS" ---
-        y_min = max(0, df_plot["Precio ($)"].min() - 5)
-        y_max = df_plot["Precio ($)"].max() + 10
-        x_min = max(0, df_plot["Precio por Kg ($)"].min() - 20)
-        x_max = df_plot["Precio por Kg ($)"].max() + 20
+        # Ajuste de rangos para que no haya espacios vacíos
+        y_min, y_max = df_plot["Precio ($)"].min() * 0.9, df_plot["Precio ($)"].max() * 1.1
+        x_min, x_max = df_plot["Precio por Kg ($)"].min() * 0.9, df_plot["Precio por Kg ($)"].max() * 1.1
 
-        # Crear el gráfico
         fig = px.scatter(
-            df_plot,
-            x="Precio por Kg ($)",
-            y="Precio ($)",
-            size="SOM (%)",
-            color="Categoria_Color",
-            text="Producto",
-            hover_name="Producto",
-            color_discrete_map=color_map,
-            size_max=50,
+            df_plot, x="Precio por Kg ($)", y="Precio ($)",
+            size="SOM (%)", color="Categoria_Color",
+            text="Producto", hover_name="Producto",
+            color_discrete_map=color_map, size_max=40,
             custom_data=["SOM (%)", "Ocasión"]
         )
 
-        # --- ESTILO DE LAS BURBUJAS Y ETIQUETAS ---
+        # Estilo de etiquetas y burbujas
         fig.update_traces(
             textposition='top center',
-            textfont=dict(family="Arial Black", size=10, color="#2C3E50"),
-            marker=dict(
-                line=dict(width=2, color='white'),
-                opacity=0.85
-            ),
+            textfont=dict(family="Arial", size=10, color="#333"),
+            marker=dict(line=dict(width=1.5, color='white'), opacity=0.9),
             hovertemplate="<b>%{hovertext}</b><br>Desembolso: $%{y:.1f}<br>Precio/Kg: $%{x:,.0f}<br>SOM: %{customdata[0]:.1f}%<extra></extra>"
         )
 
-        # --- CONFIGURACIÓN DE EJES Y FONDO ---
+        # Configuración de Ejes (Sin etiquetas de cuadrante)
         fig.update_layout(
             template="plotly_white",
             height=700,
-            margin=dict(t=50, b=50, l=50, r=50),
             xaxis=dict(
-                title="<b>EFICIENCIA ($/KG)</b>",
-                tickprefix="$",
-                range=[x_min, x_max],
-                gridcolor="#F0F0F0",
-                zeroline=False
+                title="<b>EFICIENCIA ($/KG)</b>", tickprefix="$", 
+                range=[x_min, x_max], gridcolor="#F2F2F2"
             ),
             yaxis=dict(
-                title="<b>DESEMBOLSO (PRECIO $)</b>",
-                tickprefix="$",
-                range=[y_min, y_max],
-                gridcolor="#F0F0F0",
-                zeroline=False
+                title="<b>DESEMBOLSO (PRECIO $)</b>", tickprefix="$", 
+                range=[y_min, y_max], gridcolor="#F2F2F2"
             ),
             legend=dict(
-                title="",
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="center",
-                x=0.5,
-                font=dict(size=12, family="Arial")
+                title="", orientation="h", yanchor="bottom", 
+                y=1.02, xanchor="center", x=0.5
             )
         )
 
-        # Líneas de Cuadrantes (Promedios)
-        avg_x = df_plot["Precio por Kg ($)"].mean()
-        avg_y = df_plot["Precio ($)"].mean()
-        
-        fig.add_vline(x=avg_x, line_dash="dash", line_color="#BDC3C7", line_width=1)
-        fig.add_hline(y=avg_y, line_dash="dash", line_color="#BDC3C7", line_width=1)
+        # Líneas de referencia sutiles (Promedios)
+        fig.add_vline(x=df_plot["Precio por Kg ($)"].mean(), line_dash="dot", line_color="#D1D1D1")
+        fig.add_hline(y=df_plot["Precio ($)"].mean(), line_dash="dot", line_color="#D1D1D1")
 
         st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("No hay datos disponibles.")
 
-        # --- LEYENDA ESTRATÉGICA MINIMALISTA (Sustituye las cajas grandes) ---
-        st.markdown("""
-        <div style="display: flex; justify-content: space-around; font-family: Arial; font-size: 0.85rem; color: #7F8C8D; border-top: 1px solid #EEE; padding-top: 10px;">
-            <span>🟢 <b>Valor:</b> Bajo Desembolso / Alta Eficiencia</span>
-            <span>🔵 <b>Premium:</b> Alto Desembolso / Alta Eficiencia</span>
-            <span>🟠 <b>Riesgo:</b> Alto Desembolso / Baja Eficiencia</span>
-        </div>
-        """, unsafe_allow_html=True)
-        
+
 # --- 11. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA (VERSIÓN FINAL CORREGIDA) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
