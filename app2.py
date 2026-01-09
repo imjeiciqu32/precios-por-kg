@@ -585,84 +585,130 @@ if not st.session_state.data.empty:
                 st.info("Utiliza los filtros para visualizar los datos del Price Pack.")
 
 
-# --- 4. MATRIZ PRO DE ARQUITECTURA (LOOK CONSULTORÍA) ---
+# --- 8. COMPARATIVAS INDEX (DOBLE FILA + MATRIZ PRO DE ARQUITECTURA) ---
+if not st.session_state.data.empty:
+    st.divider()
+    st.subheader(f"📈 Comparativas Index ({modo})")
+    df_comp = st.session_state.data.copy()
+    
+    # Limpieza y conversión
+    for col in ["Precio ($)", "Precio por Kg ($)"]:
+        df_comp[col] = pd.to_numeric(df_comp[col], errors='coerce').fillna(0)
+    
+    if modo == "Price Ladder":
+        df_comp["Lookup_Key"] = df_comp["Producto"]
+        list_a = df_comp[df_comp["Fabricante"]=="BARCEL"]["Lookup_Key"].unique().tolist()
+        list_b = df_comp[df_comp["Fabricante"]!="BARCEL"]["Lookup_Key"].unique().tolist()
+        label_a, label_b = "Barcel", "Comp."
+    else:
+        df_comp["Lookup_Key"] = df_comp["Producto"] + " (" + df_comp["Canal"] + ")"
+        list_a = df_comp["Lookup_Key"].unique().tolist()
+        list_b = list_a.copy()
+        label_a, label_b = "Producto A", "Producto B"
+
+    if len(list_a) > 0 and len(list_b) > 0:
+        # 1. Selectores Originales (Se mantienen intactos)
+        sel_cols = st.columns(4)
+        selections = []
+        for i in range(4):
+            with sel_cols[i]:
+                s_a = st.selectbox(f"{label_a}", list_a, key=f"sa{i}")
+                idx_default = min(i+1, len(list_b)-1) if len(list_b) > 1 else 0
+                s_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=idx_default)
+                selections.append((s_a, s_b))
+
+        # 2. FILA: INDEX DESEMBOLSO (Se mantiene intacta)
+        st.markdown("### 💰 Index Desembolso")
+        des_cols = st.columns(4)
+        for i, (sel_a, sel_b) in enumerate(selections):
+            row_a = df_comp[df_comp["Lookup_Key"] == sel_a].iloc[0]
+            row_b = df_comp[df_comp["Lookup_Key"] == sel_b].iloc[0]
+            v_a, v_b = row_a["Precio ($)"], row_b["Precio ($)"]
+            idx = int((v_a / v_b * 100)) if v_b > 0 else 0
+            color = "#0B3C8C" if idx <= 100 else "#D32F2F"
+            with des_cols[i]:
+                st.markdown(f"""<div style="background:white; border:1px solid #ddd; border-top:5px solid {color}; border-radius:10px; padding:10px; text-align:center;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#666; margin-bottom:5px;"><span>{sel_a}</span><span>{sel_b}</span></div>
+                    <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:10px;"><span>${v_a:.1f}</span><span style="color:#ccc; font-size:0.7rem;">vs</span><span>${v_b:.1f}</span></div>
+                    <div style="font-size:1.8rem; font-weight:900; color:{color};">{idx}</div><div style="font-size:0.6rem; font-weight:bold; color:#999;">Index Desembolso</div></div>""", unsafe_allow_html=True)
+
+        st.write("") 
+
+        # 3. FILA: INDEX PRECIO X KG (Se mantiene intacta)
+        st.markdown("### ⚖️ Index Precio por Kg")
+        pkg_cols = st.columns(4)
+        for i, (sel_a, sel_b) in enumerate(selections):
+            row_a = df_comp[df_comp["Lookup_Key"] == sel_a].iloc[0]
+            row_b = df_comp[df_comp["Lookup_Key"] == sel_b].iloc[0]
+            v_a, v_b = row_a["Precio por Kg ($)"], row_b["Precio por Kg ($)"]
+            idx = int((v_a / v_b * 100)) if v_b > 0 else 0
+            color = "#0B3C8C" if idx <= 100 else "#D32F2F"
+            with pkg_cols[i]:
+                st.markdown(f"""<div style="background:white; border:1px solid #ddd; border-top:5px solid {color}; border-radius:10px; padding:10px; text-align:center;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#666; margin-bottom:5px;"><span>{sel_a}</span><span>{sel_b}</span></div>
+                    <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:10px;"><span>${int(v_a)}</span><span style="color:#ccc; font-size:0.7rem;">vs</span><span>${int(v_b)}</span></div>
+                    <div style="font-size:1.8rem; font-weight:900; color:{color};">{idx}</div><div style="font-size:0.6rem; font-weight:bold; color:#999;">Index $/Kg</div></div>""", unsafe_allow_html=True)
+
+        # --- 4. NUEVA SECCIÓN: MATRIZ DE ARQUITECTURA PRO (PPT READY) ---
         if modo != "Price Ladder":
             st.divider()
-            st.markdown("### 🏛️ Matriz de Arquitectura de Precios vs. Detalle (Base 100)")
+            st.markdown("<h3 style='color: #0B3C8C;'>🏛️ Matriz de Arquitectura por Canal (PPT View)</h3>", unsafe_allow_html=True)
             
-            # Definición de Index Objetivos según tu requerimiento
-            objetivos = {
-                "INSTITUCIONALES": "Index 60",
-                "MAYOREO": "Index 70",
-                "CLUBES": "Index 80",
-                "AUTOSERVICIO": "Index 110-120",
+            # 1. Definición de Objetivos (Nuevos)
+            objetivos_canales = {
+                "INSTITUCIONALES": "Index 60", "MAYOREO": "Index 70", 
+                "CLUBES": "Index 80", "AUTOSERVICIO": "Index 110-120", 
                 "CONVENIENCIA": "Index 120-130"
             }
 
-            # Configuración de Colores por SKU de Detalle (para identificar la base)
-            # Puedes agregar más colores aquí si tienes más productos base
-            colores_base = ["#27AE60", "#7F8C8D", "#8E44AD", "#2980B9", "#E67E22"]
-            skus_detalle = sorted(df_comp[df_comp["Canal"].str.upper() == "DETALLE"]["Producto"].unique().tolist())
-            dict_colores = {sku: colores_base[i % len(colores_base)] for i, sku in enumerate(skus_detalle)}
+            # 2. Configuración de Colores de Identificación (Por producto de Detalle)
+            colores_identidad = ["#27AE60", "#8E44AD", "#2980B9", "#E67E22", "#7F8C8D"]
+            skus_det = sorted(df_comp[df_comp["Canal"].str.upper() == "DETALLE"]["Producto"].unique().tolist())
+            dict_colores = {sku: colores_identidad[i % len(colores_identidad)] for i, sku in enumerate(skus_det)}
 
-            # --- ÁREA DE SELECCIÓN DE BASES ---
-            st.info("Asigna qué SKU de Detalle es la base para cada comparación:")
-            col_sel1, col_sel2, col_sel3 = st.columns(3)
-            
-            # Creamos un diccionario para saber contra qué comparar cada producto
-            mapping_base = {}
-            for i, sku in enumerate(df_comp["Producto"].unique()):
-                # Por defecto, todos comparan contra el primer SKU de detalle disponible
-                default_base = skus_detalle[0] if skus_detalle else ""
-                # Solo mostramos selectores para productos que NO son de detalle para no saturar
-                if i < 3: # Mostramos solo 3 selectores globales o podrías hacerlo por canal
-                    pass 
+            if skus_det:
+                col_sel, _ = st.columns([1.5, 2.5])
+                with col_sel:
+                    base_final = st.selectbox("🎯 SKU Detalle Base (Comparativa General)", skus_det, key="arch_pro_base")
+                
+                # Datos de la base
+                val_base_kg = df_comp[(df_comp["Canal"].str.upper() == "DETALLE") & (df_comp["Producto"] == base_final)]["Precio por Kg ($)"].mean()
+                color_id = dict_colores.get(base_final, "#333")
 
-            # Para efectos de la SS, seleccionamos una base global para esta visualización compacta
-            with col_sel1:
-                base_global = st.selectbox("🎯 SKU Detalle Base (Referencia)", skus_detalle)
-            
-            val_base = df_comp[(df_comp["Canal"].str.upper() == "DETALLE") & (df_comp["Producto"] == base_global)]["Precio por Kg ($)"].mean()
-            color_resaltado = dict_colores.get(base_global, "#333")
+                # 3. Renderizado de Columnas Compactas
+                canales_ordenados = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "AUTOSERVICIO", "CONVENIENCIA"]
+                cols_canales = st.columns(5)
 
-            # --- RENDERIZADO DE MATRIZ COMPACTA ---
-            # Creamos 5 columnas para los canales
-            canales_list = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "AUTOSERVICIO", "CONVENIENCIA"]
-            cols_matriz = st.columns(5)
-
-            for i, canal in enumerate(canales_list):
-                with cols_matriz[i]:
-                    # Encabezado del Canal + Objetivo
-                    obj_text = objetivos.get(canal, "")
-                    st.markdown(f"""
-                        <div style="text-align:center; margin-bottom:10px;">
-                            <div style="color:#0B3C8C; font-weight:bold; font-size:12px; text-transform:uppercase;">{canal}</div>
-                            <div style="color:#D32F2F; font-size:11px; font-style:italic; border-bottom:1px solid #ddd; padding-bottom:3px;">{obj_text}</div>
-                        </div>
-                    """, unsafe_allow_html=True)
-
-                    # Filtrar productos de este canal
-                    df_canal = df_comp[df_comp["Canal"].str.upper() == canal]
-                    
-                    for _, row in df_canal.iterrows():
-                        val_t = row["Precio por Kg ($)"]
-                        idx_val = int((val_t / val_base * 100)) if val_base > 0 else 0
-                        
-                        # El color ahora depende de contra quién se compara (en este caso la base_global)
+                for idx_c, canal_n in enumerate(canales_ordenados):
+                    with cols_canales[idx_c]:
+                        # Encabezado compacto con Objetivo
                         st.markdown(f"""
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-family:Verdana;">
-                                <div style="font-size:11px; color:#333; width:70%; line-height:1.1;">{row['Producto']}</div>
-                                <div style="background:{color_resaltado}; color:white; padding:2px 5px; border-radius:4px; font-weight:bold; font-size:12px; min-width:30px; text-align:center;">
-                                    {idx_val}
-                                </div>
+                            <div style="text-align:center; border-bottom:2px solid {color_id}; margin-bottom:8px; padding-bottom:3px;">
+                                <div style="font-size:10px; font-weight:bold; color:#555; text-transform:uppercase;">{canal_n}</div>
+                                <div style="font-size:9px; color:#D32F2F; font-weight:bold;">{objetivos_canales.get(canal_n, '')}</div>
                             </div>
                         """, unsafe_allow_html=True)
 
-            # Leyenda de Colores de Referencia
-            st.write("")
-            leyenda_html = "".join([f'<span style="background:{c}; color:white; padding:3px 8px; border-radius:4px; margin-right:10px; font-size:11px;">Vs {s}</span>' for s, c in dict_colores.items()])
-            st.markdown(f"<div style='background:#f9f9f9; padding:10px; border-radius:5px;'><strong>Leyenda Detalle:</strong> {leyenda_html}</div>", unsafe_allow_html=True)
-                        
+                        # Lista de productos de este canal
+                        df_items = df_comp[df_comp["Canal"].str.upper() == canal_n]
+                        for _, row_item in df_items.iterrows():
+                            index_calc = int((row_item["Precio por Kg ($)"] / val_base_kg * 100)) if val_base_kg > 0 else 0
+                            st.markdown(f"""
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                                    <span style="font-size:10px; color:#333; line-height:1; width:70%; font-family:Verdana;">{row_item['Producto']}</span>
+                                    <span style="background:{color_id}; color:white; padding:1px 4px; border-radius:3px; font-weight:bold; font-size:11px; min-width:30px; text-align:center;">
+                                        {index_calc}
+                                    </span>
+                                </div>
+                            """, unsafe_allow_html=True)
+                
+                # 4. Leyenda de identificación para la SS
+                st.write("")
+                leyenda_html = "".join([f'<span style="color:{c}; font-weight:bold; margin-right:12px; font-size:11px;">● Vs {s}</span>' for s, c in dict_colores.items()])
+                st.markdown(f"<div style='background:#F8F9FA; padding:8px; border-radius:5px; border-left:4px solid {color_id};'><strong>Leyenda de Comparación:</strong> {leyenda_html}</div>", unsafe_allow_html=True)
+            else:
+                st.warning("No se detectaron datos del canal DETALLE para generar la matriz.")
+                
 # --- 10. PIRÁMIDE DE POSICIONAMIENTO (SOLO LADDER) ---
 # Movimos el título y la lógica dentro del condicional para que no aparezca en Price Pack
 if modo == "Price Ladder" and not st.session_state.data.empty:
