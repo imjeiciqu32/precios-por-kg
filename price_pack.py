@@ -21,11 +21,11 @@ PLANTILLAS_PP = {
         {"Canal": "DETALLE", "Familia": "TAKIS", "Producto": "TAKIS 200G", "Precio ($)": 45.0, "Gramaje (g)": 200},
         
         # --- AUTOSERVICIO (AS) ---
-        {"Canal": "AUTOSERVICIO", "Familia": "TAKIS", "Producto": "MINI TAKIS (E. BA, BAE Y MB) 35G", "Precio ($)": 10.0, "Gramaje (g)": 35},
-        {"Canal": "AUTOSERVICIO", "Familia": "TAKIS", "Producto": "TAKIS 94G", "Precio ($)": 25.0, "Gramaje (g)": 94},
-        {"Canal": "AUTOSERVICIO", "Familia": "TAKIS", "Producto": "TAKIS BLUE HEAT 200G", "Precio ($)": 47.0, "Gramaje (g)": 200},
-        {"Canal": "AUTOSERVICIO", "Familia": "TAKIS", "Producto": "TAKIS 240G", "Precio ($)": 59.0, "Gramaje (g)": 240},
-        {"Canal": "AUTOSERVICIO", "Familia": "TAKIS", "Producto": "TAKIS 340G", "Precio ($)": 80.0, "Gramaje (g)": 340},
+        {"Canal": "AUTOSERVICIOS", "Familia": "TAKIS", "Producto": "MINI TAKIS (E. BA, BAE Y MB) 35G", "Precio ($)": 10.0, "Gramaje (g)": 35},
+        {"Canal": "AUTOSERVICIOS", "Familia": "TAKIS", "Producto": "TAKIS 94G", "Precio ($)": 25.0, "Gramaje (g)": 94},
+        {"Canal": "AUTOSERVICIOS", "Familia": "TAKIS", "Producto": "TAKIS BLUE HEAT 200G", "Precio ($)": 47.0, "Gramaje (g)": 200},
+        {"Canal": "AUTOSERVICIOS", "Familia": "TAKIS", "Producto": "TAKIS 240G", "Precio ($)": 59.0, "Gramaje (g)": 240},
+        {"Canal": "AUTOSERVICIOS", "Familia": "TAKIS", "Producto": "TAKIS 340G", "Precio ($)": 80.0, "Gramaje (g)": 340},
         
         # --- CONVENIENCIA (CNV) ---
         {"Canal": "CONVENIENCIA", "Familia": "TAKIS", "Producto": "TAKIS 56G", "Precio ($)": 22.0, "Gramaje (g)": 56},
@@ -58,13 +58,13 @@ PLANTILLAS_PP = {
         {"Canal": "DETALLE", "Familia": "CHIPS", "Producto": "CHIP'S 170G", "Precio ($)": 55.0, "Gramaje (g)": 170},
         
         # --- AUTOSERVICIO (AS) ---
-        {"Canal": "AUTOSERVICIO", "Familia": "CHIPS", "Producto": "MINI CHIP'S (E. BA, BAE Y MB) 18G", "Precio ($)": 10.0, "Gramaje (g)": 18},
-        {"Canal": "AUTOSERVICIO", "Familia": "CHIPS", "Producto": "CHIP'S 42G", "Precio ($)": 15.0, "Gramaje (g)": 42},
-        {"Canal": "AUTOSERVICIO", "Familia": "CHIPS", "Producto": "CHIP'S 55G", "Precio ($)": 25.0, "Gramaje (g)": 55},
-        {"Canal": "AUTOSERVICIO", "Familia": "CHIPS", "Producto": "CHIP'S 100G", "Precio ($)": 40.0, "Gramaje (g)": 100},
-        {"Canal": "AUTOSERVICIO", "Familia": "CHIPS", "Producto": "CHIP'S 150G", "Precio ($)": 59.0, "Gramaje (g)": 150},
-        {"Canal": "AUTOSERVICIO", "Familia": "CHIPS", "Producto": "CHIP'S (EXCLUSIVO WALMART) 160G", "Precio ($)": 59.0, "Gramaje (g)": 160},
-        {"Canal": "AUTOSERVICIO", "Familia": "CHIPS", "Producto": "CHIP'S 240G", "Precio ($)": 85.0, "Gramaje (g)": 240},
+        {"Canal": "AUTOSERVICIOS", "Familia": "CHIPS", "Producto": "MINI CHIP'S (E. BA, BAE Y MB) 18G", "Precio ($)": 10.0, "Gramaje (g)": 18},
+        {"Canal": "AUTOSERVICIOS", "Familia": "CHIPS", "Producto": "CHIP'S 42G", "Precio ($)": 15.0, "Gramaje (g)": 42},
+        {"Canal": "AUTOSERVICIOS", "Familia": "CHIPS", "Producto": "CHIP'S 55G", "Precio ($)": 25.0, "Gramaje (g)": 55},
+        {"Canal": "AUTOSERVICIOS", "Familia": "CHIPS", "Producto": "CHIP'S 100G", "Precio ($)": 40.0, "Gramaje (g)": 100},
+        {"Canal": "AUTOSERVICIOS", "Familia": "CHIPS", "Producto": "CHIP'S 150G", "Precio ($)": 59.0, "Gramaje (g)": 150},
+        {"Canal": "AUTOSERVICIOS", "Familia": "CHIPS", "Producto": "CHIP'S (EXCLUSIVO WALMART) 160G", "Precio ($)": 59.0, "Gramaje (g)": 160},
+        {"Canal": "AUTOSERVICIOS", "Familia": "CHIPS", "Producto": "CHIP'S 240G", "Precio ($)": 85.0, "Gramaje (g)": 240},
         
         # --- CONVENIENCIA (CNV) ---
         {"Canal": "CONVENIENCIA", "Familia": "CHIPS", "Producto": "CHIP'S (CADENAS REGIONALES) 42G", "Precio ($)": 24.0, "Gramaje (g)": 42},
@@ -79,7 +79,7 @@ PLANTILLAS_PP = {
         {"Canal": "DETALLE", "Familia": "Big Mix", "Producto": "Big Mix 185g", "Precio ($)": 40.0, "Gramaje (g)": 185},
         
         # --- AUTOSERVICIO (AS) ---
-        {"Canal": "AUTOSERVICIO", "Familia": "Big Mix", "Producto": "Big Mix 200g", "Precio ($)": 52.0, "Gramaje (g)": 200},
+        {"Canal": "AUTOSERVICIOS", "Familia": "Big Mix", "Producto": "Big Mix 200g", "Precio ($)": 52.0, "Gramaje (g)": 200},
         
         # --- CONVENIENCIA (CNV) ---
         {"Canal": "CONVENIENCIA", "Familia": "Big Mix", "Producto": "Big Mix 75g", "Precio ($)": 25.0, "Gramaje (g)": 75, "Ocasión": "Hambre"},
@@ -91,8 +91,8 @@ PLANTILLAS_PP = {
         {"Canal": "DETALLE", "Familia": "Chipotles", "Producto": "Chipotles 65g", "Precio ($)": 18.0, "Gramaje (g)": 65},
         
         # --- AUTOSERVICIO (AS) ---
-        {"Canal": "AUTOSERVICIO", "Familia": "Chipotles", "Producto": "Chipotles 55g", "Precio ($)": 10.0, "Gramaje (g)": 55},
-        {"Canal": "AUTOSERVICIO", "Familia": "Chipotles", "Producto": "Chipotles 200g", "Precio ($)": 45.0, "Gramaje (g)": 200},
+        {"Canal": "AUTOSERVICIOS", "Familia": "Chipotles", "Producto": "Chipotles 55g", "Precio ($)": 10.0, "Gramaje (g)": 55},
+        {"Canal": "AUTOSERVICIOS", "Familia": "Chipotles", "Producto": "Chipotles 200g", "Precio ($)": 45.0, "Gramaje (g)": 200},
         
         # --- CONVENIENCIA (CNV) ---
         {"Canal": "CONVENIENCIA", "Familia": "Chipotles", "Producto": "Chipotles 80g", "Precio ($)": 28.0, "Gramaje (g)": 80}
@@ -110,7 +110,7 @@ PLANTILLAS_PP = {
         {"Canal": "DETALLE", "Familia": "Runners", "Producto": "Runners 200g", "Precio ($)": 40.0, "Gramaje (g)": 200},
         
         # --- AUTOSERVICIO (AS) ---
-        {"Canal": "AUTOSERVICIO", "Familia": "Runners", "Producto": "Runners 280g", "Precio ($)": 59.0, "Gramaje (g)": 280},
+        {"Canal": "AUTOSERVICIOS", "Familia": "Runners", "Producto": "Runners 280g", "Precio ($)": 59.0, "Gramaje (g)": 280},
         
         # --- CONVENIENCIA (CNV) ---
         {"Canal": "CONVENIENCIA", "Familia": "Runners", "Producto": "Runners 80g", "Precio ($)": 28.0, "Gramaje (g)": 80},
@@ -197,7 +197,7 @@ PLANTILLAS_PP = {
         {"Canal": "DETALLE", "Familia": "Valentones", "Producto": "Valentones 175g", "Precio ($)": 40.0, "Gramaje (g)": 175},
         
         # --- AUTOSERVICIO ---
-        {"Canal": "AUTOSERVICIO", "Familia": "Valentones", "Producto": "Valentones 175g", "Precio ($)": 36.0, "Gramaje (g)": 175},
+        {"Canal": "AUTOSERVICIOS", "Familia": "Valentones", "Producto": "Valentones 175g", "Precio ($)": 36.0, "Gramaje (g)": 175},
         
         # --- CONVENIENCIA ---
         {"Canal": "CONVENIENCIA", "Familia": "Valentones", "Producto": "Valentones 175g", "Precio ($)": 44.0, "Gramaje (g)": 175}
@@ -207,8 +207,8 @@ PLANTILLAS_PP = {
         {"Canal": "DETALLE", "Familia": "Tostachos", "Producto": "Tostachos 75g", "Precio ($)": 18.0, "Gramaje (g)": 75},
         
         # --- AUTOSERVICIO ---
-        {"Canal": "AUTOSERVICIO", "Familia": "Tostachos", "Producto": "Tostachos 50g", "Precio ($)": 10.0, "Gramaje (g)": 50},
-        {"Canal": "AUTOSERVICIO", "Familia": "Tostachos", "Producto": "Tostachos 240g", "Precio ($)": 53.0, "Gramaje (g)": 240},
+        {"Canal": "AUTOSERVICIOS", "Familia": "Tostachos", "Producto": "Tostachos 50g", "Precio ($)": 10.0, "Gramaje (g)": 50},
+        {"Canal": "AUTOSERVICIOS", "Familia": "Tostachos", "Producto": "Tostachos 240g", "Precio ($)": 53.0, "Gramaje (g)": 240},
         
         # --- CONVENIENCIA ---
         {"Canal": "CONVENIENCIA", "Familia": "Tostachos", "Producto": "Tostachos 80g", "Precio ($)": 23.0, "Gramaje (g)": 80},
@@ -253,7 +253,7 @@ PLANTILLAS_PP = {
         {"Canal": "DETALLE", "Familia": "Chicharrón de Cerdo", "Producto": "Chicharrón de Cerdo 70g", "Precio ($)": 40.0, "Gramaje (g)": 70},
         
         # --- AUTOSERVICIO ---
-        {"Canal": "AUTOSERVICIO", "Familia": "Chicharrón de Cerdo", "Producto": "Chicharrón de Cerdo 90g", "Precio ($)": 50.0, "Gramaje (g)": 90},
+        {"Canal": "AUTOSERVICIOS", "Familia": "Chicharrón de Cerdo", "Producto": "Chicharrón de Cerdo 90g", "Precio ($)": 50.0, "Gramaje (g)": 90},
         
         # --- CONVENIENCIA ---
         {"Canal": "CONVENIENCIA", "Familia": "Chicharrón de Cerdo", "Producto": "Chicharrón de Cerdo 110g", "Precio ($)": 65.0, "Gramaje (g)": 110}
