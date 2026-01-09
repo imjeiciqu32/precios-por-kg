@@ -649,58 +649,68 @@ if not st.session_state.data.empty:
                     <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:10px;"><span>${int(v_a)}</span><span style="color:#ccc; font-size:0.7rem;">vs</span><span>${int(v_b)}</span></div>
                     <div style="font-size:1.8rem; font-weight:900; color:{color};">{idx}</div><div style="font-size:0.6rem; font-weight:bold; color:#999;">Index $/Kg</div></div>""", unsafe_allow_html=True)
 
-        # --- 4. NUEVA MATRIZ DE ARQUITECTURA TOTALMENTE ELEGIBLE ---
+        # --- 4. NUEVA MATRIZ DE ARQUITECTURA (PPT READY) ---
         if modo != "Price Ladder":
             st.divider()
-            st.markdown("<h3 style='color: #0B3C8C;'>🏛️ Matriz de Arquitectura Personalizada</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='color: #0B3C8C; text-align:center;'>🏛️ Matriz de Arquitectura Dinámica</h3>", unsafe_allow_html=True)
             
-            # Objetivos e Identificación
+            # Configuraciones
             objetivos = {"INSTITUCIONALES": "Index 60", "MAYOREO": "Index 70", "CLUBES": "Index 80", "AUTOSERVICIO": "Index 110-120", "CONVENIENCIA": "Index 120-130"}
             colores_p = ["#27AE60", "#8E44AD", "#2980B9", "#E67E22", "#7F8C8D"]
+            
+            # Obtener solo productos de Detalle para las bases
             skus_det = sorted(df_comp[df_comp["Canal"].str.upper() == "DETALLE"]["Producto"].unique().tolist())
             dict_colores = {sku: colores_p[i % len(colores_p)] for i, sku in enumerate(skus_det)}
 
             if skus_det:
-                # El usuario puede elegir el "Target" (Producto de canal) y el "Base" (Producto de detalle)
                 canales_orden = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "AUTOSERVICIO", "CONVENIENCIA"]
                 m_cols = st.columns(5)
 
                 for idx_c, canal_n in enumerate(canales_orden):
                     with m_cols[idx_c]:
-                        # Cabecera de Canal
-                        st.markdown(f"""<div style="text-align:center; margin-bottom:5px;"><div style="font-size:10px; font-weight:bold; color:#555;">{canal_n}</div><div style="font-size:9px; color:#D32F2F; font-weight:bold;">{objetivos.get(canal_n, '')}</div></div>""", unsafe_allow_html=True)
+                        # Cabecera
+                        st.markdown(f"""
+                            <div style="text-align:center; background:#f0f2f6; padding:5px; border-radius:5px 5px 0 0; border-bottom:2px solid #0B3C8C;">
+                                <div style="font-size:10px; font-weight:bold; color:#333;">{canal_n}</div>
+                                <div style="font-size:9px; color:#D32F2F; font-weight:bold;">{objetivos.get(canal_n, '')}</div>
+                            </div>
+                        """, unsafe_allow_html=True)
                         
                         df_canal = df_comp[df_comp["Canal"].str.upper() == canal_n]
-                        prods_canal = df_canal["Producto"].unique().tolist()
+                        prods_canal = sorted(df_canal["Producto"].unique().tolist())
 
-                        # Generamos 5 slots por canal (puedes ajustar el número)
-                        for slot in range(5):
-                            # Selectores Discretos (sin label visible para que no aparezcan en la SS si se recortan bien)
-                            c_target = st.selectbox(" ", prods_canal, key=f"t_{canal_n}_{slot}", label_visibility="collapsed") if slot < len(prods_canal) else None
+                        # Mostramos hasta 6 slots para llenar la pantalla pro
+                        for slot in range(6):
+                            st.write("---") # Pequeño separador visual en el editor
+                            
+                            # SELECTOR 1: Producto del Canal (Target)
+                            c_target = st.selectbox(f"Target {slot}", prods_canal, key=f"t_{canal_n}_{slot}", label_visibility="collapsed") if slot < len(prods_canal) else None
                             
                             if c_target:
-                                # Selector de la Base (Detalle) para este producto específico
-                                # Ponemos por defecto el primer producto de detalle, pero el usuario puede elegir otro
-                                c_base = st.selectbox(" ", skus_det, key=f"b_{canal_n}_{slot}", label_visibility="collapsed")
+                                # SELECTOR 2: Contra quién compararlo (Base Detalle)
+                                c_base = st.selectbox(f"Base {slot}", skus_det, key=f"b_{canal_n}_{slot}", label_visibility="collapsed")
                                 
-                                # Cálculos
+                                # Lógica de cálculo
                                 v_t = df_canal[df_canal["Producto"] == c_target]["Precio por Kg ($)"].mean()
                                 v_b = df_comp[(df_comp["Canal"].str.upper() == "DETALLE") & (df_comp["Producto"] == c_base)]["Precio por Kg ($)"].mean()
+                                
                                 res_idx = int((v_t / v_b * 100)) if v_b > 0 else 0
                                 c_id = dict_colores.get(c_base, "#333")
 
-                                # Renderizado Profesional Compacto
+                                # Visualización Compacta para la SS
                                 st.markdown(f"""
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; padding: 2px 0;">
-                                        <span style="font-size:10px; color:#333; line-height:1; width:72%; font-family:Verdana;">{c_target}</span>
-                                        <span style="background:{c_id}; color:white; padding:1px 4px; border-radius:3px; font-weight:bold; font-size:11px; min-width:28px; text-align:center;">{res_idx}</span>
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:-15px; padding: 5px 0;">
+                                        <span style="font-size:10px; color:#333; line-height:1.1; width:70%; font-family:Verdana; font-weight:500;">{c_target}</span>
+                                        <span style="background:{c_id}; color:white; padding:2px 5px; border-radius:4px; font-weight:bold; font-size:12px; min-width:32px; text-align:center; box-shadow: 1px 1px 2px rgba(0,0,0,0.1);">
+                                            {res_idx}
+                                        </span>
                                     </div>
                                 """, unsafe_allow_html=True)
                 
-                # Leyenda al final
+                # Leyenda al final para identificar colores en la SS
                 st.write("")
-                leyenda = "".join([f'<span style="color:{c}; font-weight:bold; margin-right:12px; font-size:10px;">● Vs {s}</span>' for s, c in dict_colores.items()])
-                st.markdown(f"<div style='border-top:1px solid #eee; padding-top:5px;'>{leyenda}</div>", unsafe_allow_html=True)
+                leyenda = "".join([f'<span style="background:{c}; color:white; padding:2px 8px; border-radius:10px; margin-right:8px; font-size:10px; font-weight:bold;">Vs {s}</span>' for s, c in dict_colores.items()])
+                st.markdown(f"<div style='background:#f9f9f9; padding:10px; border-radius:5px; border:1px solid #eee;'>{leyenda}</div>", unsafe_allow_html=True)
                 
 # --- 10. PIRÁMIDE DE POSICIONAMIENTO (SOLO LADDER) ---
 # Movimos el título y la lógica dentro del condicional para que no aparezca en Price Pack
