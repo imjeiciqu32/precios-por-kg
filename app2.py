@@ -380,30 +380,43 @@ if not st.session_state.data.empty:
         st.divider()
         st.subheader("🎨 Controles de Diseño")
         
-        # Lógica de reseteo funcional
+        # Lógica de reseteo funcional (incluye todas las nuevas variables)
         def reset_diseno():
             st.session_state["slider_nombres"] = 14
             st.session_state["slider_precios"] = 18
             st.session_state["slider_pkg"] = 16
             st.session_state["slider_ancho"] = 0.6
             st.session_state["slider_opacidad"] = 1.0
+            st.session_state["slider_alto"] = 950
+            st.session_state["slider_espacio"] = 0.03
+            st.session_state["slider_margen_b"] = 400
+            st.session_state["slider_angulo"] = -90
 
-        if st.button("Resetear Diseño"):
+        if st.button("Resetear Todo el Diseño"):
             reset_diseno()
         
-        # Inicialización de estados
-        if "slider_nombres" not in st.session_state: st.session_state["slider_nombres"] = 14
-        if "slider_precios" not in st.session_state: st.session_state["slider_precios"] = 18
-        if "slider_pkg" not in st.session_state: st.session_state["slider_pkg"] = 16
-        if "slider_ancho" not in st.session_state: st.session_state["slider_ancho"] = 0.6
-        if "slider_opacidad" not in st.session_state: st.session_state["slider_opacidad"] = 1.0
+        # Inicialización de estados (Safe Check)
+        defaults = {
+            "slider_nombres": 14, "slider_precios": 18, "slider_pkg": 16,
+            "slider_ancho": 0.6, "slider_opacidad": 1.0, "slider_alto": 950,
+            "slider_espacio": 0.03, "slider_margen_b": 400, "slider_angulo": -90
+        }
+        for key, val in defaults.items():
+            if key not in st.session_state: st.session_state[key] = val
 
-        # Controles Dinámicos
-        t_nombres = st.slider("Tamaño Nombres", 8, 30, key="slider_nombres")
-        t_precios = st.slider("Tamaño Precios ($)", 10, 40, key="slider_precios")
-        t_pkg = st.slider("Tamaño $/Kg", 10, 40, key="slider_pkg")
-        ancho_barras = st.slider("Ancho de Barras", 0.1, 1.0, key="slider_ancho")
-        opacidad_barras = st.slider("Opacidad", 0.1, 1.0, key="slider_opacidad")
+        # Agrupadores por Expander para limpieza visual
+        with st.expander("📏 Dimensiones y Espaciado"):
+            alto_grafico = st.slider("Alto del Gráfico", 400, 1500, key="slider_alto")
+            espacio_v = st.slider("Espacio entre Gráficos", 0.0, 0.2, key="slider_espacio")
+            margen_b = st.slider("Margen Inferior (Nombres)", 50, 600, key="slider_margen_b")
+            ancho_barras = st.slider("Ancho de Barras", 0.1, 1.0, key="slider_ancho")
+            opacidad_barras = st.slider("Opacidad Barras", 0.1, 1.0, key="slider_opacidad")
+
+        with st.expander("🔡 Tipografía y Texto"):
+            t_nombres = st.slider("Tamaño Nombres", 8, 30, key="slider_nombres")
+            t_precios = st.slider("Tamaño Precios ($)", 10, 40, key="slider_precios")
+            t_pkg = st.slider("Tamaño $/Kg", 10, 40, key="slider_pkg")
+            angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, key="slider_angulo")
     
     # --- INSERCIÓN DE FILTROS (MODO LADDER) ---
     if modo == "Price Ladder":
@@ -428,7 +441,8 @@ if not st.session_state.data.empty:
             df_p = df_p.sort_values(by=["O_Oca", "Precio ($)", "Precio por Kg ($)"]).reset_index(drop=True)
             som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-            fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.15, 0.85])
+            # USO DE VARIABLE espacio_v
+            fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=espacio_v, row_heights=[0.15, 0.85])
 
             # --- TRACE 1: SOM% ---
             fig.add_trace(go.Scatter(
@@ -444,8 +458,8 @@ if not st.session_state.data.empty:
             fig.add_trace(go.Bar(
                 x=df_p["Producto"], y=df_p["Precio ($)"],
                 marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]],
-                marker_opacity=opacidad_barras, # <--- NUEVO
-                width=ancho_barras,             # <--- NUEVO
+                marker_opacity=opacidad_barras, 
+                width=ancho_barras,
                 text=[f"<b>${p:.1f}</b>" for p in df_p["Precio ($)"]], 
                 textposition="outside", 
                 textfont=dict(size=t_precios, color="black")
@@ -479,13 +493,15 @@ if not st.session_state.data.empty:
                     showarrow=False, font=dict(size=16, color="black"), align="center"
                 )
 
+            # USO DE VARIABLES alto_grafico Y margen_b
             fig.update_layout(
-                height=950, width=1950, template="plotly_white", showlegend=False, 
-                margin=dict(t=50, b=400, l=40, r=40)
+                height=alto_grafico, width=1950, template="plotly_white", showlegend=False, 
+                margin=dict(t=50, b=margen_b, l=40, r=40)
             )
             
+            # USO DE VARIABLES angulo_nombres Y t_nombres
             fig.update_xaxes(
-                tickangle=-90, 
+                tickangle=angulo_nombres, 
                 tickfont=dict(size=t_nombres, color="black"),
                 showline=False, 
                 row=2, col=1
@@ -528,8 +544,8 @@ if not st.session_state.data.empty:
                     y=df_p["Precio por Kg ($)"], 
                     marker_color="#F8F9FA",
                     marker_line=dict(color="#D1D1D1", width=1),
-                    marker_opacity=opacidad_barras, # <--- NUEVO
-                    width=ancho_barras,             # <--- NUEVO
+                    marker_opacity=opacidad_barras,
+                    width=ancho_barras,
                     showlegend=False
                 ))
                 
@@ -542,7 +558,6 @@ if not st.session_state.data.empty:
                     ) 
         
                 for i, r in df_p.iterrows():
-                    # PRECIO POR KG (Arriba)
                     fig.add_annotation(
                         x=i, y=r["Precio por Kg ($)"], 
                         text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", 
@@ -554,7 +569,6 @@ if not st.session_state.data.empty:
                         borderwidth=1
                     )
                     
-                    # DESEMBOLSO EN LA BASE
                     fig.add_annotation(
                         x=i, y=15, 
                         text=f"<b>${r['Precio ($)']:.1f}</b>", 
@@ -582,14 +596,14 @@ if not st.session_state.data.empty:
                     )
                 
                 fig.update_layout(
-                    height=850, 
-                    margin=dict(b=300, t=50, l=50, r=50), 
+                    height=alto_grafico, # <--- DINÁMICO
+                    margin=dict(b=margen_b, t=50, l=50, r=50), # <--- DINÁMICO
                     template="plotly_white", 
                     xaxis=dict(
                         tickmode='array', 
                         tickvals=list(df_p.index), 
                         ticktext=["<b>"+str(t)+"</b>" for t in df_p["Producto"]],
-                        tickangle=-90, 
+                        tickangle=angulo_nombres, # <--- DINÁMICO
                         tickfont=dict(color="#000000", size=t_nombres, family="Verdana"),
                         showgrid=False
                     ),
