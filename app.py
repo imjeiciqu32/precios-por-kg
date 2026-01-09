@@ -627,7 +627,7 @@ if not st.session_state.data.empty:
                     </div>
                 """, unsafe_allow_html=True)
                         
-# --- 9. PIRÁMIDE DE POSICIONAMIENTO (SOLO LADDER) ---
+# --- 10. PIRÁMIDE DE POSICIONAMIENTO (SOLO LADDER) ---
 # Movimos el título y la lógica dentro del condicional para que no aparezca en Price Pack
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
@@ -676,7 +676,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 vertical-align: top; box-shadow: 1px 1px 3px rgba(0,0,0,0.1);">
                     <div style="font-weight:bold; font-size:0.9rem; color:#333; margin-bottom:4px;">{r['Producto']}</div>
                     <div style="color:#666; font-size:0.8rem;">Index: {int(r['Idx_P'])}</div>
-                    <div style="font-weight:bold; font-size:1rem; color:#111; margin-top:4px;">${int(r['Precio ($)'])} ({int(r['Gramaje (g)'])}g)</div>
+                    <div style="font-weight:bold; font-size:1rem; color:#111; margin-top:4px;">${r['Precio ($)']:,.1f} ({int(r['Gramaje (g)'])}g)</div>
                 </div>"""
             
             with c2:
