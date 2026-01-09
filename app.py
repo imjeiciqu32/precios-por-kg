@@ -334,11 +334,11 @@ else:
     # Si no es Price Ladder, creamos df_p sin filtros para evitar errores en otras secciones
     df_p = st.session_state.data.copy()
 
-# --- 6.8 PANEL EJECUTIVO MINIMALISTA ---
+# --- 6.8 PANEL EJECUTIVO (FORMATO TABLA EJECUTIVA) ---
 if modo == "Price Ladder" and not df_p.empty:
-    st.write("### 📈 Resumen por Ocasión")
+    st.write("### 📈 Resumen de Mercado por Ocasión")
     
-    # Agrupamos los datos
+    # Agrupamos y preparamos los datos
     resumen_oca = df_p.groupby("Ocasión").agg({
         "Producto": "count",
         "Precio ($)": "mean",
@@ -350,21 +350,25 @@ if modo == "Price Ladder" and not df_p.empty:
     resumen_oca["Orden"] = resumen_oca["Ocasión"].str.upper().map(ord_oca).fillna(99)
     resumen_oca = resumen_oca.sort_values("Orden")
 
-    # Mostrar en una tabla limpia y pequeña en lugar de tarjetas
-    # Esto quita todo el "ruido" de colores y sombras
+    # Mostramos la tabla con Formato Ejecutivo
     st.dataframe(
-        resumen_oca[["Ocasión", "Producto", "Precio ($)", "Precio por Kg ($)"]].rename(
-            columns={
-                "Producto": "SKUs", 
-                "Precio ($)": "P. Prom ($)", 
-                "Precio por Kg ($)": "$/kg Prom"
-            }
-        ),
+        resumen_oca[["Ocasión", "Producto", "Precio ($)", "Precio por Kg ($)"]],
+        column_config={
+            "Ocasión": st.column_config.TextColumn("Segmento / Ocasión"),
+            "Producto": st.column_config.NumberColumn("SKUs", help="Cantidad de SKUs analizados"),
+            "Precio ($)": st.column_config.NumberColumn(
+                "Desembolso Prom.",
+                format="$%.1f",  # Símbolo $ y 1 decimal
+            ),
+            "Precio por Kg ($)": st.column_config.NumberColumn(
+                "$/KG Promedio",
+                format="$%d",    # Símbolo $ y redondeado (sin decimales)
+            ),
+        },
         hide_index=True,
         use_container_width=True
     )
-    st.write("") # Espaciado simple
-
+    st.write("")
 # --- 7. GRÁFICO FINAL (CON FILTROS DINÁMICOS INTEGRADOS) ---
 
 if not st.session_state.data.empty:
