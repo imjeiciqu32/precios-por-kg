@@ -459,24 +459,29 @@ if not st.session_state.data.empty:
 
             # --- TRACE 2: BARRAS DE PRECIO ---
             colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D","PROPUESTA":"#4B207E"}
+            
+            # Lógica inteligente para etiquetas de Precio Desembolso
+            labels_precios = []
+            for p in df_p["Precio ($)"]:
+                if p < 10:
+                    labels_precios.append(f"<b>${p:.1f}</b>")
+                else:
+                    labels_precios.append(f"<b>${int(p)}</b>")
+
             fig.add_trace(go.Bar(
                 x=df_p["Producto"], y=df_p["Precio ($)"],
                 marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]],
                 marker_opacity=opacidad_barras, 
                 width=ancho_barras,
-                text=[f"<b>${p:.1f}</b>" for p in df_p["Precio ($)"]], 
+                text=labels_precios, 
                 textposition="outside", 
                 textfont=dict(size=t_precios, color="black")
             ), row=2, col=1)
 
-            # Anotaciones de Precio por Kg dentro de las barras (ETIQUETAS INTELIGENTES)
+            # Anotaciones de Precio por Kg dentro de las barras
             for i, row in df_p.iterrows():
-                val_pkg = row['Precio por Kg ($)']
-                # Lógica inteligente: 1 decimal si es < 10, entero si es >= 10
-                txt_pkg = f"${val_pkg:.1f}" if val_pkg < 10 else f"${int(val_pkg)}"
-                
                 fig.add_annotation(
-                    x=i, y=2.5, text=f"<b>{txt_pkg}</b>",
+                    x=i, y=2.5, text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
                     showarrow=False, 
                     font=dict(size=t_pkg, color="white" if row["Fabricante"] == "BARCEL" else "black"),
                     bgcolor="rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)",
@@ -574,9 +579,9 @@ if not st.session_state.data.empty:
                     ) 
         
                 for i, r in df_p.iterrows():
-                    # ETIQUETAS INTELIGENTES PARA PRICE PACK
+                    # ETIQUETAS PARA PRICE PACK (Pkg normal como estaba)
                     val_pkg_pp = r['Precio por Kg ($)']
-                    txt_pkg_pp = f"${val_pkg_pp:,.1f}" if val_pkg_pp < 10 else f"${val_pkg_pp:,.0f}"
+                    txt_pkg_pp = f"${val_pkg_pp:,.0f}"
 
                     fig.add_annotation(
                         x=i, y=r["Precio por Kg ($)"], 
@@ -589,9 +594,13 @@ if not st.session_state.data.empty:
                         borderwidth=1
                     )
                     
+                    # Lógica inteligente para Precio Desembolso en Price Pack
+                    p_pp = r['Precio ($)']
+                    txt_p_pp = f"${p_pp:.1f}" if p_pp < 10 else f"${int(p_pp)}"
+
                     fig.add_annotation(
                         x=i, y=15, 
-                        text=f"<b>${r['Precio ($)']:.1f}</b>", 
+                        text=f"<b>{txt_p_pp}</b>", 
                         showarrow=False, 
                         font=dict(size=t_precios, color="white"),
                         bgcolor="#00B0F0", 
