@@ -126,30 +126,33 @@ def mostrar_glosario():
     if st.button("Entendido", use_container_width=True):
         st.rerun()
 
-# NAVEGACIÓN
-st.sidebar.header("🚀 Modo de Visualización")
-modo = st.sidebar.radio("Seleccionar Herramienta:", ["Price Ladder", "Price Pack"])
-
-# Botón limpio para el Glosario
-if st.sidebar.button("❓ Ver Glosario Técnico", use_container_width=True):
-    mostrar_glosario()
+# --- 1. NAVEGACIÓN Y CONFIGURACIÓN ---
+with st.sidebar:
+    st.header("🚀 Modo de Visualización")
+    modo = st.radio("Seleccionar Herramienta:", ["Price Ladder", "Price Pack"], label_visibility="collapsed")
     
-# LÓGICA DE MODOS
+    # Botón limpio para el Glosario
+    if st.button("❓ Ver Glosario Técnico", use_container_width=True):
+        if 'mostrar_glosario' in globals(): # Verificación de seguridad
+            mostrar_glosario()
+        else:
+            st.info("Función de glosario no definida aún.")
 
+# LÓGICA DE MODOS (Mantenida intacta)
 if modo == "Price Ladder":
     DB_FILE = "historico_productos.csv"
     label_agru = "Ocasión"
     opciones_agru = ["BITES", "INDIVIDUAL", "HAMBRE", "COMPARTIR", "FAMILIAR", "REUNIÓN", "FIESTA", "TRANSFORMADOR"]
-    fuente_plantillas = PLANTILLAS
+    fuente_plantillas = PLANTILLAS if 'PLANTILLAS' in globals() else {}
     columnas_tabla = ["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)", "SOM (%)"]
 else:
     DB_FILE = "historico_price_pack.csv"
     label_agru = "Canal"
     opciones_agru = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "DETALLE", "AUTOSERVICIO", "CONVENIENCIA"]
-    fuente_plantillas = PLANTILLAS_PP
+    fuente_plantillas = PLANTILLAS_PP if 'PLANTILLAS_PP' in globals() else {}
     columnas_tabla = ["Producto", "Familia", "Canal", "Precio ($)", "Gramaje (g)"]
 
-# --- 2. FUNCIONES CORE ---
+# --- 2. FUNCIONES CORE (Mantenidas intactas) ---
 def calcular_pkg(df, modo_actual):
     if df.empty: return df
     df["Precio ($)"] = pd.to_numeric(df["Precio ($)"], errors='coerce').fillna(0)
@@ -161,19 +164,12 @@ def calcular_pkg(df, modo_actual):
     return df
 
 def procesar_datos_piramide(df):
-    """Calcula los Tiers basados en un Producto Referencia (Index 100 = Mayor SOM de la Ocasión)"""
     if df.empty: return df
-    
     df_py = df.copy()
-    # Identificamos el producto con mayor SOM por cada Ocasión para que sea el Index 100
     idx_referencia = df_py.groupby("Ocasión")["SOM (%)"].idxmax()
     df_ref = df_py.loc[idx_referencia, ["Ocasión", "Precio por Kg ($)"]]
     df_ref = df_ref.rename(columns={"Precio por Kg ($)": "Precio_Ref"})
-    
-    # Unimos para tener el precio de referencia en cada fila
     df_py = df_py.merge(df_ref, on="Ocasión", how="left")
-    
-    # Calculamos el Index real comparado contra el líder (Mainstream)
     df_py["Idx_P"] = (df_py["Precio por Kg ($)"] / df_py["Precio_Ref"]) * 100
     
     def definir_tier(idx):
@@ -194,42 +190,47 @@ if "data" not in st.session_state or st.session_state.get("last_modo") != modo:
         st.session_state.data = pd.DataFrame(columns=columnas_tabla)
     st.session_state.last_modo = modo
 
-# --- 4. BARRA LATERAL ---
-st.sidebar.header("📁 Gestión de Datos")
-nombre_plantilla = st.sidebar.selectbox("Cargar Plantilla:", ["-- Seleccionar --"] + list(fuente_plantillas.keys()))
+# --- 4. BARRA LATERAL (GESTIÓN MEJORADA) ---
+with st.sidebar:
+    st.markdown("---")
+    st.header("📁 Gestión de Datos")
+    
+    with st.container(border=True):
+        nombre_plantilla = st.selectbox("Cargar Plantilla:", ["-- Seleccionar --"] + list(fuente_plantillas.keys()))
+        if st.button("📥 Cargar Datos", use_container_width=True, type="primary"):
+            if nombre_plantilla != "-- Seleccionar --":
+                st.session_state.data = calcular_pkg(pd.DataFrame(fuente_plantillas[nombre_plantilla]), modo)
+                st.session_state.data.to_csv(DB_FILE, index=False)
+                st.success("¡Datos cargados!")
+                st.rerun()
 
-if st.sidebar.button("Cargar Datos"):
-    if nombre_plantilla != "-- Seleccionar --":
-        st.session_state.data = calcular_pkg(pd.DataFrame(fuente_plantillas[nombre_plantilla]), modo)
-        st.session_state.data.to_csv(DB_FILE, index=False)
+    # EXPORTACIÓN
+    def to_excel(df):
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Analisis_Portafolio')
+        return output.getvalue()
+
+    if not st.session_state.data.empty:
+        st.divider()
+        st.subheader("📥 Exportar Catálogo")
+        excel_data = to_excel(st.session_state.data)
+        st.download_button(
+            label="📄 Descargar Excel Completo",
+            data=excel_data,
+            file_name=f'barcel_{modo.lower()}_data.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            use_container_width=True
+        )
+
+    if st.button("🗑️ Reset Sistema", use_container_width=True):
+        if os.path.exists(DB_FILE): os.remove(DB_FILE)
+        st.session_state.data = pd.DataFrame(columns=columnas_tabla)
         st.rerun()
 
-# --- 4. BARRA LATERAL (CONTINUACIÓN: EXPORTACIÓN) ---
-def to_excel(df):
-    output = io.BytesIO()
-    # Usamos openpyxl como engine para evitar errores de dependencias
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Analisis_Portafolio')
-    return output.getvalue()
-
-if not st.session_state.data.empty:
-    st.sidebar.divider()
-    st.sidebar.subheader("📥 Exportar Catálogo")
-    excel_data = to_excel(st.session_state.data)
-    st.sidebar.download_button(
-        label="📄 Descargar Excel Completo",
-        data=excel_data,
-        file_name=f'barcel_{modo.lower()}_data.xlsx',
-        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        use_container_width=True
-    )
-
-if st.sidebar.button("🗑️ Reset"):
-    if os.path.exists(DB_FILE): os.remove(DB_FILE)
-    st.session_state.data = pd.DataFrame(columns=columnas_tabla)
-    st.rerun()
-
+# --- 5. PANEL PRINCIPAL ---
 st.title(f"📊 {modo.upper()}")
+
 
 # --- 5. FORMULARIOS DE AGREGAR ---
 with st.expander(f"➕ Agregar nuevo SKU a {modo}", expanded=False):
@@ -374,7 +375,7 @@ if modo == "Price Ladder" and not df_p.empty:
 if not st.session_state.data.empty:
     df_p = st.session_state.data.copy()
     
-    # --- INSERCIÓN DE FILTROS ---
+    # --- INSERCIÓN DE FILTROS (MODO LADDER) ---
     if modo == "Price Ladder":
         if sel_fab:
             df_p = df_p[df_p["Fabricante"].isin(sel_fab)]
@@ -385,13 +386,14 @@ if not st.session_state.data.empty:
     # --- FIN DE INSERCIÓN ---
 
     # 2. Verificar si hay datos tras el filtrado
-    if df_p.empty:
+    if df_p.empty and modo == "Price Ladder":
         st.warning("⚠️ No hay datos que coincidan con los filtros seleccionados.")
     else:
         if modo == "Price Ladder":
             # --- LÓGICA PRICE LADDER ---
             ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5,"REUNIÓN":6, "FIESTA":7,"TRANSFORMADOR":8}
             df_p["O_Oca"] = df_p["Ocasión"].str.upper().map(ord_oca).fillna(99)
+            
             # Ordenamiento con desempate por $/Kg
             df_p = df_p.sort_values(by=["O_Oca", "Precio ($)", "Precio por Kg ($)"]).reset_index(drop=True)
             som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
@@ -435,7 +437,7 @@ if not st.session_state.data.empty:
             for cat in df_p["Ocasión"].unique():
                 idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
                 
-                # Línea divisoria al final de cada categoría (y0=-0.6 para que baje hasta el texto del canal)
+                # Línea divisoria al final de cada categoría
                 fig.add_shape(
                     type="line", x0=idx_list[-1] + 0.5, x1=idx_list[-1] + 0.5, 
                     y0=-0.60, y1=1, xref="x2", yref="paper", 
@@ -456,7 +458,7 @@ if not st.session_state.data.empty:
                 margin=dict(t=50, b=400, l=40, r=40)
             )
             
-            # Restaurar visibilidad del eje X inferior (Nombres de productos en negro y 90°)
+            # Eje X
             fig.update_xaxes(
                 tickangle=-90, 
                 tickfont=dict(size=16, color="black"), 
@@ -464,159 +466,252 @@ if not st.session_state.data.empty:
                 row=2, col=1
             )
             
-            # Ocultar ejes innecesarios
+            # Ejes Y
             fig.update_yaxes(showticklabels=False, row=1, col=1)
             fig.update_yaxes(showgrid=True, gridcolor="#DCDCDC", tickprefix="$", tickfont=dict(size=14), row=2, col=1)
+            
+            # --- RENDERIZADO FINAL LADDER ---
+            st.plotly_chart(fig, use_container_width=True)
+
         else:
-            # --- LÓGICA PRICE PACK (SIN FILTROS) ---
+            # --- 6.9 FILTROS DINÁMICOS PARA PRICE PACK ---
+            st.write("") 
+            with st.container(border=True):
+                st.markdown("### 🔍 Filtros de Visualización (Price Pack)")
+                col_pp1, col_pp2 = st.columns(2)
+        
+                with col_pp1:
+                    lista_canales = sorted(st.session_state.data["Canal"].unique().tolist())
+                    sel_canal_pp = st.multiselect("Filtrar por Canal", lista_canales, key="filter_pp_canal")
+        
+                with col_pp2:
+                    lista_prod_pp = sorted(st.session_state.data["Producto"].unique().tolist())
+                    sel_prod_pp = st.multiselect("Filtrar por Producto", lista_prod_pp, key="filter_pp_prod")
+        
+            # --- APLICACIÓN DE FILTROS (MODO PACK) ---
+            # IMPORTANTE: No redefinimos df_p desde cero aquí para no perder el contexto
+            if sel_canal_pp:
+                df_p = df_p[df_p["Canal"].isin(sel_canal_pp)]
+            if sel_prod_pp:
+                df_p = df_p[df_p["Producto"].isin(sel_prod_pp)]
+        
+            # --- LÓGICA DE ORDENAMIENTO ---
             ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIO": 5, "CONVENIENCIA": 6}
             df_p["O_Can"] = df_p["Canal"].str.upper().map(ord_can).fillna(99)
             df_p = df_p.sort_values(by=["O_Can", "Precio ($)"]).reset_index(drop=True)
             
-            fig = go.Figure()
-            fig.add_trace(go.Bar(x=df_p.index, y=df_p["Precio por Kg ($)"], marker_color="#0B3C8C"))
-            
-            # 2. LÍNEAS DIVISORIAS ENTRE NOMBRES (ABAJO)
-            # Dibujamos líneas tenues para separar visualmente los nombres de los productos
-            for i in range(len(df_p) + 1):
-                fig.add_shape(
-                    type="line", x0=i-0.5, x1=i-0.5, 
-                    y0=-0.45, y1=0, # Ajustado para que bajen a la zona de los nombres
-                    xref="x", yref="paper",
-                    line=dict(color="#DDDDDD", width=1)
-                ) 
-
-            # 3. Etiquetas de datos sobre las barras y desembolso en la base
-            for i, r in df_p.iterrows():
-                fig.add_annotation(x=i, y=r["Precio por Kg ($)"], text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", yshift=15, showarrow=False, font=dict(size=13), bgcolor="rgba(255,255,255,0.9)", bordercolor="black", borderwidth=1)
-                fig.add_annotation(x=i, y=15, text=f"<b>${r['Precio ($)']:.1f}</b>", showarrow=False, font=dict(size=12), bgcolor="#E1F5FE", bordercolor="#BDBDBD", borderwidth=1, borderpad=4)
-            
-            # 4. Divisiones de Canales y Etiquetas de Canal
-            for cat in df_p["Canal"].unique():
-                indices = df_p.index[df_p["Canal"] == cat].tolist()
-                center = (indices[0] + indices[-1]) / 2
+            if not df_p.empty:
+                fig = go.Figure()
+        
+                # 1. BARRAS
+                fig.add_trace(go.Bar(
+                    x=df_p.index, 
+                    y=df_p["Precio por Kg ($)"], 
+                    marker_color="#F8F9FA",
+                    marker_line=dict(color="#D1D1D1", width=1),
+                    showlegend=False
+                ))
                 
-                # LÍNEA QUE SEPARA LOS CANALES
-                fig.add_shape(
-                    type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, 
-                    y0=-0.6, y1=1, xref="x", yref="paper", 
-                    line=dict(color="#CCCCCC", width=1.5) 
-                )
+                # 2. LÍNEAS DIVISORIAS ENTRE NOMBRES
+                for i in range(len(df_p) + 1):
+                    fig.add_shape(
+                        type="line", x0=i-0.5, x1=i-0.5, 
+                        y0=-0.45, y1=0, 
+                        xref="x", yref="paper",
+                        line=dict(color="#EEEEEE", width=1)
+                    ) 
+        
+                # 3. ANOTACIONES (ETIQUETAS)
+                for i, r in df_p.iterrows():
+                    # PRECIO POR KG (Arriba)
+                    fig.add_annotation(
+                        x=i, y=r["Precio por Kg ($)"], 
+                        text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", 
+                        yshift=15, 
+                        showarrow=False, 
+                        font=dict(size=14, color="#212121"),
+                        bgcolor="rgba(255,255,255,0.9)", 
+                        bordercolor="#616161", 
+                        borderwidth=1
+                    )
+                    
+                    # DESEMBOLSO EN LA BASE
+                    fig.add_annotation(
+                        x=i, y=15, 
+                        text=f"<b>${r['Precio ($)']:.1f}</b>", 
+                        showarrow=False, 
+                        font=dict(size=12, color="white"),
+                        bgcolor="#00B0F0", 
+                        bordercolor="black", 
+                        borderwidth=1.5,      
+                        borderpad=4
+                    )
                 
-                # Etiqueta de Canal
-                fig.add_annotation(
-                    x=center, y=-0.6, xref="x", yref="paper", 
-                    text=f"<b>{cat}</b>", showarrow=False, 
-                    font=dict(size=14, color="black")
+                # 4. DIVISIONES DE CANALES
+                for cat in df_p["Canal"].unique():
+                    indices = df_p.index[df_p["Canal"] == cat].tolist()
+                    center = (indices[0] + indices[-1]) / 2
+                    
+                    fig.add_shape(
+                        type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, 
+                        y0=-0.6, y1=1, xref="x", yref="paper", 
+                        line=dict(color="#CCCCCC", width=1.5) 
+                    )
+                    
+                    fig.add_annotation(
+                        x=center, y=-0.6, xref="x", yref="paper", 
+                        text=cat, 
+                        showarrow=False, 
+                        font=dict(size=14, color="#424242", family="Verdana")
+                    )
+                
+                # 5. CONFIGURACIÓN DEL LAYOUT
+                fig.update_layout(
+                    height=850, 
+                    margin=dict(b=300, t=50, l=50, r=50), 
+                    template="plotly_white", 
+                    xaxis=dict(
+                        tickmode='array', 
+                        tickvals=list(df_p.index), 
+                        ticktext=["<b>"+str(t)+"</b>" for t in df_p["Producto"]],
+                        tickangle=-90, 
+                        tickfont=dict(color="#000000", size=11, family="Verdana"), 
+                        showgrid=False
+                    ),
+                    yaxis=dict(
+                        tickprefix="$", 
+                        showgrid=True, 
+                        gridcolor="#F5F5F5"
+                    )
                 )
-            
-            # 5. Configuración del Layout
-            fig.update_layout(
-                height=850, 
-                margin=dict(b=300, t=50, l=50, r=50), 
-                template="plotly_white", 
-                xaxis=dict(
-                    tickmode='array', 
-                    tickvals=list(df_p.index), 
-                    ticktext=df_p["Producto"], 
-                    tickangle=-90, 
-                    tickfont=dict(color="black", size=12, family="Arial Black"), 
-                    showgrid=False
-                )
-            )
+        
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Utiliza los filtros para visualizar los datos del Price Pack.")
 
-        st.plotly_chart(fig, use_container_width=True)
 
-            
-# --- 8. COMPARATIVAS INDEX (DOBLE FILA: DESEMBOLSO Y $/KG) ---
+# --- 8. COMPARATIVAS INDEX (UNIFICADO: LADDER + ARQUITECTURA PPT) ---
 if not st.session_state.data.empty:
     st.divider()
-    st.subheader(f"📈 Comparativas Index ({modo})")
     df_comp = st.session_state.data.copy()
     
-    # Limpieza y conversión
+    # Limpieza estándar
     for col in ["Precio ($)", "Precio por Kg ($)"]:
         df_comp[col] = pd.to_numeric(df_comp[col], errors='coerce').fillna(0)
-    
+
+    # --- MODO 1: PRICE LADDER (COMPARATIVAS 1 A 1) ---
     if modo == "Price Ladder":
+        st.subheader(f"📈 Comparativas Index ({modo})")
         df_comp["Lookup_Key"] = df_comp["Producto"]
         list_a = df_comp[df_comp["Fabricante"]=="BARCEL"]["Lookup_Key"].unique().tolist()
         list_b = df_comp[df_comp["Fabricante"]!="BARCEL"]["Lookup_Key"].unique().tolist()
         label_a, label_b = "Barcel", "Comp."
+
+        if list_a and list_b:
+            sel_cols = st.columns(4)
+            selections = []
+            for i in range(4):
+                with sel_cols[i]:
+                    s_a = st.selectbox(f"{label_a}", list_a, key=f"sa{i}")
+                    idx_default = min(i+1, len(list_b)-1) if len(list_b) > 1 else 0
+                    s_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=idx_default)
+                    selections.append((s_a, s_b))
+
+            # Fila Desembolso
+            st.markdown("### 💰 Index Desembolso")
+            des_cols = st.columns(4)
+            for i, (sel_a, sel_b) in enumerate(selections):
+                v_a = df_comp[df_comp["Lookup_Key"] == sel_a]["Precio ($)"].iloc[0]
+                v_b = df_comp[df_comp["Lookup_Key"] == sel_b]["Precio ($)"].iloc[0]
+                idx = int((v_a / v_b * 100)) if v_b > 0 else 0
+                color = "#0B3C8C" if idx <= 100 else "#D32F2F"
+                with des_cols[i]:
+                    st.markdown(f"""<div style="background:white; border:1px solid #ddd; border-top:5px solid {color}; border-radius:10px; padding:10px; text-align:center;">
+                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#666; margin-bottom:5px;"><span>{sel_a}</span><span>{sel_b}</span></div>
+                        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:10px;"><span>${v_a:.1f}</span><span style="color:#ccc; font-size:0.7rem;">vs</span><span>${v_b:.1f}</span></div>
+                        <div style="font-size:1.8rem; font-weight:900; color:{color};">{idx}</div><div style="font-size:0.6rem; font-weight:bold; color:#999;">Index Desembolso</div></div>""", unsafe_allow_html=True)
+
+            # Fila $/Kg
+            st.markdown("### ⚖️ Index Precio por Kg")
+            pkg_cols = st.columns(4)
+            for i, (sel_a, sel_b) in enumerate(selections):
+                v_a = df_comp[df_comp["Lookup_Key"] == sel_a]["Precio por Kg ($)"].iloc[0]
+                v_b = df_comp[df_comp["Lookup_Key"] == sel_b]["Precio por Kg ($)"].iloc[0]
+                idx = int((v_a / v_b * 100)) if v_b > 0 else 0
+                color = "#0B3C8C" if idx <= 100 else "#D32F2F"
+                with pkg_cols[i]:
+                    st.markdown(f"""<div style="background:white; border:1px solid #ddd; border-top:5px solid {color}; border-radius:10px; padding:10px; text-align:center;">
+                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#666; margin-bottom:5px;"><span>{sel_a}</span><span>{sel_b}</span></div>
+                        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:10px;"><span>${int(v_a)}</span><span style="color:#ccc; font-size:0.7rem;">vs</span><span>${int(v_b)}</span></div>
+                        <div style="font-size:1.8rem; font-weight:900; color:{color};">{idx}</div><div style="font-size:0.6rem; font-weight:bold; color:#999;">Index $/Kg</div></div>""", unsafe_allow_html=True)
+
+    # --- MODO 2: MATRIZ DE ARQUITECTURA (VISTA PPT) ---
     else:
-        df_comp["Lookup_Key"] = df_comp["Producto"] + " (" + df_comp["Canal"] + ")"
-        list_a = df_comp["Lookup_Key"].unique().tolist()
-        list_b = list_a.copy()
-        label_a, label_b = "Producto A", "Producto B"
+        # Encabezado con leyenda a la derecha
+        col_tit, col_ley = st.columns([2, 1])
+        with col_tit:
+            st.markdown("<h2 style='color: #0B3C8C; margin:0;'>🏛️ Matriz de Arquitectura Multibase</h2>", unsafe_allow_html=True)
+        with col_ley:
+            st.markdown("""<div style='text-align:right; padding-top:10px;'><span style='background:#f0f2f6; padding:5px 10px; border-radius:5px; font-size:14px; color:#555; border:1px solid #ddd;'><b>Nota:</b> Index Objetivo vs Detalle (Base 100)</span></div>""", unsafe_allow_html=True)
+        
+        # 1. Identificar Bases de Detalle y Colores
+        skus_det_base = sorted(df_comp[df_comp["Canal"].str.upper() == "DETALLE"]["Producto"].unique().tolist())
+        colores_disponibles = ["#27AE60", "#8E44AD", "#2980B9", "#E67E22", "#D32F2F", "#7F8C8D"]
+        dict_colores_base = {sku: colores_disponibles[i % len(colores_disponibles)] for i, sku in enumerate(skus_det_base)}
+        dict_valores_base = {sku: df_comp[(df_comp["Canal"].str.upper() == "DETALLE") & (df_comp["Producto"] == sku)]["Precio por Kg ($)"].mean() for sku in skus_det_base}
 
-    if len(list_a) > 0 and len(list_b) > 0:
-        # 1. Selectores (se mantienen arriba para controlar ambas filas)
-        sel_cols = st.columns(4)
-        selections = []
-        for i in range(4):
-            with sel_cols[i]:
-                s_a = st.selectbox(f"{label_a}", list_a, key=f"sa{i}")
-                s_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=min(i+1, len(list_b)-1))
-                selections.append((s_a, s_b))
+        if skus_det_base:
+            with st.expander("⚙️ Configurar productos y bases de comparación"):
+                canales_ordenados = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "AUTOSERVICIO", "CONVENIENCIA"]
+                objetivos_canales = {"INSTITUCIONALES": "Index 60", "MAYOREO": "Index 70", "CLUBES": "Index 80", "AUTOSERVICIO": "Index 110-120", "CONVENIENCIA": "Index 120-130"}
+                config_cols = st.columns(5)
+                selecciones_usuario = {}
 
-        # 2. PRIMERA FILA: INDEX DESEMBOLSO
-        st.markdown("### 💰 Index Desembolso")
-        des_cols = st.columns(4)
-        for i, (sel_a, sel_b) in enumerate(selections):
-            row_a = df_comp[df_comp["Lookup_Key"] == sel_a].iloc[0]
-            row_b = df_comp[df_comp["Lookup_Key"] == sel_b].iloc[0]
-            v_a, v_b = row_a["Precio ($)"], row_b["Precio ($)"]
-            
-            idx = int((v_a / v_b * 100)) if v_b > 0 else 0
-            color = "#0B3C8C" if idx <= 100 else "#D32F2F"
-            
-            with des_cols[i]:
-                st.markdown(f"""
-                    <div style="background:white; border:1px solid #ddd; border-top:5px solid {color}; border-radius:10px; padding:10px; text-align:center;">
-                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#666; margin-bottom:5px;">
-                            <span style="width:45%; text-align:left; height:20px; overflow:hidden;">{sel_a}</span>
-                            <span style="width:45%; text-align:right; height:20px; overflow:hidden;">{sel_b}</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:10px;">
-                            <span>${v_a:.1f}</span>
-                            <span style="color:#ccc; font-size:0.7rem; padding-top:5px;">vs</span>
-                            <span>${v_b:.1f}</span>
-                        </div>
-                        <div style="font-size:1.8rem; font-weight:900; color:{color}; line-height:1;">{idx}</div>
-                        <div style="font-size:0.6rem; font-weight:bold; color:#999; text-transform:uppercase;">Index Desembolso</div>
-                    </div>
-                """, unsafe_allow_html=True)
+                for i, canal_n in enumerate(canales_ordenados):
+                    with config_cols[i]:
+                        st.markdown(f"**{canal_n}**")
+                        prods_canal = sorted(df_comp[df_comp["Canal"].str.upper() == canal_n]["Producto"].unique().tolist())
+                        seleccionados = st.multiselect(f"Seleccionar {canal_n}", prods_canal, key=f"ms_{canal_n}", label_visibility="collapsed")
+                        lista_configs = []
+                        for p in seleccionados:
+                            base_sel = st.selectbox(f"Vs: {p}", skus_det_base, key=f"base_{canal_n}_{p}")
+                            lista_configs.append((p, base_sel))
+                        selecciones_usuario[canal_n] = lista_configs
 
-        st.write("") # Espaciador
+            st.write("")
+            viz_cols = st.columns(5)
+            bases_usadas_en_reporte = set()
 
-        # 3. SEGUNDA FILA: INDEX PRECIO X KG
-        st.markdown("### ⚖️ Index Precio por Kg")
-        pkg_cols = st.columns(4)
-        for i, (sel_a, sel_b) in enumerate(selections):
-            row_a = df_comp[df_comp["Lookup_Key"] == sel_a].iloc[0]
-            row_b = df_comp[df_comp["Lookup_Key"] == sel_b].iloc[0]
-            v_a, v_b = row_a["Precio por Kg ($)"], row_b["Precio por Kg ($)"]
-            
-            idx = int((v_a / v_b * 100)) if v_b > 0 else 0
-            color = "#0B3C8C" if idx <= 100 else "#D32F2F"
-            
-            with pkg_cols[i]:
-                st.markdown(f"""
-                    <div style="background:white; border:1px solid #ddd; border-top:5px solid {color}; border-radius:10px; padding:10px; text-align:center;">
-                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#666; margin-bottom:5px;">
-                            <span style="width:45%; text-align:left; height:20px; overflow:hidden;">{sel_a}</span>
-                            <span style="width:45%; text-align:right; height:20px; overflow:hidden;">{sel_b}</span>
+            for i, canal_n in enumerate(canales_ordenados):
+                with viz_cols[i]:
+                    # Encabezado de Canal (Grande y Bold)
+                    st.markdown(f"""
+                        <div style="text-align:center; border-bottom:3px solid #0B3C8C; margin-bottom:15px; padding-bottom:8px;">
+                            <div style="font-size:16px; font-weight:900; color:#333; text-transform:uppercase; letter-spacing:1px;">{canal_n}</div>
+                            <div style="font-size:13px; color:#D32F2F; font-weight:bold; margin-top:4px;">{objetivos_canales.get(canal_n, '')}</div>
                         </div>
-                        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:10px;">
-                            <span>${int(v_a)}</span>
-                            <span style="color:#ccc; font-size:0.7rem; padding-top:5px;">vs</span>
-                            <span>${int(v_b)}</span>
-                        </div>
-                        <div style="font-size:1.8rem; font-weight:900; color:{color}; line-height:1;">{idx}</div>
-                        <div style="font-size:0.6rem; font-weight:bold; color:#999; text-transform:uppercase;">Index $/Kg</div>
-                    </div>
-                """, unsafe_allow_html=True)
-                        
+                    """, unsafe_allow_html=True)
+
+                    for p_name, b_name in selecciones_usuario[canal_n]:
+                        val_item = df_comp[(df_comp["Canal"].str.upper() == canal_n) & (df_comp["Producto"] == p_name)]["Precio por Kg ($)"].mean()
+                        val_base = dict_valores_base[b_name]
+                        index_calc = int((val_item / val_base * 100)) if val_base > 0 else 0
+                        color_pill = dict_colores_base[b_name]
+                        bases_usadas_en_reporte.add(b_name)
+
+                        st.markdown(f"""
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; min-height:40px;">
+                                <span style="font-size:13px; color:#222; font-weight:500; line-height:1.2; width:70%; font-family:Verdana;">{p_name}</span>
+                                <span style="background:{color_pill}; color:white; padding:4px 8px; border-radius:6px; font-weight:900; font-size:15px; min-width:45px; text-align:center; box-shadow: 1px 1px 3px rgba(0,0,0,0.15);">{index_calc}</span>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+            if bases_usadas_en_reporte:
+                leyenda_items = "".join([f'<div style="display:inline-block; margin-right:25px; margin-bottom:10px;"><span style="color:{dict_colores_base[b]}; font-size:20px; vertical-align:middle;">●</span> <span style="font-weight:bold; font-size:14px; color:#444;">Vs {b}</span></div>' for b in sorted(list(bases_usadas_en_reporte))])
+                st.markdown(f"""<div style="background:#F8F9FA; padding:15px; border-radius:8px; border:1px solid #CCC; margin-top:20px;"><div style="font-size:12px; font-weight:bold; color:#888; margin-bottom:10px; text-transform:uppercase;">Leyenda de Comparación (Bases Detalle):</div>{leyenda_items}</div>""", unsafe_allow_html=True)
+        else:
+            st.warning("No hay datos en el canal DETALLE para realizar comparaciones.")
+        
 # --- 10. PIRÁMIDE DE POSICIONAMIENTO (SOLO LADDER) ---
 # Movimos el título y la lógica dentro del condicional para que no aparezca en Price Pack
 if modo == "Price Ladder" and not st.session_state.data.empty:
@@ -673,245 +768,279 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
 
-# --- 11. VISUALIZACIÓN ESTRATÉGICA PRO: MAPA DE VALOR LIMPIO ---
+# --- 11. MAPA DE VALOR ESTRATÉGICO (DISEÑO CLEAN) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
-    st.subheader("📊 Mapa Estratégico de Valor: Barcel vs Competencia")
+    st.markdown("<h3 style='text-align: center; color: #0B3C8C;'>🏔️ Mapa de Posicionamiento: Desembolso vs. Eficiencia</h3>", unsafe_allow_html=True)
     
     import plotly.express as px
-    import pandas as pd
-    import numpy as np
 
     df_plot = st.session_state.data.copy()
     
-    # 1. Limpieza y preparación de datos numéricos
+    # 1. Asegurar formato numérico
     for c in ["Precio ($)", "Precio por Kg ($)", "SOM (%)"]:
         df_plot[c] = pd.to_numeric(df_plot[c], errors='coerce').fillna(0)
 
-    # 2. Lógica de Colores Personalizada (Barcel Azul, Sabritas Amarillo, Otros Gris, Propuesta Morado)
+    # 2. Mapa de Colores
+    color_map = {
+        "BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", 
+        "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"
+    }
+
     def asignar_color(row):
         fab = str(row["Fabricante"]).upper()
         prod = str(row["Producto"]).upper()
-        # Si el nombre del producto contiene "PROPUESTA" (útil para simulaciones)
-        if "PROPUESTA" in prod or "SUGERIDO" in prod: 
-            return "PROPUESTA"
-        if "BARCEL" in fab: 
-            return "BARCEL"
-        if "SABRITAS" in fab or "PEPSICO" in fab: 
-            return "SABRITAS"
+        if "PROPUESTA" in prod or "SUGERIDO" in prod: return "PROPUESTA"
+        if "BARCEL" in fab: return "BARCEL"
+        if "SABRITAS" in fab or "PEPSICO" in fab: return "SABRITAS"
         return "OTROS"
 
     df_plot["Categoria_Color"] = df_plot.apply(asignar_color, axis=1)
 
-    # 3. Filtro por Ocasión para limpiar la vista
+    # 3. Filtro por Ocasión
     ocasiones = ["TODAS"] + sorted(df_plot["Ocasión"].unique().tolist())
-    oca_selected = st.selectbox("🎯 Selecciona Momento de Consumo:", ocasiones, key="filtro_oca_viz_clean")
+    oca_selected = st.selectbox("🎯 Filtrar Ocasión:", ocasiones, key="filtro_oca_final_clean")
     
     if oca_selected != "TODAS":
         df_plot = df_plot[df_plot["Ocasión"] == oca_selected]
 
     if not df_plot.empty:
-        # Jittering: Pequeño ruido en el eje Y para separar burbujas con el mismo precio exacto
-        stdev = (df_plot["Precio ($)"].std() * 0.03) if len(df_plot) > 1 else 0.5
-        df_plot["Precio_Jitter"] = df_plot["Precio ($)"] + np.random.uniform(-stdev, stdev, size=len(df_plot))
+        # Ajuste de rangos para que no haya espacios vacíos
+        y_min, y_max = df_plot["Precio ($)"].min() * 0.9, df_plot["Precio ($)"].max() * 1.1
+        x_min, x_max = df_plot["Precio por Kg ($)"].min() * 0.9, df_plot["Precio por Kg ($)"].max() * 1.1
 
-        # Mapa de colores solicitado por el usuario
-        color_map = {
-            "BARCEL": "#002366",    # Azul Fuerte
-            "SABRITAS": "#FFD700",  # Amarillo
-            "OTROS": "#A0A0A0",     # Gris
-            "PROPUESTA": "#800080"  # Morado
-        }
-
-        # Creación del gráfico Pro
         fig = px.scatter(
-            df_plot,
-            x="Precio por Kg ($)",
-            y="Precio_Jitter",
-            size="SOM (%)",
-            color="Categoria_Color",
-            hover_name="Producto",
-            text="Producto",
-            color_discrete_map=color_map,
-            size_max=55,
-            labels={
-                "Precio por Kg ($)": "Eficiencia (Precio/Kg)", 
-                "Precio_Jitter": "Desembolso ($)",
-                "Categoria_Color": "Leyenda"
-            },
-            custom_data=["Precio ($)", "SOM (%)", "Ocasión"]
+            df_plot, x="Precio por Kg ($)", y="Precio ($)",
+            size="SOM (%)", color="Categoria_Color",
+            text="Producto", hover_name="Producto",
+            color_discrete_map=color_map, size_max=40,
+            custom_data=["SOM (%)", "Ocasión"]
         )
 
-        # Ajuste de etiquetas y hover para que no estorben
+        # Estilo de etiquetas y burbujas
         fig.update_traces(
             textposition='top center',
-            marker=dict(line=dict(width=1, color='white')),
-            hovertemplate="<b>%{hovertext}</b><br>" +
-                          "Ocasión: %{customdata[2]}<br>" +
-                          "Precio Real: $%{customdata[0]:.2f}<br>" +
-                          "Precio/Kg: $%{x:.2f}<br>" +
-                          "SOM: %{customdata[1]:.1f}%<extra></extra>"
+            textfont=dict(family="Arial", size=10, color="#333"),
+            marker=dict(line=dict(width=1.5, color='white'), opacity=0.9),
+            hovertemplate="<b>%{hovertext}</b><br>Desembolso: $%{y:.1f}<br>Precio/Kg: $%{x:,.0f}<br>SOM: %{customdata[0]:.1f}%<extra></extra>"
         )
 
-        # Configuración Pro del Layout (Ejes con $)
+        # Configuración de Ejes (Sin etiquetas de cuadrante)
         fig.update_layout(
             template="plotly_white",
-            height=750,
+            height=700,
             xaxis=dict(
-                title="<b>Eficiencia de Valor (Precio por Kg)</b>", 
-                tickprefix="$", 
-                showgrid=True,
-                gridcolor='#F0F0F0'
+                title="<b>EFICIENCIA ($/KG)</b>", tickprefix="$", 
+                range=[x_min, x_max], gridcolor="#F2F2F2"
             ),
             yaxis=dict(
-                title="<b>Punto de Precio (Desembolso)</b>", 
-                tickprefix="$", 
-                showgrid=True,
-                gridcolor='#F0F0F0'
+                title="<b>DESEMBOLSO (PRECIO $)</b>", tickprefix="$", 
+                range=[y_min, y_max], gridcolor="#F2F2F2"
             ),
             legend=dict(
-                orientation="h", 
-                yanchor="bottom", 
-                y=1.02, 
-                xanchor="center", 
-                x=0.5
+                title="", orientation="h", yanchor="bottom", 
+                y=1.02, xanchor="center", x=0.5
             )
         )
 
-        # Líneas sutiles de referencia para los umbrales de precio (Magic Prices)
-        max_p = df_plot["Precio ($)"].max()
-        for p in [15, 25, 35, 50, 70, 100]:
-            if p <= max_p + 15:
-                fig.add_hline(y=p, line_dash="dot", line_color="#E0E0E0", line_width=1)
+        # Líneas de referencia sutiles (Promedios)
+        fig.add_vline(x=df_plot["Precio por Kg ($)"].mean(), line_dash="dot", line_color="#D1D1D1")
+        fig.add_hline(y=df_plot["Precio ($)"].mean(), line_dash="dot", line_color="#D1D1D1")
 
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.warning("No hay datos para mostrar en esta selección.")
+        st.warning("No hay datos disponibles.")
 
-    st.caption("💡 **Interpretación:** Las burbujas moradas representan las propuestas de ajuste. El objetivo es que Barcel (Azul) no esté más a la derecha que Sabritas (Amarillo) en el mismo nivel de precio")
 
-# --- 11. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA (VERSIÓN FINAL CORREGIDA) ---
-if modo == "Price Ladder" and not st.session_state.data.empty:
+# --- 12. ANALISTA MAESTRO INTEGRAL: LADDER ULTRA 2.6 + ARQUITECTURA PRO ---
+if not st.session_state.data.empty:
     st.divider()
-    st.subheader("🚀 Sugerencias / Observaciones en base al Mercado")
     
+    # 1. PREPARACIÓN DE DATOS (Común para ambos modos)
     df_p = st.session_state.data.copy()
-    # Conversión robusta a números
-    for c in ["Precio ($)", "SOM (%)", "Precio por Kg ($)"]:
-        df_p[c] = pd.to_numeric(df_p[c], errors='coerce').fillna(0)
+    
+    # Limpieza segura de columnas numéricas
+    for c in ["Precio ($)", "SOM (%)", "Precio por Kg ($)", "Gramaje (g)"]:
+        if c in df_p.columns:
+            df_p[c] = pd.to_numeric(df_p[c], errors='coerce').fillna(0)
 
-    mapa_rivales = {
-        "TAKIS": ["DORITO", "DINAMITA"],
-        "CHIPS": ["SABRITA", "RECETA CRUJIENTE"],
-        "PAPAS BARCEL": ["SABRITA", "RECETA CRUJIENTE"],
-        "CHIPOTLES": ["RANCHERITO", "FRITO"],
-        "RUNNERS": ["FRITO", "RANCHERITO"],
-        "BIG MIX": ["PAKETAXO"],
-        "POP KARAMELADAS": ["ACT II"],
-        "HOT NUTS": ["KACANG"],
-        "GOLDEN NUTS": ["MAFER"],
-        "KIYAKIS": ["KARATE"],
-        "VALENTONES": ["SABRITONE"],
-        "PIX":["TORCIDITOS"]
-    }
+    # --- MODO A: PRICE LADDER (Tu Código Ultra 2.6 Completo) ---
+    if modo == "Price Ladder":
+        st.subheader("🚀 Sugerencias / Observaciones en base al Mercado")
+        
+        mapa_rivales = {
+            "TAKIS": ["DORITO", "DINAMITA"],
+            "CHIPS": ["SABRITA", "RECETA CRUJIENTE"],
+            "PAPAS BARCEL": ["SABRITA", "RECETA CRUJIENTE"],
+            "CHIPOTLES": ["RANCHERITO", "FRITO"],
+            "RUNNERS": ["FRITO", "RANCHERITO"],
+            "BIG MIX": ["PAKETAXO"],
+            "POP KARAMELADAS": ["ACT II"],
+            "HOT NUTS": ["KACANG"],
+            "GOLDEN NUTS": ["MAFER"],
+            "KIYAKIS": ["KARATE"],
+            "VALENTONES": ["SABRITONE"],
+            "PIX":["TORCIDITOS"]
+        }
 
-    def identificar_marca(n):
-        n = str(n).upper()
-        for m in mapa_rivales.keys():
-            if m in n: return m
-        return "OTRO"
+        def identificar_marca(n):
+            n = str(n).upper()
+            for m in mapa_rivales.keys():
+                if m in n: return m
+            return "OTRO"
 
-    def es_rival_de(n_comp, m_barcel):
-        n_comp = str(n_comp).upper()
-        if m_barcel in mapa_rivales:
-            for r in mapa_rivales[m_barcel]:
-                if r in n_comp: return True
-        return False
+        def es_rival_de(n_comp, m_barcel):
+            n_comp = str(n_comp).upper()
+            if m_barcel in mapa_rivales:
+                for r in mapa_rivales[m_barcel]:
+                    if r in n_comp: return True
+            return False
 
-    def ajustar_precio_psicologico(p):
-        puntos_magicos = [10, 12, 15, 18, 20, 22, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80]
-        return min(puntos_magicos, key=lambda x: abs(x - p))
+        def ajustar_precio_psicologico(p):
+            puntos_magicos = [10, 12, 15, 18, 20, 22, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80]
+            return min(puntos_magicos, key=lambda x: abs(x - p))
 
-    def calcular_rango_g(p_target, pkg_ref):
-        if pkg_ref <= 0: return "N/A"
-        return f"{int((p_target/(pkg_ref*0.95))*1000)}g - {int((p_target/(pkg_ref*0.85))*1000)}g"
+        def calcular_rango_g(p_target, pkg_ref):
+            if pkg_ref <= 0: return "N/A"
+            return f"{int((p_target/(pkg_ref*0.95))*1000)}g - {int((p_target/(pkg_ref*0.85))*1000)}g"
 
-    hallazgos = []
-    vistos = set()
+        hallazgos = []
+        vistos = set()
 
-    try:
-        pesos_oca = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
+        try:
+            if "Ocasión" in df_p.columns:
+                pesos_oca = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-        # --- BLOQUE A: ESTRATEGIA DE PORTAFOLIO (GAPS) ---
-        df_b_global = df_p[df_p["Fabricante"] == "BARCEL"].sort_values("Precio ($)")
-        if len(df_b_global) >= 2:
-            for i in range(len(df_b_global) - 1):
-                p1, p2 = df_b_global.iloc[i]["Precio ($)"], df_b_global.iloc[i+1]["Precio ($)"]
-                if (p2 - p1) > 10:
-                    id_gap = f"GAP_{int(p1)}_{int(p2)}"
-                    if id_gap not in vistos:
-                        p_sug = ajustar_precio_psicologico((p1 + p2) / 2)
+                # --- BLOQUE A: ESTRATEGIA DE PORTAFOLIO (GAPS) ---
+                if "Fabricante" in df_p.columns:
+                    df_b_global = df_p[df_p["Fabricante"] == "BARCEL"].sort_values("Precio ($)")
+                    if len(df_b_global) >= 2:
+                        for i in range(len(df_b_global) - 1):
+                            p1, p2 = df_b_global.iloc[i]["Precio ($)"], df_b_global.iloc[i+1]["Precio ($)"]
+                            if (p2 - p1) > 10:
+                                id_gap = f"GAP_{int(p1)}_{int(p2)}"
+                                if id_gap not in vistos:
+                                    p_sug = ajustar_precio_psicologico((p1 + p2) / 2)
+                                    p1_txt, p2_txt, p_sug_txt = f"\${int(p1)}", f"\${int(p2)}", f"\${int(p_sug)}"
+                                    hallazgos.append({
+                                        "Prioridad": "BAJA", "Tipo": "ESCALÓN DE PRECIO", "Ocasión": "PORTAFOLIO GLOBAL",
+                                        "Msg": f"Hueco detectado entre {p1_txt} y {p2_txt}",
+                                        "Detalle": f"Salto de \${int(p2-p1)} en la escalera. Riesgo de fuga de transacciones.",
+                                        "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **{p_sug_txt}**."
+                                    })
+                                    vistos.add(id_gap)
+        
+                # --- BLOQUE B: ANÁLISIS TÁCTICO POR OCASIÓN ---
+                for oca in df_p["Ocasión"].unique():
+                    df_oca = df_p[df_p["Ocasión"] == oca].copy()
+                    if "Fabricante" in df_oca.columns:
+                        df_barcel = df_oca[df_oca["Fabricante"] == "BARCEL"]
+                        df_comp = df_oca[df_oca["Fabricante"] != "BARCEL"]
+                        if df_oca.empty: continue
                         
-                        # USAMOS \$ PARA ESCAPAR EL SÍMBOLO Y EVITAR EL FORMATO DE CÓDIGO
-                        p1_txt = f"\${int(p1)}"
-                        p2_txt = f"\${int(p2)}"
-                        p_sug_txt = f"\${int(p_sug)}"
-                        
-                        hallazgos.append({
-                            "Prioridad": "BAJA", 
-                            "Tipo": "ESCALÓN DE PRECIO", 
-                            "Ocasión": "PORTAFOLIO GLOBAL",
-                            "Msg": f"Hueco detectado entre {p1_txt} y {p2_txt}",
-                            "Detalle": f"Salto de \${int(p2-p1)} en la escalera. Riesgo de fuga de transacciones.",
-                            "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **{p_sug_txt}**."
-                        })
-                        vistos.add(id_gap)
+                        peso_seg = pesos_oca.get(oca, 0)
+                        lider_abs = df_oca.loc[df_oca["SOM (%)"].idxmax()]
+                        lider_c = df_comp.sort_values("SOM (%)", ascending=False).iloc[0] if not df_comp.empty else None
 
-        # --- BLOQUE B: ANÁLISIS TÁCTICO POR OCASIÓN ---
-        for oca in df_p["Ocasión"].unique():
-            df_oca = df_p[df_p["Ocasión"] == oca].copy()
-            df_barcel = df_oca[df_oca["Fabricante"] == "BARCEL"]
-            df_comp = df_oca[df_oca["Fabricante"] != "BARCEL"]
-            if df_oca.empty: continue
-            
-            peso_seg = pesos_oca.get(oca, 0)
-            lider_abs = df_oca.loc[df_oca["SOM (%)"].idxmax()]
-            lider_c = df_comp.sort_values("SOM (%)", ascending=False).iloc[0] if not df_comp.empty else None
-
-            if df_barcel.empty and lider_c is not None:
-                p_sug = ajustar_precio_psicologico(lider_c["Precio ($)"])
-                hallazgos.append({
-                    "Prioridad": "ALTA" if peso_seg > 15 else "MEDIA", "Tipo": "WHITE SPACE", "Ocasión": oca,
-                    "Msg": f"Barcel no participa ({peso_seg:.1f}% Occ)",
-                    "Detalle": f"Segmento dominado por {lider_abs['Producto']}.",
-                    "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(p_sug, lider_c['Precio por Kg ($)'])}** a **\${int(p_sug)}**."
-                })
+                        if df_barcel.empty and lider_c is not None:
+                            p_sug = ajustar_precio_psicologico(lider_c["Precio ($)"])
+                            hallazgos.append({
+                                "Prioridad": "ALTA" if peso_seg > 15 else "MEDIA", "Tipo": "WHITE SPACE", "Ocasión": oca,
+                                "Msg": f"Barcel no participa ({peso_seg:.1f}% Occ)",
+                                "Detalle": f"Segmento dominado por {lider_abs['Producto']}.",
+                                "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(p_sug, lider_c['Precio por Kg ($)'])}** a **\${int(p_sug)}**."
+                            })
+                        else:
+                            for _, row_b in df_barcel.iterrows():
+                                if row_b["Producto"] == lider_abs["Producto"] and lider_c is not None:
+                                    idx = int((row_b["Precio por Kg ($)"] / lider_c["Precio por Kg ($)"]) * 100)
+                                    if idx < 95:
+                                        hallazgos.append({
+                                            "Prioridad": "MEDIA", "Tipo": "DOMINANCIA", "Ocasión": oca,
+                                            "Msg": f"Barcel lidera ({peso_seg:.1f}% Occ)",
+                                            "Detalle": f"Index {idx} vs competidor. Oportunidad de rentabilidad.",
+                                            "Accion": f"📈 **Modo Líder:** Evaluar ajuste a **{calcular_rango_g(row_b['Precio ($)'], lider_c['Precio por Kg ($)'])}**."
+                                        })
+                                elif lider_c is not None:
+                                    marca_b = identificar_marca(row_b["Producto"])
+                                    rivales = df_comp[df_comp.apply(lambda x: es_rival_de(x["Producto"], marca_b), axis=1)]
+                                    bench = rivales.sort_values("SOM (%)", ascending=False).iloc[0] if not rivales.empty else lider_c
+                                    idx = int((row_b["Precio por Kg ($)"] / bench["Precio por Kg ($)"]) * 100)
+                                    if idx > 95:
+                                        hallazgos.append({
+                                            "Prioridad": "ALTA", "Tipo": f"DUELO vs {bench['Producto']}", "Ocasión": oca,
+                                            "Msg": f"{row_b['Producto']} fuera de rango ({peso_seg:.1f}% Occ)",
+                                            "Detalle": f"Index {idx} vs rival. Riesgo de pérdida de preferencia.",
+                                            "Accion": f"⚖️ **R&D:** Ajustar a **{calcular_rango_g(row_b['Precio ($)'], bench['Precio por Kg ($)'])}**."
+                                        })
             else:
-                for _, row_b in df_barcel.iterrows():
-                    if row_b["Producto"] == lider_abs["Producto"] and lider_c is not None:
-                        idx = int((row_b["Precio por Kg ($)"] / lider_c["Precio por Kg ($)"]) * 100)
-                        if idx < 95:
-                            hallazgos.append({
-                                "Prioridad": "MEDIA", "Tipo": "DOMINANCIA", "Ocasión": oca,
-                                "Msg": f"Barcel lidera ({peso_seg:.1f}% Occ)",
-                                "Detalle": f"Index {idx} vs competidor. Oportunidad de rentabilidad.",
-                                "Accion": f"📈 **Modo Líder:** Evaluar ajuste a **{calcular_rango_g(row_b['Precio ($)'], lider_c['Precio por Kg ($)'])}**."
-                            })
-                    elif lider_c is not None:
-                        marca_b = identificar_marca(row_b["Producto"])
-                        rivales = df_comp[df_comp.apply(lambda x: es_rival_de(x["Producto"], marca_b), axis=1)]
-                        bench = rivales.sort_values("SOM (%)", ascending=False).iloc[0] if not rivales.empty else lider_c
-                        idx = int((row_b["Precio por Kg ($)"] / bench["Precio por Kg ($)"]) * 100)
-                        if idx > 95:
-                            hallazgos.append({
-                                "Prioridad": "ALTA", "Tipo": f"DUELO vs {bench['Producto']}", "Ocasión": oca,
-                                "Msg": f"{row_b['Producto']} fuera de rango ({peso_seg:.1f}% Occ)",
-                                "Detalle": f"Index {idx} vs rival. Riesgo de pérdida de preferencia.",
-                                "Accion": f"⚖️ **R&D:** Ajustar a **{calcular_rango_g(row_b['Precio ($)'], bench['Precio por Kg ($)'])}**."
-                            })
-    except Exception as e: st.error(f"Error en Ultra 2.6: {e}")
+                st.warning("⚠️ El análisis de mercado requiere la columna 'Ocasión'.")
+        except Exception as e: st.error(f"Error en Ultra 2.6: {e}")
+    
+    # --- MODO B: ARQUITECTURA DINÁMICA (Price Pack / Arquitectura) ---
+    else:
+        st.subheader("🏛️ Auditoría de Arquitectura y Cascada de Precios")
+        hallazgos = [] 
+        
+        objetivos = {
+            "INSTITUCIONALES": (55, 60), "MAYOREO": (61, 70), "CLUBES": (75, 82), 
+            "AUTOSERVICIO": (110, 120), "CONVENIENCIA": (121, 130)
+        }
 
-    # --- RENDERIZADO VISUAL ---
+        # 1. Semáforo de Objetivos
+        if 'selecciones_usuario' in locals() and "Canal" in df_p.columns:
+            for canal, lista_prods in selecciones_usuario.items():
+                min_obj, max_obj = objetivos.get(canal, (0, 200))
+                for p_name, b_name in lista_prods:
+                    f_target = df_p[(df_p["Canal"].str.upper() == canal) & (df_p["Producto"] == p_name)]
+                    f_base = df_p[(df_p["Canal"].str.upper() == "DETALLE") & (df_p["Producto"] == b_name)]
+                    
+                    if not f_target.empty and not f_base.empty:
+                        v_t = f_target["Precio por Kg ($)"].mean()
+                        v_b = f_base["Precio por Kg ($)"].mean()
+                        idx = int((v_t / v_b * 100)) if v_b > 0 else 0
+                        
+                        if idx < min_obj:
+                            hallazgos.append({
+                                "Prioridad": "ALTA", "Tipo": "BAJO INDEX", "Ocasión": canal,
+                                "Msg": f"{p_name} está sub-valuado",
+                                "Detalle": f"Index {idx} vs Base {b_name}. Objetivo min: {min_obj}.",
+                                "Accion": f"💰 **Revenue:** Incrementar precio o reducir gramaje para alcanzar el corredor estratégico."
+                            })
+                        elif idx > max_obj:
+                            hallazgos.append({
+                                "Prioridad": "MEDIA", "Tipo": "SOBREPRECIO", "Ocasión": canal,
+                                "Msg": f"{p_name} con riesgo de volumen",
+                                "Detalle": f"Index {idx} vs Base {b_name}. Objetivo máx: {max_obj}.",
+                                "Accion": f"⚠️ **Competitividad:** Evaluar si el valor agregado justifica el sobreprecio."
+                            })
+
+        # 2. Cascada de Gramaje (Ajustado a terminología Barcel)
+        if "Canal" in df_p.columns and "Gramaje (g)" in df_p.columns:
+            for canal in df_p["Canal"].unique():
+                if "Fabricante" in df_p.columns:
+                    df_c = df_p[(df_p["Canal"] == canal) & (df_p["Fabricante"] == "BARCEL")].sort_values("Gramaje (g)")
+                else:
+                    df_c = df_p[df_p["Canal"] == canal].sort_values("Gramaje (g)")
+                
+                if len(df_c) >= 2:
+                    for i in range(len(df_c) - 1):
+                        p_chico, p_grande = df_c.iloc[i], df_c.iloc[i+1]
+                        # Regla: Mayor gramaje debe tener menor $/Kg
+                        if p_grande["Precio por Kg ($)"] > p_chico["Precio por Kg ($)"] and p_chico["Gramaje (g)"] > 0:
+                            hallazgos.append({
+                                "Prioridad": "MEDIA", # Cambiado de ALTA a MEDIA (Amarillo)
+                                "Tipo": "CURVA DE PRECIO", # Cambiado de ERROR CASCADA
+                                "Ocasión": canal,
+                                "Msg": f"Desviación en curva: {p_grande['Producto']}",
+                                "Detalle": f"El SKU de {int(p_grande['Gramaje (g)'])}g presenta un $/Kg superior al formato de {int(p_chico['Gramaje (g)'])}g.",
+                                "Accion": f"📉 **Arquitectura:** Optimizar la eficiencia de valor. Por regla comercial, el incremento en gramaje debe mejorar el costo por kilo para el consumidor."
+                            })
+        else:
+            st.info("ℹ️ Para activar la auditoría de cascada, asegúrate de que el archivo contenga: Canal y Gramaje.")
+
+
+    # --- RENDERIZADO VISUAL ÚNICO (Para ambos modos) ---
     if hallazgos:
         hallazgos.sort(key=lambda x: {"ALTA": 0, "MEDIA": 1, "BAJA": 2}.get(x["Prioridad"], 2))
         for h in hallazgos:
@@ -923,24 +1052,27 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     else: st.info(f"🔵 **{h['Tipo']}**")
                 with col_t:
                     st.markdown(f"#### {h['Ocasión']}")
-                    # Renderizado limpio en negrita
                     st.markdown(f"**{h['Msg']}**")
                     st.caption(h['Detalle'])
                 with col_a:
                     st.success(f"🧪 **Sugerencia:**\n\n{h['Accion']}")
     else:
         st.balloons()
-        st.success("✅ **Portafolio en Paridad Optimizada.**")
+        st.success("✅ **Estrategia en Paridad Optimizada (Sin hallazgos críticos).**")
 
-# --- 12. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO (V4: FIX ARQUITECTURA) ---
-if modo == "Price Ladder" and not st.session_state.data.empty:
+
+# --- 12. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO ---
+if not st.session_state.data.empty:
     st.divider()
     
-    if st.button("📄 Generar Resumen Ejecutivo Detallado", key="btn_exec_v4"):
-        with st.spinner("Compilando datos de mercado..."):
+    # Título dinámico según el modo
+    btn_label = "📄 Generar Resumen de Mercado" if modo == "Price Ladder" else "🏛️ Generar Resumen de Arquitectura"
+    
+    if st.button(btn_label, key="btn_exec_v4"):
+        with st.spinner("Compilando diagnóstico..."):
             
             if not hallazgos:
-                st.success("✅ **Estado de Mercado:** El portafolio actual no presenta desviaciones críticas.")
+                st.success("✅ **Estado Óptimo:** No se detectan desviaciones en la estrategia actual.")
             else:
                 st.markdown("""
                     <style>
@@ -950,54 +1082,64 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                         color: #1a1a1a;
                     }
                     .rival-name { font-weight: bold; color: #d32f2f; }
+                    .barcel-blue { font-weight: bold; color: #003399; }
                     </style>
                 """, unsafe_allow_html=True)
                 
                 st.markdown('<div class="exec-box">', unsafe_allow_html=True)
-                st.subheader("📝 Resumen Ejecutivo: Estrategia de Portafolio")
                 
-                # --- A. DIAGNÓSTICO ---
-                num_alta = len([h for h in hallazgos if h["Prioridad"] == "ALTA"])
-                st.write(f"Se han identificado **{len(hallazgos)} hallazgos estratégicos**, con **{num_alta} alertas críticas**.")
+                # --- CASO A: RESUMEN PRICE LADDER ---
+                if modo == "Price Ladder":
+                    st.subheader("📝 Resumen Ejecutivo: Estrategia de Portafolio")
+                    num_alta = len([h for h in hallazgos if h["Prioridad"] == "ALTA"])
+                    st.write(f"Se han identificado **{len(hallazgos)} hallazgos estratégicos**, con **{num_alta} alertas críticas**.")
 
-                # --- B. OPORTUNIDADES (WHITE SPACES) ---
-                ws_items = [h for h in hallazgos if h["Tipo"] == "WHITE SPACE"]
-                if ws_items:
-                    st.markdown("#### 🚀 Expansión de Portafolio")
-                    for ws in ws_items:
-                        rival = ws['Detalle'].split('dominado por ')[-1].replace('.', '')
-                        sug_data = ws['Accion'].replace("⚡ **Entrada:** Lanzar ", "")
-                        st.write(f"* **{ws['Ocasión']}:** Barcel no participa. Dominio de <span class='rival-name'>{rival}</span>. "
-                                 f"**Acción:** Introducir SKU de **{sug_data}**.", unsafe_allow_html=True)
+                    # Oportunidades (White Spaces)
+                    ws_items = [h for h in hallazgos if h["Tipo"] == "WHITE SPACE"]
+                    if ws_items:
+                        st.markdown("#### 🚀 Expansión de Portafolio")
+                        for ws in ws_items:
+                            rival = ws['Detalle'].split('dominado por ')[-1].replace('.', '')
+                            sug_data = ws['Accion'].replace("⚡ **Entrada:** Lanzar ", "")
+                            st.write(f"* **{ws['Ocasión']}:** Barcel no participa. Dominio de <span class='rival-name'>{rival}</span>. Acción: Introducir SKU de **{sug_data}**.", unsafe_allow_html=True)
 
-                # --- C. COMPETITIVIDAD (DUELOS) ---
-                duelos = [h for h in hallazgos if "DUELO" in h["Tipo"]]
-                if duelos:
-                    st.markdown("#### 🛡️ Ajustes de Paridad (Defensa)")
-                    for d in duelos:
-                        rival = d['Tipo'].replace("DUELO vs ", "")
-                        sug_data = d['Accion'].replace("⚖️ **R&D:** Ajustar a ", "")
-                        st.write(f"* **{d['Ocasión']}:** {d['Msg']} vs <span class='rival-name'>{rival}</span>. "
-                                 f"**Rec:** {sug_data}.", unsafe_allow_html=True)
+                    # Competitividad (Duelos)
+                    duelos = [h for h in hallazgos if "DUELO" in h["Tipo"]]
+                    if duelos:
+                        st.markdown("#### 🛡️ Ajustes de Paridad (Defensa)")
+                        for d in duelos:
+                            rival = d['Tipo'].replace("DUELO vs ", "")
+                            sug_data = d['Accion'].replace("⚖️ **R&D:** Ajustar a ", "")
+                            st.write(f"* **{d['Ocasión']}:** {d['Msg']} vs <span class='rival-name'>{rival}</span>. Rec: {sug_data}.", unsafe_allow_html=True)
 
-                # --- D. HUECOS EN LA ESCALERA (GAPS) - CORREGIDO ---
-                gaps = [h for h in hallazgos if h["Tipo"] == "ESCALÓN DE PRECIO"]
-                if gaps:
-                    st.markdown("#### 🪜 Arquitectura de Precios")
-                    for g in gaps:
-                        # Extraemos los precios limpiando el mensaje original de forma segura
-                        rango_precios = g['Msg'].replace("Hueco detectado entre ", "").strip()
-                        # Aseguramos que el formato sea "$X y $Y" con espacios
-                        rango_formateado = rango_precios.replace("y", " y ")
-                        sug_data = g['Accion'].replace("🪜 **Extensión:** Evaluar SKU de ", "")
-                        
-                        st.write(f"* **Brecha de Salto:** Rango entre **{rango_formateado}**. "
-                                 f"**Sugerencia:** SKU puente de **{sug_data}**.")
+                    st.markdown("---")
+                    st.write("**💡 Veredicto:** Priorizar blindaje en segmentos donde el rival tiene ventaja competitiva en gramaje.")
 
-                st.markdown("---")
-                st.write("**💡 Veredicto:** Priorizar blindaje en segmentos donde el rival tiene ventaja competitiva en gramaje.")
+                # --- CASO B: RESUMEN ARQUITECTURA PRO ---
+                else:
+                    st.subheader("📝 Diagnóstico de Arquitectura y Curva de Precios")
+                    st.write(f"Se detectaron **{len(hallazgos)} puntos de atención** en la estructura interna de precios.")
+
+                    # 1. Curva de Precio (Cascada)
+                    curvas = [h for h in hallazgos if h["Tipo"] == "CURVA DE PRECIO"]
+                    if curvas:
+                        st.markdown("#### 📉 Eficiencia en Curva de Precios")
+                        for c in curvas:
+                            st.write(f"* **{c['Ocasión']}:** {c['Msg']}. {c['Detalle']}")
+                            st.caption(f"↳ Sugerencia: {c['Accion']}")
+
+                    # 2. Corredores Estratégicos (Index)
+                    indices = [h for h in hallazgos if h["Tipo"] in ["BAJO INDEX", "SOBREPRECIO"]]
+                    if indices:
+                        st.markdown("#### 💰 Corredores por Canal (vs Detalle)")
+                        for i in indices:
+                            color_tag = "🔴" if i["Prioridad"] == "ALTA" else "🟡"
+                            st.write(f"{color_tag} **{i['Ocasión']}:** {i['Msg']}. (Index {i['Detalle'].split('Index ')[1].split(' vs')[0]})")
+
+                    st.markdown("---")
+                    st.write("**💡 Veredicto Interno:** Asegurar la consistencia de la curva para incentivar el 'upsize' y proteger la rentabilidad de los canales estratégicos.")
+
                 st.markdown('</div>', unsafe_allow_html=True)
-
 
 
 
