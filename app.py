@@ -365,7 +365,7 @@ if not st.session_state.data.empty:
             fig.add_trace(go.Bar(
                 x=df_p["Producto"], y=df_p["Precio ($)"],
                 marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]],
-                text=[f"<b>${int(p)}</b>" for p in df_p["Precio ($)"]], 
+                text=[f"<b>${p:.1f}</b>" for p in df_p["Precio ($)"]], 
                 textposition="outside", textfont=dict(size=18, color="black") 
             ), row=2, col=1)
 
