@@ -607,107 +607,90 @@ if not st.session_state.data.empty:
         label_a, label_b = "Producto A", "Producto B"
 
     if len(list_a) > 0 and len(list_b) > 0:
-        # 1. Selectores
+        # 1. Selectores Originales (Fila 1 y 2)
         sel_cols = st.columns(4)
         selections = []
         for i in range(4):
             with sel_cols[i]:
                 s_a = st.selectbox(f"{label_a}", list_a, key=f"sa{i}")
-                # Ajuste de index para evitar error si la lista es corta
                 idx_default = min(i+1, len(list_b)-1) if len(list_b) > 1 else 0
                 s_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=idx_default)
                 selections.append((s_a, s_b))
 
-        # 2. PRIMERA FILA: INDEX DESEMBOLSO
+        # 2. FILA: INDEX DESEMBOLSO
         st.markdown("### 💰 Index Desembolso")
         des_cols = st.columns(4)
         for i, (sel_a, sel_b) in enumerate(selections):
             row_a = df_comp[df_comp["Lookup_Key"] == sel_a].iloc[0]
             row_b = df_comp[df_comp["Lookup_Key"] == sel_b].iloc[0]
             v_a, v_b = row_a["Precio ($)"], row_b["Precio ($)"]
-            
             idx = int((v_a / v_b * 100)) if v_b > 0 else 0
             color = "#0B3C8C" if idx <= 100 else "#D32F2F"
-            
             with des_cols[i]:
-                st.markdown(f"""
-                    <div style="background:white; border:1px solid #ddd; border-top:5px solid {color}; border-radius:10px; padding:10px; text-align:center;">
-                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#666; margin-bottom:5px;">
-                            <span style="width:45%; text-align:left; height:20px; overflow:hidden;">{sel_a}</span>
-                            <span style="width:45%; text-align:right; height:20px; overflow:hidden;">{sel_b}</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:10px;">
-                            <span>${v_a:.1f}</span>
-                            <span style="color:#ccc; font-size:0.7rem; padding-top:5px;">vs</span>
-                            <span>${v_b:.1f}</span>
-                        </div>
-                        <div style="font-size:1.8rem; font-weight:900; color:{color}; line-height:1;">{idx}</div>
-                        <div style="font-size:0.6rem; font-weight:bold; color:#999; text-transform:uppercase;">Index Desembolso</div>
-                    </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"""<div style="background:white; border:1px solid #ddd; border-top:5px solid {color}; border-radius:10px; padding:10px; text-align:center;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#666; margin-bottom:5px;"><span>{sel_a}</span><span>{sel_b}</span></div>
+                    <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:10px;"><span>${v_a:.1f}</span><span style="color:#ccc; font-size:0.7rem;">vs</span><span>${v_b:.1f}</span></div>
+                    <div style="font-size:1.8rem; font-weight:900; color:{color};">{idx}</div><div style="font-size:0.6rem; font-weight:bold; color:#999;">Index Desembolso</div></div>""", unsafe_allow_html=True)
 
         st.write("") 
 
-        # 3. SEGUNDA FILA: INDEX PRECIO X KG
+        # 3. FILA: INDEX PRECIO X KG
         st.markdown("### ⚖️ Index Precio por Kg")
         pkg_cols = st.columns(4)
         for i, (sel_a, sel_b) in enumerate(selections):
             row_a = df_comp[df_comp["Lookup_Key"] == sel_a].iloc[0]
             row_b = df_comp[df_comp["Lookup_Key"] == sel_b].iloc[0]
             v_a, v_b = row_a["Precio por Kg ($)"], row_b["Precio por Kg ($)"]
-            
             idx = int((v_a / v_b * 100)) if v_b > 0 else 0
             color = "#0B3C8C" if idx <= 100 else "#D32F2F"
-            
             with pkg_cols[i]:
-                st.markdown(f"""
-                    <div style="background:white; border:1px solid #ddd; border-top:5px solid {color}; border-radius:10px; padding:10px; text-align:center;">
-                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#666; margin-bottom:5px;">
-                            <span style="width:45%; text-align:left; height:20px; overflow:hidden;">{sel_a}</span>
-                            <span style="width:45%; text-align:right; height:20px; overflow:hidden;">{sel_b}</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:10px;">
-                            <span>${int(v_a)}</span>
-                            <span style="color:#ccc; font-size:0.7rem; padding-top:5px;">vs</span>
-                            <span>${int(v_b)}</span>
-                        </div>
-                        <div style="font-size:1.8rem; font-weight:900; color:{color}; line-height:1;">{idx}</div>
-                        <div style="font-size:0.6rem; font-weight:bold; color:#999; text-transform:uppercase;">Index $/Kg</div>
-                    </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"""<div style="background:white; border:1px solid #ddd; border-top:5px solid {color}; border-radius:10px; padding:10px; text-align:center;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#666; margin-bottom:5px;"><span>{sel_a}</span><span>{sel_b}</span></div>
+                    <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:10px;"><span>${int(v_a)}</span><span style="color:#ccc; font-size:0.7rem;">vs</span><span>${int(v_b)}</span></div>
+                    <div style="font-size:1.8rem; font-weight:900; color:{color};">{idx}</div><div style="font-size:0.6rem; font-weight:bold; color:#999;">Index $/Kg</div></div>""", unsafe_allow_html=True)
 
-        # --- 4. NUEVA SECCIÓN: MATRIZ ESTRATÉGICA (SOLO PARA PRICE ARCHITECTURE) ---
+        # --- 4. NUEVA SECCIÓN: MATRIZ DE ARQUITECTURA PERSONALIZABLE (SOLO PRICE PACK) ---
         if modo != "Price Ladder":
-            st.write("")
-            st.markdown("### 🏛️ Arquitectura de Precios vs. Canal DETALLE (Base 100)")
+            st.divider()
+            st.markdown("### 🏛️ Matriz de Arquitectura vs. Detalle (Base 100)")
+            st.info("Selecciona el SKU de Detalle que servirá como Base (100) para comparar los otros canales.")
             
-            # Calculamos la base de Detalle por producto para los seleccionados
-            base_detalle = df_comp[df_comp["Canal"].str.upper() == "DETALLE"].groupby("Producto")["Precio por Kg ($)"].mean().to_dict()
+            # Filtramos solo SKUs que sean de canal Detalle para el comparador base
+            list_detalle = df_comp[df_comp["Canal"].str.upper() == "DETALLE"]["Lookup_Key"].unique().tolist()
             
-            idx_cols = st.columns(4)
-            for i, (sel_a, _) in enumerate(selections):
-                row_a = df_comp[df_comp["Lookup_Key"] == sel_a].iloc[0]
-                prod_name = row_a["Producto"]
-                val_pkg = row_a["Precio por Kg ($)"]
-                val_base = base_detalle.get(prod_name)
+            if list_detalle:
+                # Selector Global de Base
+                col_base, _ = st.columns([1, 2])
+                with col_base:
+                    sel_base = st.selectbox("🎯 Seleccionar SKU Base (Detalle)", list_detalle, key="base_arquitectura")
                 
-                # Cálculo de Index vs Detalle
-                idx_vs_det = int((val_pkg / val_base * 100)) if val_base and val_base > 0 else 0
+                row_base = df_comp[df_comp["Lookup_Key"] == sel_base].iloc[0]
+                val_base = row_base["Precio por Kg ($)"]
                 
-                # Color basado en arquitectura (Morado si es barato como Mayoreo, Verde si es caro como Conveniencia)
-                color_arch = "#7F8C8D"
-                if idx_vs_det != 0:
-                    if idx_vs_det < 95: color_arch = "#8E44AD"
-                    elif idx_vs_det > 105: color_arch = "#27AE60"
-
-                with idx_cols[i]:
-                    st.markdown(f"""
-                        <div style="background:{color_arch}; color:white; border-radius:8px; padding:8px; text-align:center;">
-                            <div style="font-size:0.65rem; text-transform:uppercase; opacity:0.8;">Index vs Detalle</div>
-                            <div style="font-size:1.5rem; font-weight:bold;">{idx_vs_det if idx_vs_det > 0 else 'N/A'}</div>
-                            <div style="font-size:0.7rem; font-family:Verdana;">{prod_name}</div>
-                        </div>
-                    """, unsafe_allow_html=True)
+                # Renderizado de la matriz (4 slots)
+                arch_cols = st.columns(4)
+                for i in range(4):
+                    with arch_cols[i]:
+                        # Selector para que elijas CUALQUIER producto de CUALQUIER canal
+                        target_sku = st.selectbox(f"Comparar vs Base", list_a, key=f"target_arch_{i}", index=i)
+                        
+                        row_t = df_comp[df_comp["Lookup_Key"] == target_sku].iloc[0]
+                        val_t = row_t["Precio por Kg ($)"]
+                        
+                        idx_arch = int((val_t / val_base * 100)) if val_base > 0 else 0
+                        
+                        # Colores lógicos de la imagen: Morado (Bajo), Gris (Cerca), Verde (Alto)
+                        color_arch = "#8E44AD" if idx_arch < 95 else ("#27AE60" if idx_arch > 105 else "#7F8C8D")
+                        
+                        st.markdown(f"""
+                            <div style="background:{color_arch}; color:white; border-radius:12px; padding:15px; text-align:center; min-height:120px;">
+                                <div style="font-size:0.7rem; text-transform:uppercase; font-weight:bold; opacity:0.9;">INDEX VS {row_base['Producto']}</div>
+                                <div style="font-size:2.2rem; font-weight:900; margin:5px 0;">({idx_arch})</div>
+                                <div style="font-size:0.75rem; line-height:1.1;">{target_sku}</div>
+                            </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.warning("No se encontró el canal 'DETALLE' en los datos para realizar la comparativa base.")
                         
 # --- 10. PIRÁMIDE DE POSICIONAMIENTO (SOLO LADDER) ---
 # Movimos el título y la lógica dentro del condicional para que no aparezca en Price Pack
