@@ -299,24 +299,27 @@ if not current_data_no_select.equals(st.session_state.data):
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
 
-# --- 6.5 FILTROS DINÁMICOS (PEGAR AQUÍ) ---
-# ---------------------------------------------------------
-st.write("") # Un pequeño espacio visual
-with st.container(border=True):
-    st.markdown("### 🔍 Filtros de Visualización")
-    col_f1, col_f2, col_f3 = st.columns(3)
 
-    with col_f1:
-        lista_fab = sorted(st.session_state.data["Fabricante"].unique().tolist())
-        sel_fab = st.multiselect("Filtrar por Fabricante", lista_fab)
+# --- 6.5 FILTROS DINÁMICOS (SOLO PARA PRICE LADDER) ---
+sel_fab, sel_oca, sel_prod = [], [], [] # Inicializamos vacíos
 
-    with col_f2:
-        lista_oca = sorted(st.session_state.data["Ocasión"].unique().tolist())
-        sel_oca = st.multiselect("Filtrar por Ocasión", lista_oca)
+if modo == "Price Ladder":
+    st.write("") 
+    with st.container(border=True):
+        st.markdown("### 🔍 Filtros de Visualización (Price Ladder)")
+        col_f1, col_f2, col_f3 = st.columns(3)
 
-    with col_f3:
-        lista_prod = sorted(st.session_state.data["Producto"].unique().tolist())
-        sel_prod = st.multiselect("Filtrar por Producto", lista_prod)
+        with col_f1:
+            lista_fab = sorted(st.session_state.data["Fabricante"].unique().tolist())
+            sel_fab = st.multiselect("Filtrar por Fabricante", lista_fab)
+
+        with col_f2:
+            lista_oca = sorted(st.session_state.data["Ocasión"].unique().tolist())
+            sel_oca = st.multiselect("Filtrar por Ocasión", lista_oca)
+
+        with col_f3:
+            lista_prod = sorted(st.session_state.data["Producto"].unique().tolist())
+            sel_prod = st.multiselect("Filtrar por Producto", lista_prod)
 
 # --- 7. GRÁFICO FINAL ---
 if not st.session_state.data.empty:
