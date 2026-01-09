@@ -374,7 +374,7 @@ if modo == "Price Ladder" and not df_p.empty:
 if not st.session_state.data.empty:
     df_p = st.session_state.data.copy()
     
-    # --- INSERCIÓN DE FILTROS ---
+    # --- INSERCIÓN DE FILTROS (MODO LADDER) ---
     if modo == "Price Ladder":
         if sel_fab:
             df_p = df_p[df_p["Fabricante"].isin(sel_fab)]
@@ -385,13 +385,14 @@ if not st.session_state.data.empty:
     # --- FIN DE INSERCIÓN ---
 
     # 2. Verificar si hay datos tras el filtrado
-    if df_p.empty:
+    if df_p.empty and modo == "Price Ladder":
         st.warning("⚠️ No hay datos que coincidan con los filtros seleccionados.")
     else:
         if modo == "Price Ladder":
             # --- LÓGICA PRICE LADDER ---
             ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5,"REUNIÓN":6, "FIESTA":7,"TRANSFORMADOR":8}
             df_p["O_Oca"] = df_p["Ocasión"].str.upper().map(ord_oca).fillna(99)
+            
             # Ordenamiento con desempate por $/Kg
             df_p = df_p.sort_values(by=["O_Oca", "Precio ($)", "Precio por Kg ($)"]).reset_index(drop=True)
             som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
@@ -435,7 +436,7 @@ if not st.session_state.data.empty:
             for cat in df_p["Ocasión"].unique():
                 idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
                 
-                # Línea divisoria al final de cada categoría (y0=-0.6 para que baje hasta el texto del canal)
+                # Línea divisoria al final de cada categoría
                 fig.add_shape(
                     type="line", x0=idx_list[-1] + 0.5, x1=idx_list[-1] + 0.5, 
                     y0=-0.60, y1=1, xref="x2", yref="paper", 
@@ -456,7 +457,7 @@ if not st.session_state.data.empty:
                 margin=dict(t=50, b=400, l=40, r=40)
             )
             
-            # Restaurar visibilidad del eje X inferior (Nombres de productos en negro y 90°)
+            # Eje X
             fig.update_xaxes(
                 tickangle=-90, 
                 tickfont=dict(size=16, color="black"), 
@@ -464,9 +465,13 @@ if not st.session_state.data.empty:
                 row=2, col=1
             )
             
-            # Ocultar ejes innecesarios
+            # Ejes Y
             fig.update_yaxes(showticklabels=False, row=1, col=1)
             fig.update_yaxes(showgrid=True, gridcolor="#DCDCDC", tickprefix="$", tickfont=dict(size=14), row=2, col=1)
+            
+            # --- RENDERIZADO FINAL LADDER ---
+            st.plotly_chart(fig, use_container_width=True)
+
         else:
             # --- 6.9 FILTROS DINÁMICOS PARA PRICE PACK ---
             st.write("") 
@@ -482,8 +487,8 @@ if not st.session_state.data.empty:
                     lista_prod_pp = sorted(st.session_state.data["Producto"].unique().tolist())
                     sel_prod_pp = st.multiselect("Filtrar por Producto", lista_prod_pp, key="filter_pp_prod")
         
-            # --- APLICACIÓN DE FILTROS ---
-            df_p = st.session_state.data.copy()
+            # --- APLICACIÓN DE FILTROS (MODO PACK) ---
+            # IMPORTANTE: No redefinimos df_p desde cero aquí para no perder el contexto
             if sel_canal_pp:
                 df_p = df_p[df_p["Canal"].isin(sel_canal_pp)]
             if sel_prod_pp:
@@ -497,12 +502,12 @@ if not st.session_state.data.empty:
             if not df_p.empty:
                 fig = go.Figure()
         
-                # 1. BARRAS: Con contorno sutil (marker_line)
+                # 1. BARRAS
                 fig.add_trace(go.Bar(
                     x=df_p.index, 
                     y=df_p["Precio por Kg ($)"], 
                     marker_color="#F8F9FA",
-                    marker_line=dict(color="#D1D1D1", width=1), # Contorno sutil para que no se pierdan
+                    marker_line=dict(color="#D1D1D1", width=1),
                     showlegend=False
                 ))
                 
@@ -529,7 +534,7 @@ if not st.session_state.data.empty:
                         borderwidth=1
                     )
                     
-                    # DESEMBOLSO EN LA BASE: Con contorno NEGRO y letras blancas
+                    # DESEMBOLSO EN LA BASE
                     fig.add_annotation(
                         x=i, y=15, 
                         text=f"<b>${r['Precio ($)']:.1f}</b>", 
@@ -537,7 +542,7 @@ if not st.session_state.data.empty:
                         font=dict(size=12, color="white"),
                         bgcolor="#00B0F0", 
                         bordercolor="black", 
-                        borderwidth=1.5,     
+                        borderwidth=1.5,      
                         borderpad=4
                     )
                 
@@ -567,12 +572,11 @@ if not st.session_state.data.empty:
                     xaxis=dict(
                         tickmode='array', 
                         tickvals=list(df_p.index), 
-                        ticktext=["<b>"+str(t)+"</b>" for t in df_p["Producto"]], # Negritas aplicadas
+                        ticktext=["<b>"+str(t)+"</b>" for t in df_p["Producto"]],
                         tickangle=-90, 
                         tickfont=dict(color="#000000", size=11, family="Verdana"), 
                         showgrid=False
                     ),
-                    # YAXIS: Añadido prefijo $ para las etiquetas del eje
                     yaxis=dict(
                         tickprefix="$", 
                         showgrid=True, 
