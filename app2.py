@@ -673,97 +673,123 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
 
-# --- 11. VISUALIZACIÓN ESTRATÉGICA PRO: MAPA DE VALOR 3.0 ---
+# --- 11. MAPA DE VALOR ESTRATÉGICO (DISEÑO PREMIUM) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
-    st.subheader("🏔️ Mapa Estratégico de Valor: Barcel vs Competencia")
+    st.markdown("<h2 style='text-align: center; color: #0B3C8C;'>🏔️ Mapa Estratégico de Valor</h2>", unsafe_allow_html=True)
     
     import plotly.express as px
-    import pandas as pd
-    import numpy as np
 
     df_plot = st.session_state.data.copy()
     
-    # 1. Preparación de datos
+    # 1. Limpieza de datos (Asegurar números)
     for c in ["Precio ($)", "Precio por Kg ($)", "SOM (%)"]:
         df_plot[c] = pd.to_numeric(df_plot[c], errors='coerce').fillna(0)
 
-    # 2. Lógica de Colores mejorada
+    # 2. Lógica de Colores (Ajustada a tu marca)
+    color_map = {
+        "BARCEL": "#0B3C8C",      # Azul Corporativo
+        "SABRITAS": "#F5C400",    # Amarillo Sabritas
+        "OTROS": "#7F8C8D",       # Gris Neutro
+        "PROPUESTA": "#4B207E"    # Morado Estratégico
+    }
+
     def asignar_color(row):
         fab = str(row["Fabricante"]).upper()
         prod = str(row["Producto"]).upper()
-        if any(x in prod for x in ["PROPUESTA", "SUGERIDO"]): return "PROPUESTA"
+        if "PROPUESTA" in prod or "SUGERIDO" in prod: return "PROPUESTA"
         if "BARCEL" in fab: return "BARCEL"
-        if any(x in fab for x in ["SABRITAS", "PEPSICO"]): return "SABRITAS"
+        if "SABRITAS" in fab or "PEPSICO" in fab: return "SABRITAS"
         return "OTROS"
 
     df_plot["Categoria_Color"] = df_plot.apply(asignar_color, axis=1)
 
-    # 3. Filtro por Ocasión
+    # 3. Filtro por Ocasión (Opcional para el usuario)
     ocasiones = ["TODAS"] + sorted(df_plot["Ocasión"].unique().tolist())
-    oca_selected = st.selectbox("🎯 Filtrar por Momento de Consumo:", ocasiones, key="filtro_oca_viz_pro")
+    oca_selected = st.selectbox("🎯 Filtrar Ocasión:", ocasiones, key="filtro_oca_final")
     
     if oca_selected != "TODAS":
         df_plot = df_plot[df_plot["Ocasión"] == oca_selected]
 
     if not df_plot.empty:
-        # Cálculo de Promedios para los Cuadrantes
-        avg_x = df_p["Precio por Kg ($)"].mean()
-        avg_y = df_p["Precio ($)"].mean()
+        # --- CÁLCULO DE RANGOS DINÁMICOS PARA EVITAR "DESPLAZAMIENTOS" ---
+        y_min = max(0, df_plot["Precio ($)"].min() - 5)
+        y_max = df_plot["Precio ($)"].max() + 10
+        x_min = max(0, df_plot["Precio por Kg ($)"].min() - 20)
+        x_max = df_plot["Precio por Kg ($)"].max() + 20
 
-        # Mapa de colores institucional
-        color_map = {
-            "BARCEL": "#002366", "SABRITAS": "#FFD700", 
-            "OTROS": "#A0A0A0", "PROPUESTA": "#4B207E"
-        }
-
+        # Crear el gráfico
         fig = px.scatter(
-            df_plot, x="Precio por Kg ($)", y="Precio ($)",
-            size="SOM (%)", color="Categoria_Color",
-            hover_name="Producto", text="Producto",
-            color_discrete_map=color_map, size_max=45,
-            labels={"Precio por Kg ($)": "$/KG (Eficiencia)", "Precio ($)": "Desembolso"},
+            df_plot,
+            x="Precio por Kg ($)",
+            y="Precio ($)",
+            size="SOM (%)",
+            color="Categoria_Color",
+            text="Producto",
+            hover_name="Producto",
+            color_discrete_map=color_map,
+            size_max=50,
             custom_data=["SOM (%)", "Ocasión"]
         )
 
-        # --- PLUS: DISEÑO DE CUADRANTES ---
-        # Zona 1: Premium (Arriba, Izquierda)
-        fig.add_vrect(x0=0, x1=avg_x, y0=avg_y, y1=df_plot["Precio ($)"].max()*1.2, 
-                      fillcolor="rgba(26, 35, 126, 0.03)", layer="below", line_width=0)
-        # Zona 2: Volumen/Value (Abajo, Derecha)
-        fig.add_vrect(x0=avg_x, x1=df_plot["Precio por Kg ($)"].max()*1.2, y0=0, y1=avg_y, 
-                      fillcolor="rgba(76, 175, 80, 0.03)", layer="below", line_width=0)
-
-        # Líneas de Referencia Promedio
-        fig.add_hline(y=avg_y, line_dash="dash", line_color="#999", annotation_text="P. Promedio", annotation_position="bottom right")
-        fig.add_vline(x=avg_x, line_dash="dash", line_color="#999", annotation_text="$/KG Promedio", annotation_position="top left")
-
-        # Ajuste de Traces
+        # --- ESTILO DE LAS BURBUJAS Y ETIQUETAS ---
         fig.update_traces(
-            textposition='top right',
-            marker=dict(line=dict(width=1.5, color='white')),
-            hovertemplate="<b>%{hovertext}</b><br>SOM: %{customdata[0]:.1f}%<br>Precio: $%{y:.1f}<br>$/KG: $%{x:,.0f}<extra></extra>"
+            textposition='top center',
+            textfont=dict(family="Arial Black", size=10, color="#2C3E50"),
+            marker=dict(
+                line=dict(width=2, color='white'),
+                opacity=0.85
+            ),
+            hovertemplate="<b>%{hovertext}</b><br>Desembolso: $%{y:.1f}<br>Precio/Kg: $%{x:,.0f}<br>SOM: %{customdata[0]:.1f}%<extra></extra>"
         )
 
-        # Layout Profesional
+        # --- CONFIGURACIÓN DE EJES Y FONDO ---
         fig.update_layout(
-            template="plotly_white", height=800,
-            xaxis=dict(title="<b>EFICIENCIA DE VALOR (Precio por Kg)</b>", tickprefix="$", showgrid=False),
-            yaxis=dict(title="<b>PUNTO DE DESEMBOLSO (Precio $)</b>", tickprefix="$", showgrid=False),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, title="")
+            template="plotly_white",
+            height=700,
+            margin=dict(t=50, b=50, l=50, r=50),
+            xaxis=dict(
+                title="<b>EFICIENCIA ($/KG)</b>",
+                tickprefix="$",
+                range=[x_min, x_max],
+                gridcolor="#F0F0F0",
+                zeroline=False
+            ),
+            yaxis=dict(
+                title="<b>DESEMBOLSO (PRECIO $)</b>",
+                tickprefix="$",
+                range=[y_min, y_max],
+                gridcolor="#F0F0F0",
+                zeroline=False
+            ),
+            legend=dict(
+                title="",
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="center",
+                x=0.5,
+                font=dict(size=12, family="Arial")
+            )
         )
+
+        # Líneas de Cuadrantes (Promedios)
+        avg_x = df_plot["Precio por Kg ($)"].mean()
+        avg_y = df_plot["Precio ($)"].mean()
+        
+        fig.add_vline(x=avg_x, line_dash="dash", line_color="#BDC3C7", line_width=1)
+        fig.add_hline(y=avg_y, line_dash="dash", line_color="#BDC3C7", line_width=1)
 
         st.plotly_chart(fig, use_container_width=True)
-        
-        # --- LEYENDA ESTRATÉGICA ---
-        c1, c2, c3, c4 = st.columns(4)
-        c1.info("**Cuadrante Sup-Izquierda:** Premium. Alto valor percibido.")
-        c2.success("**Cuadrante Inf-Derecha:** Eficiencia. Enfoque en volumen.")
-        c3.warning("**Cuadrante Sup-Derecha:** Riesgo. Caro y poca eficiencia.")
-        c4.error("**Cuadrante Inf-Izquierda:** Nicho. Precio bajo/Baja eficiencia.")
-        
-    else:
-        st.warning("Sin datos.")
+
+        # --- LEYENDA ESTRATÉGICA MINIMALISTA (Sustituye las cajas grandes) ---
+        st.markdown("""
+        <div style="display: flex; justify-content: space-around; font-family: Arial; font-size: 0.85rem; color: #7F8C8D; border-top: 1px solid #EEE; padding-top: 10px;">
+            <span>🟢 <b>Valor:</b> Bajo Desembolso / Alta Eficiencia</span>
+            <span>🔵 <b>Premium:</b> Alto Desembolso / Alta Eficiencia</span>
+            <span>🟠 <b>Riesgo:</b> Alto Desembolso / Baja Eficiencia</span>
+        </div>
+        """, unsafe_allow_html=True)
         
 # --- 11. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA (VERSIÓN FINAL CORREGIDA) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
