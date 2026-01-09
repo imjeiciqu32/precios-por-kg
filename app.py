@@ -299,25 +299,6 @@ if not current_data_no_select.equals(st.session_state.data):
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
 
-# --- 6.5 FILTROS DINÁMICOS PARA EL GRÁFICO ---
-st.markdown("### 🔍 Filtros de Visualización")
-col_f1, col_f2, col_f3 = st.columns(3)
-
-with col_f1:
-    # Filtro por Fabricante
-    lista_fab = sorted(st.session_state.data["Fabricante"].unique().tolist())
-    sel_fab = st.multiselect("Filtrar por Fabricante", lista_fab, default=[])
-
-with col_f2:
-    # Filtro por Ocasión
-    lista_oca = sorted(st.session_state.data["Ocasión"].unique().tolist())
-    sel_oca = st.multiselect("Filtrar por Ocasión", lista_oca, default=[])
-
-with col_f3:
-    # Filtro por Producto (Buscador libre)
-    lista_prod = sorted(st.session_state.data["Producto"].unique().tolist())
-    sel_prod = st.multiselect("Filtrar por Producto", lista_prod, default=[])
-
 # --- 6.5 FILTROS DINÁMICOS (PEGAR AQUÍ) ---
 # ---------------------------------------------------------
 st.write("") # Un pequeño espacio visual
