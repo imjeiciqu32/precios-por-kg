@@ -261,10 +261,41 @@ with st.expander(f"➕ Agregar nuevo SKU a {modo}", expanded=False):
                 st.session_state.data.to_csv(DB_FILE, index=False)
                 st.rerun()
 
-# --- 6. EDITOR DE TABLA ---
-edited_df = st.data_editor(st.session_state.data, num_rows="dynamic", use_container_width=True)
-if not edited_df.equals(st.session_state.data):
-    st.session_state.data = calcular_pkg(edited_df, modo)
+# --- 6. EDITOR DE TABLA CON FUNCIÓN DE ELIMINAR ---
+st.markdown("### 📝 Gestión de Portafolio")
+
+# Creamos una columna temporal para selección si queremos borrado masivo
+df_with_selections = st.session_state.data.copy()
+if "Select" not in df_with_selections.columns:
+    df_with_selections.insert(0, "Select", False)
+
+# El editor de datos
+edited_df = st.data_editor(
+    df_with_selections, 
+    num_rows="dynamic",      # Permite agregar filas al final
+    use_container_width=True,
+    key="portfolio_editor",
+    hide_index=True
+)
+
+# Lógica para guardar cambios o procesar eliminaciones
+col_btn1, col_btn2 = st.columns([1, 4])
+
+with col_btn1:
+    # Botón para eliminar las filas que el usuario marcó en el checkbox
+    if st.button("🗑️ Eliminar seleccionados", type="secondary"):
+        # Filtramos para quedarnos solo con lo que NO está seleccionado
+        df_final = edited_df[edited_df["Select"] == False].drop(columns=["Select"])
+        st.session_state.data = calcular_pkg(df_final, modo)
+        st.session_state.data.to_csv(DB_FILE, index=False)
+        st.success("Filas eliminadas correctamente")
+        st.rerun()
+
+# Lógica para detectar si hubo cambios manuales en las celdas (precios, nombres, etc.)
+# Ignoramos la columna 'Select' para comparar si hubo cambios reales en los datos
+current_data_no_select = edited_df.drop(columns=["Select"])
+if not current_data_no_select.equals(st.session_state.data):
+    st.session_state.data = calcular_pkg(current_data_no_select, modo)
     st.session_state.data.to_csv(DB_FILE, index=False)
     st.rerun()
 
