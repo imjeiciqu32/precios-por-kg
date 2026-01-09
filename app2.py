@@ -847,7 +847,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         st.warning("No hay datos disponibles.")
 
 
-# --- 12. ANALISTA MAESTRO INTEGRAL: LADDER ULTRA 2.6 + ARQUITECTURA PRO (FIXED) ---
+# --- 12. ANALISTA MAESTRO INTEGRAL: LADDER ULTRA 2.6 + ARQUITECTURA PRO ---
 if not st.session_state.data.empty:
     st.divider()
     
@@ -903,7 +903,6 @@ if not st.session_state.data.empty:
         vistos = set()
 
         try:
-            # Validación de columna Ocasión
             if "Ocasión" in df_p.columns:
                 pesos_oca = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
@@ -971,8 +970,7 @@ if not st.session_state.data.empty:
                                         })
             else:
                 st.warning("⚠️ El análisis de mercado requiere la columna 'Ocasión'.")
-        except Exception as e: 
-            st.error(f"Error en Ultra 2.6: {e}")
+        except Exception as e: st.error(f"Error en Ultra 2.6: {e}")
 
     # --- MODO B: ARQUITECTURA DINÁMICA (Price Pack / Arquitectura) ---
     else:
@@ -989,7 +987,6 @@ if not st.session_state.data.empty:
             for canal, lista_prods in selecciones_usuario.items():
                 min_obj, max_obj = objetivos.get(canal, (0, 200))
                 for p_name, b_name in lista_prods:
-                    # Filtros con protección de existencia
                     f_target = df_p[(df_p["Canal"].str.upper() == canal) & (df_p["Producto"] == p_name)]
                     f_base = df_p[(df_p["Canal"].str.upper() == "DETALLE") & (df_p["Producto"] == b_name)]
                     
@@ -1013,16 +1010,18 @@ if not st.session_state.data.empty:
                                 "Accion": f"⚠️ **Competitividad:** Evaluar si el valor agregado justifica el sobreprecio."
                             })
 
-        # 2. Cascada de Gramaje (CORRECCIÓN DE KEYERROR)
-        if "Canal" in df_p.columns and "Gramaje (g)" in df_p.columns and "Fabricante" in df_p.columns:
+        # 2. Cascada de Gramaje (CORREGIDO PARA MODO ARQUITECTURA)
+        if "Canal" in df_p.columns and "Gramaje (g)" in df_p.columns:
             for canal in df_p["Canal"].unique():
-                # Filtramos Barcel y ordenamos por Gramaje asegurándonos que la columna existe
-                df_c = df_p[(df_p["Canal"] == canal) & (df_p["Fabricante"] == "BARCEL")].sort_values("Gramaje (g)")
+                # En Arquitectura PRO, NO buscamos la columna Fabricante porque ya sabemos que es Barcel
+                if "Fabricante" in df_p.columns:
+                    df_c = df_p[(df_p["Canal"] == canal) & (df_p["Fabricante"] == "BARCEL")].sort_values("Gramaje (g)")
+                else:
+                    df_c = df_p[df_p["Canal"] == canal].sort_values("Gramaje (g)")
                 
                 if len(df_c) >= 2:
                     for i in range(len(df_c) - 1):
                         p_chico, p_grande = df_c.iloc[i], df_c.iloc[i+1]
-                        # Regla: Mayor gramaje debe tener menor $/Kg
                         if p_grande["Precio por Kg ($)"] > p_chico["Precio por Kg ($)"] and p_chico["Gramaje (g)"] > 0:
                             hallazgos.append({
                                 "Prioridad": "ALTA", "Tipo": "ERROR CASCADA", "Ocasión": canal,
@@ -1031,7 +1030,27 @@ if not st.session_state.data.empty:
                                 "Accion": f"📉 **Arquitectura:** Corregir $/Kg. El formato familiar debe ser más eficiente que el individual."
                             })
         else:
-            st.info("ℹ️ Para activar la auditoría de cascada, asegúrate de que el archivo contenga: Canal, Fabricante y Gramaje.")
+            st.info("ℹ️ Para activar la auditoría de cascada, asegúrate de que el archivo contenga: Canal y Gramaje.")
+
+    # --- RENDERIZADO VISUAL ÚNICO ---
+    if hallazgos:
+        hallazgos.sort(key=lambda x: {"ALTA": 0, "MEDIA": 1, "BAJA": 2}.get(x["Prioridad"], 2))
+        for h in hallazgos:
+            with st.container(border=True):
+                col_i, col_t, col_a = st.columns([1.5, 3.5, 3])
+                with col_i:
+                    if h["Prioridad"] == "ALTA": st.error(f"🔴 **{h['Tipo']}**")
+                    elif h["Prioridad"] == "MEDIA": st.warning(f"🟡 **{h['Tipo']}**")
+                    else: st.info(f"🔵 **{h['Tipo']}**")
+                with col_t:
+                    st.markdown(f"#### {h['Ocasión']}")
+                    st.markdown(f"**{h['Msg']}**")
+                    st.caption(h['Detalle'])
+                with col_a:
+                    st.success(f"🧪 **Sugerencia:**\n\n{h['Accion']}")
+    else:
+        st.balloons()
+        st.success("✅ **Estrategia en Paridad Optimizada (Sin hallazgos críticos).**")
 
     # --- RENDERIZADO VISUAL ÚNICO (Para ambos modos) ---
     if hallazgos:
