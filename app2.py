@@ -148,7 +148,7 @@ if modo == "Price Ladder":
 else:
     DB_FILE = "historico_price_pack.csv"
     label_agru = "Canal"
-    opciones_agru = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "DETALLE", "AUTOSERVICIO", "CONVENIENCIA"]
+    opciones_agru = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "DETALLE", "AUTOSERVICIOS", "CONVENIENCIA"]
     fuente_plantillas = PLANTILLAS_PP if 'PLANTILLAS_PP' in globals() else {}
     columnas_tabla = ["Producto", "Familia", "Canal", "Precio ($)", "Gramaje (g)"]
 
@@ -544,7 +544,7 @@ if not st.session_state.data.empty:
             if sel_prod_pp:
                 df_p = df_p[df_p["Producto"].isin(sel_prod_pp)]
         
-            ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIO": 5, "CONVENIENCIA": 6}
+            ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIOS": 5, "CONVENIENCIA": 6}
             df_p["O_Can"] = df_p["Canal"].str.upper().map(ord_can).fillna(99)
             df_p = df_p.sort_values(by=["O_Can", "Precio ($)"]).reset_index(drop=True)
             
@@ -711,8 +711,8 @@ if not st.session_state.data.empty:
 
         if skus_det_base:
             with st.expander("⚙️ Configurar productos y bases de comparación"):
-                canales_ordenados = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "AUTOSERVICIO", "CONVENIENCIA"]
-                objetivos_canales = {"INSTITUCIONALES": "Index 60", "MAYOREO": "Index 70", "CLUBES": "Index 80", "AUTOSERVICIO": "Index 110-120", "CONVENIENCIA": "Index 120-130"}
+                canales_ordenados = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "AUTOSERVICIOS", "CONVENIENCIA"]
+                objetivos_canales = {"INSTITUCIONALES": "Index 60", "MAYOREO": "Index 70", "CLUBES": "Index 80", "AUTOSERVICIOS": "Index 110-120", "CONVENIENCIA": "Index 120-130"}
                 config_cols = st.columns(5)
                 selecciones_usuario = {}
 
@@ -1033,7 +1033,7 @@ if not st.session_state.data.empty:
         
         objetivos = {
             "INSTITUCIONALES": (55, 60), "MAYOREO": (61, 70), "CLUBES": (75, 82), 
-            "AUTOSERVICIO": (110, 120), "CONVENIENCIA": (121, 130)
+            "AUTOSERVICIOS": (110, 120), "CONVENIENCIA": (121, 130)
         }
 
         # 1. Semáforo de Objetivos
