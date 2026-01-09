@@ -525,7 +525,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
 
-# --- 10. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA (FORMATO UNIFICADO) ---
+# --- 10. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA (SISTEMA ANTI-FORMATO) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("🚀 Sugerencias / Observaciones en base al Mercado")
@@ -586,19 +586,17 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     if id_gap not in vistos:
                         p_sug = ajustar_precio_psicologico((p1 + p2) / 2)
                         
-                        # CORRECCIÓN DE FORMATO: Usamos texto plano sin ticks o etiquetas raras
-                        # Forzamos a que ambos sean tratados exactamente igual como strings limpios
-                        p1_str = str(int(p1))
-                        p2_str = str(int(p2))
-                        p_sug_str = str(int(p_sug))
+                        # PARCHE DEFINITIVO: Usamos HTML para que Markdown no toque los números
+                        # Esto asegura que el 20 y el 40 se vean exactamente igual
+                        msg_limpio = f"Hueco detectado entre <span>${int(p1)}</span> y <span>${int(p2)}</span>"
                         
                         hallazgos.append({
                             "Prioridad": "BAJA", 
                             "Tipo": "ESCALÓN DE PRECIO", 
                             "Ocasión": "PORTAFOLIO GLOBAL",
-                            "Msg": f"Hueco detectado entre ${p1_str} y ${p2_str}",
+                            "Msg": msg_limpio,
                             "Detalle": f"Salto de ${int(p2-p1)} en la escalera. Riesgo de fuga de transacciones.",
-                            "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **${p_sug_str}**."
+                            "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **${int(p_sug)}**."
                         })
                         vistos.add(id_gap)
 
@@ -658,8 +656,8 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     else: st.info(f"🔵 **{h['Tipo']}**")
                 with col_t:
                     st.markdown(f"#### {h['Ocasión']}")
-                    # Usamos st.write para evitar interpretaciones de Markdown raras en el mensaje
-                    st.write(f"**{h['Msg']}**")
+                    # IMPORTANTE: unsafe_allow_html=True permite que el <span> funcione y limpie el formato
+                    st.write(h['Msg'], unsafe_allow_html=True)
                     st.caption(h['Detalle'])
                 with col_a:
                     st.success(f"🧪 **Sugerencia:**\n\n{h['Accion']}")
