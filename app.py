@@ -321,156 +321,164 @@ if modo == "Price Ladder":
             lista_prod = sorted(st.session_state.data["Producto"].unique().tolist())
             sel_prod = st.multiselect("Filtrar por Producto", lista_prod)
 
-# --- 7. GRÁFICO FINAL ---
+# --- 7. GRÁFICO FINAL (CON FILTROS DINÁMICOS INTEGRADOS) ---
+
 if not st.session_state.data.empty:
     df_p = st.session_state.data.copy()
     
+    # --- INSERCIÓN DE FILTROS ---
     if modo == "Price Ladder":
-        ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5,"REUNIÓN":6, "FIESTA":7,"TRANSFORMADOR":8}
-        df_p["O_Oca"] = df_p["Ocasión"].str.upper().map(ord_oca).fillna(99)
-        df_p = df_p.sort_values(by=["O_Oca", "Precio ($)", "Precio por Kg ($)"]).reset_index(drop=True)
-        som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
+        if sel_fab:
+            df_p = df_p[df_p["Fabricante"].isin(sel_fab)]
+        if sel_oca:
+            df_p = df_p[df_p["Ocasión"].isin(sel_oca)]
+        if sel_prod:
+            df_p = df_p[df_p["Producto"].isin(sel_prod)]
+    # --- FIN DE INSERCIÓN ---
 
-        # Mantenemos el alto para que no se vea "chaparro"
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.15, 0.85])
-
-        # --- TRACE 1: SOM% ---
-        fig.add_trace(go.Scatter(
-            x=df_p["Producto"], y=df_p["SOM (%)"], mode="lines+markers+text", 
-            line=dict(color="#BBBBBB", width=1.5), 
-            marker=dict(size=30, color="#E5E5E5", symbol="square", line=dict(color="#CCCCCC", width=1)), 
-            text=[f"<b>{row['SOM (%)']}%</b>" for _, row in df_p.iterrows()],
-            textposition="middle center", textfont=dict(size=13, color="black"),
-        ), row=1, col=1)
-
-        # --- TRACE 2: BARRAS DE PRECIO ---
-        colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D","PROPUESTA":"#4B207E"}
-        fig.add_trace(go.Bar(
-            x=df_p["Producto"], y=df_p["Precio ($)"],
-            marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]],
-            text=[f"<b>${int(p)}</b>" for p in df_p["Precio ($)"]], 
-            textposition="outside", textfont=dict(size=18, color="black") 
-        ), row=2, col=1)
-
-        # Anotaciones de Precio por Kg dentro de las barras
-        for i, row in df_p.iterrows():
-            fig.add_annotation(
-                x=i, y=2.5, text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
-                showarrow=False, font=dict(size=16, color="white" if row["Fabricante"] == "BARCEL" else "black"),
-                bgcolor="rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)",
-                bordercolor="#444" if row["Fabricante"] != "BARCEL" else None, borderwidth=1, row=2, col=1
-            )
-
-        # --- LÍNEAS DIVISORIAS ---
-        # 1. Líneas cortas para separar NOMBRES de productos (Solo abajo)
-        for i in range(len(df_p) + 1):
-            fig.add_shape(type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50, xref="x2", yref="paper", line=dict(color="#DDDDDD", width=1))
-
-        # 2. Líneas largas para separar OCASIONES (Cruzan todo el gráfico)
-        for cat in df_p["Ocasión"].unique():
-            idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
-            
-            # Línea divisoria al final de cada categoría (y0=-0.6 para que baje hasta el texto del canal)
-            fig.add_shape(
-                type="line", x0=idx_list[-1] + 0.5, x1=idx_list[-1] + 0.5, 
-                y0=-0.60, y1=1, xref="x2", yref="paper", 
-                line=dict(color="#CCCCCC", width=2)
-            )
-            
-            # Texto de la Ocasión y SOM%
-            center = (idx_list[0] + idx_list[-1]) / 2
-            fig.add_annotation(
-                x=center, y=-0.60, xref="x2", yref="paper", 
-                text=f"<b>{cat}</b><br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>", 
-                showarrow=False, font=dict(size=16, color="black"), align="center"
-            )
-
-        # Ajustes finales de Layout
-        fig.update_layout(
-            height=950, width=1950, template="plotly_white", showlegend=False, 
-            margin=dict(t=50, b=400, l=40, r=40)
-        )
-        
-        # Restaurar visibilidad del eje X inferior (Nombres de productos en negro y 90°)
-        fig.update_xaxes(
-            tickangle=-90, 
-            tickfont=dict(size=16, color="black"), 
-            showline=False, 
-            row=2, col=1
-        )
-        
-        # Ocultar ejes innecesarios
-        fig.update_yaxes(showticklabels=False, row=1, col=1)
-        fig.update_yaxes(showgrid=True, gridcolor="#DCDCDC", tickprefix="$", tickfont=dict(size=14), row=2, col=1)
+    # 2. Verificar si hay datos tras el filtrado
+    if df_p.empty:
+        st.warning("⚠️ No hay datos que coincidan con los filtros seleccionados.")
     else:
-        # 1. Ordenamiento por Canal y Desembolso
-        ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIO": 5, "CONVENIENCIA": 6}
-        df_p["O_Can"] = df_p["Canal"].str.upper().map(ord_can).fillna(99)
-        df_p = df_p.sort_values(by=["O_Can", "Precio ($)"]).reset_index(drop=True)
-        
-        fig = go.Figure()
-        fig.add_trace(go.Bar(x=df_p.index, y=df_p["Precio por Kg ($)"], marker_color="#0B3C8C"))
-        
-        # 2. LÍNEAS DIVISORIAS ENTRE NOMBRES (ABAJO)
-        # Dibujamos líneas tenues para separar visualmente los nombres de los productos
-        for i in range(len(df_p) + 1):
+        if modo == "Price Ladder":
+            # --- LÓGICA PRICE LADDER ---
+            ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5,"REUNIÓN":6, "FIESTA":7,"TRANSFORMADOR":8}
+            df_p["O_Oca"] = df_p["Ocasión"].str.upper().map(ord_oca).fillna(99)
+            # Ordenamiento con desempate por $/Kg
+            df_p = df_p.sort_values(by=["O_Oca", "Precio ($)", "Precio por Kg ($)"]).reset_index(drop=True)
+            som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-            fig.add_shape(
+            # Mantenemos el alto para que no se vea "chaparro"
+            fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.15, 0.85])
 
-                type="line", x0=i-0.5, x1=i-0.5, 
+            # --- TRACE 1: SOM% ---
+            fig.add_trace(go.Scatter(
+                x=df_p["Producto"], y=df_p["SOM (%)"], mode="lines+markers+text", 
+                line=dict(color="#BBBBBB", width=1.5), 
+                marker=dict(size=30, color="#E5E5E5", symbol="square", line=dict(color="#CCCCCC", width=1)), 
+                text=[f"<b>{row['SOM (%)']}%</b>" for _, row in df_p.iterrows()],
+                textposition="middle center", textfont=dict(size=13, color="black"),
+            ), row=1, col=1)
 
-                y0=-0.45, y1=0, # Ajustado para que bajen a la zona de los nombres
+            # --- TRACE 2: BARRAS DE PRECIO ---
+            colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D","PROPUESTA":"#4B207E"}
+            fig.add_trace(go.Bar(
+                x=df_p["Producto"], y=df_p["Precio ($)"],
+                marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]],
+                text=[f"<b>${int(p)}</b>" for p in df_p["Precio ($)"]], 
+                textposition="outside", textfont=dict(size=18, color="black") 
+            ), row=2, col=1)
 
-                xref="x", yref="paper",
+            # Anotaciones de Precio por Kg dentro de las barras
+            for i, row in df_p.iterrows():
+                fig.add_annotation(
+                    x=i, y=2.5, text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
+                    showarrow=False, font=dict(size=16, color="white" if row["Fabricante"] == "BARCEL" else "black"),
+                    bgcolor="rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)",
+                    bordercolor="#444" if row["Fabricante"] != "BARCEL" else None, borderwidth=1, row=2, col=1
+                )
 
-                line=dict(color="#DDDDDD", width=1)
+            # --- LÍNEAS DIVISORIAS ---
+            # 1. Líneas cortas para separar NOMBRES de productos (Solo abajo)
+            for i in range(len(df_p) + 1):
+                fig.add_shape(type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50, xref="x2", yref="paper", line=dict(color="#DDDDDD", width=1))
 
-            ) 
+            # 2. Líneas largas para separar OCASIONES (Cruzan todo el gráfico)
+            for cat in df_p["Ocasión"].unique():
+                idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
+                
+                # Línea divisoria al final de cada categoría (y0=-0.6 para que baje hasta el texto del canal)
+                fig.add_shape(
+                    type="line", x0=idx_list[-1] + 0.5, x1=idx_list[-1] + 0.5, 
+                    y0=-0.60, y1=1, xref="x2", yref="paper", 
+                    line=dict(color="#CCCCCC", width=2)
+                )
+                
+                # Texto de la Ocasión y SOM%
+                center = (idx_list[0] + idx_list[-1]) / 2
+                fig.add_annotation(
+                    x=center, y=-0.60, xref="x2", yref="paper", 
+                    text=f"<b>{cat}</b><br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>", 
+                    showarrow=False, font=dict(size=16, color="black"), align="center"
+                )
 
-        # 3. Etiquetas de datos sobre las barras y desembolso en la base
-        for i, r in df_p.iterrows():
-            fig.add_annotation(x=i, y=r["Precio por Kg ($)"], text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", yshift=15, showarrow=False, font=dict(size=13), bgcolor="rgba(255,255,255,0.9)", bordercolor="black", borderwidth=1)
-            fig.add_annotation(x=i, y=15, text=f"<b>${r['Precio ($)']:.1f}</b>", showarrow=False, font=dict(size=12), bgcolor="#E1F5FE", bordercolor="#BDBDBD", borderwidth=1, borderpad=4)
-        
-        # 4. Divisiones de Canales y Etiquetas de Canal
-        for cat in df_p["Canal"].unique():
-            indices = df_p.index[df_p["Canal"] == cat].tolist()
-            center = (indices[0] + indices[-1]) / 2
-            
-            # LÍNEA QUE SEPARA LOS CANALES
-            fig.add_shape(
-                type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, 
-                y0=-0.6, y1=1, xref="x", yref="paper", 
-                # CAMBIOS: 
-                # Color #CCCCCC es un gris claro pero visible.
-                # Width 1.5 para que no sea tan tosca.
-                line=dict(color="#CCCCCC", width=1.5) 
+            # Ajustes finales de Layout
+            fig.update_layout(
+                height=950, width=1950, template="plotly_white", showlegend=False, 
+                margin=dict(t=50, b=400, l=40, r=40)
             )
             
-            # Etiqueta de Canal
-            fig.add_annotation(
-                x=center, y=-0.6, xref="x", yref="paper", 
-                text=f"<b>{cat}</b>", showarrow=False, 
-                font=dict(size=14, color="black")
+            # Restaurar visibilidad del eje X inferior (Nombres de productos en negro y 90°)
+            fig.update_xaxes(
+                tickangle=-90, 
+                tickfont=dict(size=16, color="black"), 
+                showline=False, 
+                row=2, col=1
             )
+            
+            # Ocultar ejes innecesarios
+            fig.update_yaxes(showticklabels=False, row=1, col=1)
+            fig.update_yaxes(showgrid=True, gridcolor="#DCDCDC", tickprefix="$", tickfont=dict(size=14), row=2, col=1)
+        else:
+            # --- LÓGICA PRICE PACK (SIN FILTROS) ---
+            ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIO": 5, "CONVENIENCIA": 6}
+            df_p["O_Can"] = df_p["Canal"].str.upper().map(ord_can).fillna(99)
+            df_p = df_p.sort_values(by=["O_Can", "Precio ($)"]).reset_index(drop=True)
+            
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=df_p.index, y=df_p["Precio por Kg ($)"], marker_color="#0B3C8C"))
+            
+            # 2. LÍNEAS DIVISORIAS ENTRE NOMBRES (ABAJO)
+            # Dibujamos líneas tenues para separar visualmente los nombres de los productos
+            for i in range(len(df_p) + 1):
+                fig.add_shape(
+                    type="line", x0=i-0.5, x1=i-0.5, 
+                    y0=-0.45, y1=0, # Ajustado para que bajen a la zona de los nombres
+                    xref="x", yref="paper",
+                    line=dict(color="#DDDDDD", width=1)
+                ) 
+
+            # 3. Etiquetas de datos sobre las barras y desembolso en la base
+            for i, r in df_p.iterrows():
+                fig.add_annotation(x=i, y=r["Precio por Kg ($)"], text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", yshift=15, showarrow=False, font=dict(size=13), bgcolor="rgba(255,255,255,0.9)", bordercolor="black", borderwidth=1)
+                fig.add_annotation(x=i, y=15, text=f"<b>${r['Precio ($)']:.1f}</b>", showarrow=False, font=dict(size=12), bgcolor="#E1F5FE", bordercolor="#BDBDBD", borderwidth=1, borderpad=4)
+            
+            # 4. Divisiones de Canales y Etiquetas de Canal
+            for cat in df_p["Canal"].unique():
+                indices = df_p.index[df_p["Canal"] == cat].tolist()
+                center = (indices[0] + indices[-1]) / 2
+                
+                # LÍNEA QUE SEPARA LOS CANALES
+                fig.add_shape(
+                    type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, 
+                    y0=-0.6, y1=1, xref="x", yref="paper", 
+                    line=dict(color="#CCCCCC", width=1.5) 
+                )
+                
+                # Etiqueta de Canal
+                fig.add_annotation(
+                    x=center, y=-0.6, xref="x", yref="paper", 
+                    text=f"<b>{cat}</b>", showarrow=False, 
+                    font=dict(size=14, color="black")
+                )
+            
+            # 5. Configuración del Layout
+            fig.update_layout(
+                height=850, 
+                margin=dict(b=300, t=50, l=50, r=50), 
+                template="plotly_white", 
+                xaxis=dict(
+                    tickmode='array', 
+                    tickvals=list(df_p.index), 
+                    ticktext=df_p["Producto"], 
+                    tickangle=-90, 
+                    tickfont=dict(color="black", size=12, family="Arial Black"), 
+                    showgrid=False
+                )
+            )
+
+        st.plotly_chart(fig, use_container_width=True)
         
-        # 5. Configuración del Layout
-        fig.update_layout(
-            height=850, 
-            margin=dict(b=300, t=50, l=50, r=50), 
-            template="plotly_white", 
-            xaxis=dict(
-                tickmode='array', 
-                tickvals=list(df_p.index), 
-                ticktext=df_p["Producto"], 
-                tickangle=-90,
-                tickfont=dict(color="black", size=12, family="Arial Black"),
-                showgrid=False
-            )
-        )
-
-    st.plotly_chart(fig, use_container_width=True)
-
 # --- 8. COMPARATIVAS INDEX (DOBLE FILA: DESEMBOLSO Y $/KG) ---
 if not st.session_state.data.empty:
     st.divider()
