@@ -525,7 +525,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
 
-# --- 10. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA (FORMATO FINAL) ---
+# --- 10. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA (FORMATO FINAL LIMPIO) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("🚀 Sugerencias / Observaciones en base al Mercado")
@@ -586,23 +586,23 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     if id_gap not in vistos:
                         p_sug = ajustar_precio_psicologico((p1 + p2) / 2)
                         
-                        # SOLUCIÓN RADICAL: Usamos una cadena simple y limpia. 
-                        # Evitamos cualquier etiqueta que Streamlit pueda malinterpretar.
-                        txt_p1 = f"${int(p1)}"
-                        txt_p2 = f"${int(p2)}"
+                        # TRUCO FINAL: \u200b es un espacio de ancho cero.
+                        # Esto rompe el formato automático de código de Streamlit.
+                        p1_f = f"$\u200b{int(p1)}"
+                        p2_f = f"$\u200b{int(p2)}"
+                        p_sug_f = f"$\u200b{int(p_sug)}"
                         
                         hallazgos.append({
                             "Prioridad": "BAJA", 
                             "Tipo": "ESCALÓN DE PRECIO", 
                             "Ocasión": "PORTAFOLIO GLOBAL",
-                            "Msg": f"Hueco detectado entre {txt_p1} y {txt_p2}",
+                            "Msg": f"Hueco detectado entre {p1_f} y {p2_f}",
                             "Detalle": f"Salto de ${int(p2-p1)} en la escalera. Riesgo de fuga de transacciones.",
-                            "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **${int(p_sug)}**."
+                            "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **{p_sug_f}**."
                         })
                         vistos.add(id_gap)
 
         # --- BLOQUE B: ANÁLISIS TÁCTICO POR OCASIÓN ---
-        # (Lógica de detección se mantiene igual)
         for oca in df_p["Ocasión"].unique():
             df_oca = df_p[df_p["Ocasión"] == oca].copy()
             df_barcel = df_oca[df_oca["Fabricante"] == "BARCEL"]
@@ -619,7 +619,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     "Prioridad": "ALTA" if peso_seg > 15 else "MEDIA", "Tipo": "WHITE SPACE", "Ocasión": oca,
                     "Msg": f"Barcel no participa ({peso_seg:.1f}% Occ)",
                     "Detalle": f"Segmento dominado por {lider_abs['Producto']}.",
-                    "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(p_sug, lider_c['Precio por Kg ($)'])}** a **${int(p_sug)}**."
+                    "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(p_sug, lider_c['Precio por Kg ($)'])}** a **$\u200b{int(p_sug)}**."
                 })
             else:
                 for _, row_b in df_barcel.iterrows():
@@ -645,6 +645,27 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                                 "Accion": f"⚖️ **R&D:** Ajustar a **{calcular_rango_g(row_b['Precio ($)'], bench['Precio por Kg ($)'])}**."
                             })
     except Exception as e: st.error(f"Error en Ultra 2.6: {e}")
+
+    # --- RENDERIZADO VISUAL ---
+    if hallazgos:
+        hallazgos.sort(key=lambda x: {"ALTA": 0, "MEDIA": 1, "BAJA": 2}.get(x["Prioridad"], 2))
+        for h in hallazgos:
+            with st.container(border=True):
+                col_i, col_t, col_a = st.columns([1.5, 3.5, 3])
+                with col_i:
+                    if h["Prioridad"] == "ALTA": st.error(f"🔴 **{h['Tipo']}**")
+                    elif h["Prioridad"] == "MEDIA": st.warning(f"🟡 **{h['Tipo']}**")
+                    else: st.info(f"🔵 **{h['Tipo']}**")
+                with col_t:
+                    st.markdown(f"#### {h['Ocasión']}")
+                    # Usamos negrita directa en markdown para todo el mensaje
+                    st.markdown(f"**{h['Msg']}**")
+                    st.caption(h['Detalle'])
+                with col_a:
+                    st.success(f"🧪 **Sugerencia:**\n\n{h['Accion']}")
+    else:
+        st.balloons()
+        st.success("✅ **Portafolio en Paridad Optimizada.**")
 
     # --- RENDERIZADO VISUAL ---
     if hallazgos:
