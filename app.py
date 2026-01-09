@@ -302,7 +302,7 @@ if not current_data_no_select.equals(st.session_state.data):
 
 
 # --- 6.5 FILTROS DINÁMICOS (SOLO PARA PRICE LADDER) ---
-sel_fab, sel_oca, sel_prod = [], [], [] # Inicializamos vacíos
+sel_fab, sel_oca, sel_prod = [], [], [] 
 
 if modo == "Price Ladder":
     st.write("") 
@@ -321,31 +321,42 @@ if modo == "Price Ladder":
         with col_f3:
             lista_prod = sorted(st.session_state.data["Producto"].unique().tolist())
             sel_prod = st.multiselect("Filtrar por Producto", lista_prod)
-            
+
+    # --- CORRECCIÓN: DEFINICIÓN DE DF_P INMEDIATAMENTE DESPUÉS DE LOS FILTROS ---
+    df_p = st.session_state.data.copy()
+    if sel_fab:
+        df_p = df_p[df_p["Fabricante"].isin(sel_fab)]
+    if sel_oca:
+        df_p = df_p[df_p["Ocasión"].isin(sel_oca)]
+    if sel_prod:
+        df_p = df_p[df_p["Producto"].isin(sel_prod)]
+else:
+    # Si no es Price Ladder, creamos df_p sin filtros para evitar errores en otras secciones
+    df_p = st.session_state.data.copy()
+
 # --- 6.8 PANEL EJECUTIVO DINÁMICO POR OCASIÓN ---
 if modo == "Price Ladder" and not df_p.empty:
     st.markdown("### 📊 Snapshot por Ocasión de Consumo")
     
-    # Agrupamos los datos por Ocasión
+    # Agrupamos los datos por Ocasión usando el df_p ya filtrado
     resumen_oca = df_p.groupby("Ocasión").agg({
         "Producto": "count",
         "Precio ($)": "mean",
         "Precio por Kg ($)": "mean"
     }).reset_index()
 
-    # Definimos el orden lógico de las ocasiones
+    # Orden lógico
     ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5, "REUNIÓN": 6, "FIESTA": 7, "TRANSFORMADOR": 8}
     resumen_oca["Orden"] = resumen_oca["Ocasión"].str.upper().map(ord_oca).fillna(99)
     resumen_oca = resumen_oca.sort_values("Orden")
 
-    # Creamos filas de 4 columnas para que sea scrolleable y limpio
+    # Layout de tarjetas (4 por fila)
     rows = [resumen_oca[i:i + 4] for i in range(0, len(resumen_oca), 4)]
 
     for row_data in rows:
         cols = st.columns(4)
         for i, (idx, row) in enumerate(row_data.iterrows()):
             with cols[i]:
-                # Estilo Ejecutivo con HTML/CSS
                 st.markdown(f"""
                     <div style="
                         background-color: #f8f9fa;
@@ -370,7 +381,6 @@ if modo == "Price Ladder" and not df_p.empty:
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
-
 
 # --- 7. GRÁFICO FINAL (CON FILTROS DINÁMICOS INTEGRADOS) ---
 
