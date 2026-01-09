@@ -375,13 +375,26 @@ if modo == "Price Ladder" and not df_p.empty:
 if not st.session_state.data.empty:
     df_p = st.session_state.data.copy()
     
-    # --- NUEVO: CONTROLES DE TAMAÑO DE TEXTO EN EL SIDEBAR ---
+    # --- CONFIGURACIÓN DE INTERFAZ EN SIDEBAR ---
     with st.sidebar:
         st.divider()
         st.subheader("📏 Tamaño de Etiquetas")
-        t_nombres = st.slider("Nombres de Producto", 8, 24, 14)
-        t_precios = st.slider("Precios ($)", 10, 30, 18)
-        t_pkg = st.slider("Precio por Kg", 10, 30, 16)
+        
+        # Botón para resetear valores por defecto
+        if st.button("Resetear Tamaños"):
+            st.session_state.t_nombres = 14
+            st.session_state.t_precios = 18
+            st.session_state.t_pkg = 16
+        
+        # Inicializar llaves en session_state si no existen
+        if 't_nombres' not in st.session_state: st.session_state.t_nombres = 14
+        if 't_precios' not in st.session_state: st.session_state.t_precios = 18
+        if 't_pkg' not in st.session_state: st.session_state.t_pkg = 16
+
+        # Sliders vinculados al session_state
+        t_nombres = st.slider("Nombres de Producto", 8, 30, st.session_state.t_nombres)
+        t_precios = st.slider("Precios ($)", 10, 40, st.session_state.t_precios)
+        t_pkg = st.slider("Precio por Kg", 10, 40, st.session_state.t_pkg)
     
     # --- INSERCIÓN DE FILTROS (MODO LADDER) ---
     if modo == "Price Ladder":
@@ -406,7 +419,6 @@ if not st.session_state.data.empty:
             df_p = df_p.sort_values(by=["O_Oca", "Precio ($)", "Precio por Kg ($)"]).reset_index(drop=True)
             som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-            # Mantenemos el alto para que no se vea "chaparro"
             fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.15, 0.85])
 
             # --- TRACE 1: SOM% ---
@@ -425,7 +437,7 @@ if not st.session_state.data.empty:
                 marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]],
                 text=[f"<b>${p:.1f}</b>" for p in df_p["Precio ($)"]], 
                 textposition="outside", 
-                textfont=dict(size=t_precios, color="black") # <--- DINÁMICO
+                textfont=dict(size=t_precios, color="black")
             ), row=2, col=1)
 
             # Anotaciones de Precio por Kg dentro de las barras
@@ -433,7 +445,7 @@ if not st.session_state.data.empty:
                 fig.add_annotation(
                     x=i, y=2.5, text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
                     showarrow=False, 
-                    font=dict(size=t_pkg, color="white" if row["Fabricante"] == "BARCEL" else "black"), # <--- DINÁMICO
+                    font=dict(size=t_pkg, color="white" if row["Fabricante"] == "BARCEL" else "black"),
                     bgcolor="rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)",
                     bordercolor="#444" if row["Fabricante"] != "BARCEL" else None, borderwidth=1, row=2, col=1
                 )
@@ -456,7 +468,6 @@ if not st.session_state.data.empty:
                     showarrow=False, font=dict(size=16, color="black"), align="center"
                 )
 
-            # Ajustes finales de Layout
             fig.update_layout(
                 height=950, width=1950, template="plotly_white", showlegend=False, 
                 margin=dict(t=50, b=400, l=40, r=40)
@@ -464,7 +475,7 @@ if not st.session_state.data.empty:
             
             fig.update_xaxes(
                 tickangle=-90, 
-                tickfont=dict(size=t_nombres, color="black"), # <--- DINÁMICO
+                tickfont=dict(size=t_nombres, color="black"),
                 showline=False, 
                 row=2, col=1
             )
@@ -524,7 +535,7 @@ if not st.session_state.data.empty:
                         text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", 
                         yshift=15, 
                         showarrow=False, 
-                        font=dict(size=t_pkg, color="#212121"), # <--- DINÁMICO
+                        font=dict(size=t_pkg, color="#212121"),
                         bgcolor="rgba(255,255,255,0.9)", 
                         bordercolor="#616161", 
                         borderwidth=1
@@ -535,7 +546,7 @@ if not st.session_state.data.empty:
                         x=i, y=15, 
                         text=f"<b>${r['Precio ($)']:.1f}</b>", 
                         showarrow=False, 
-                        font=dict(size=t_precios, color="white"), # <--- DINÁMICO
+                        font=dict(size=t_precios, color="white"),
                         bgcolor="#00B0F0", 
                         bordercolor="black", 
                         borderwidth=1.5,      
@@ -566,7 +577,7 @@ if not st.session_state.data.empty:
                         tickvals=list(df_p.index), 
                         ticktext=["<b>"+str(t)+"</b>" for t in df_p["Producto"]],
                         tickangle=-90, 
-                        tickfont=dict(color="#000000", size=t_nombres, family="Verdana"), # <--- DINÁMICO
+                        tickfont=dict(color="#000000", size=t_nombres, family="Verdana"),
                         showgrid=False
                     ),
                     yaxis=dict(
