@@ -1032,25 +1032,6 @@ if not st.session_state.data.empty:
         else:
             st.info("ℹ️ Para activar la auditoría de cascada, asegúrate de que el archivo contenga: Canal y Gramaje.")
 
-    # --- RENDERIZADO VISUAL ÚNICO ---
-    if hallazgos:
-        hallazgos.sort(key=lambda x: {"ALTA": 0, "MEDIA": 1, "BAJA": 2}.get(x["Prioridad"], 2))
-        for h in hallazgos:
-            with st.container(border=True):
-                col_i, col_t, col_a = st.columns([1.5, 3.5, 3])
-                with col_i:
-                    if h["Prioridad"] == "ALTA": st.error(f"🔴 **{h['Tipo']}**")
-                    elif h["Prioridad"] == "MEDIA": st.warning(f"🟡 **{h['Tipo']}**")
-                    else: st.info(f"🔵 **{h['Tipo']}**")
-                with col_t:
-                    st.markdown(f"#### {h['Ocasión']}")
-                    st.markdown(f"**{h['Msg']}**")
-                    st.caption(h['Detalle'])
-                with col_a:
-                    st.success(f"🧪 **Sugerencia:**\n\n{h['Accion']}")
-    else:
-        st.balloons()
-        st.success("✅ **Estrategia en Paridad Optimizada (Sin hallazgos críticos).**")
 
     # --- RENDERIZADO VISUAL ÚNICO (Para ambos modos) ---
     if hallazgos:
