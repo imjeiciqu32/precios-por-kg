@@ -393,7 +393,6 @@ if not st.session_state.data.empty:
             st.session_state["slider_espacio"] = 0.03
             st.session_state["slider_margen_b"] = 400
             st.session_state["slider_angulo"] = -90
-            st.session_state["slider_aire"] = 20 # <--- NUEVO RESET
 
         if st.button("Resetear Todo el Diseño"):
             reset_diseno()
@@ -411,7 +410,6 @@ if not st.session_state.data.empty:
         # Agrupadores por Expander para limpieza visual
         with st.expander("📏 Dimensiones y Espaciado"):
             alto_grafico = st.slider("Alto del Gráfico", 400, 1500, key="slider_alto")
-            aire_superior = st.slider("Aire Superior (Eje Y %)", 0, 100, key="slider_aire") # <--- NUEVO SLIDER
             espacio_v = st.slider("Espacio entre Gráficos", 0.0, 0.2, key="slider_espacio")
             margen_b = st.slider("Margen Inferior (Nombres)", 50, 600, key="slider_margen_b")
             ancho_barras = st.slider("Ancho de Barras", 0.1, 1.0, key="slider_ancho")
