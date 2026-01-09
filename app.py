@@ -417,11 +417,16 @@ if not st.session_state.data.empty:
         )
 
     st.plotly_chart(fig, use_container_width=True)
-# --- 8. COMPARATIVAS INDEX ---
+
+# --- 8. COMPARATIVAS INDEX ACTUALIZADO ---
 if not st.session_state.data.empty:
     st.divider()
-    st.subheader(f"📈 Comparativas Index $/Kg ({modo})")
-    df_comp = df_p.copy()
+    st.subheader(f"📈 Comparativas Index ({modo})")
+    df_comp = st.session_state.data.copy()
+    
+    # Asegurar que las columnas sean numéricas para evitar errores en el cálculo
+    for col in ["Precio ($)", "Precio por Kg ($)"]:
+        df_comp[col] = pd.to_numeric(df_comp[col], errors='coerce').fillna(0)
     
     if modo == "Price Ladder":
         df_comp["Lookup_Key"] = df_comp["Producto"]
@@ -442,28 +447,49 @@ if not st.session_state.data.empty:
                     sel_a = st.selectbox(f"{label_a}", list_a, key=f"sa{i}")
                     sel_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=min(i+1, len(list_b)-1))
                     
-                    val_a = df_comp[df_comp["Lookup_Key"] == sel_a]["Precio por Kg ($)"].values[0]
-                    val_b = df_comp[df_comp["Lookup_Key"] == sel_b]["Precio por Kg ($)"].values[0]
+                    # Extraer datos de Producto A
+                    row_a = df_comp[df_comp["Lookup_Key"] == sel_a].iloc[0]
+                    val_a_pkg = row_a["Precio por Kg ($)"]
+                    val_a_des = row_a["Precio ($)"]
                     
-                    if val_b > 0:
-                        index_val = int((val_a / val_b) * 100)
-                        color_index = "#0B3C8C" if index_val <= 100 else "#D32F2F"
+                    # Extraer datos de Producto B
+                    row_b = df_comp[df_comp["Lookup_Key"] == sel_b].iloc[0]
+                    val_b_pkg = row_b["Precio por Kg ($)"]
+                    val_b_des = row_b["Precio ($)"]
+                    
+                    if val_b_pkg > 0 and val_b_des > 0:
+                        # Cálculos de Index
+                        index_pkg = int((val_a_pkg / val_b_pkg) * 100)
+                        index_des = int((val_a_des / val_b_des) * 100)
+                        
+                        # Color basado en Index $/Kg (como el original)
+                        color_index = "#0B3C8C" if index_pkg <= 100 else "#D32F2F"
                         
                         st.markdown(f"""
-                            <div style="background:#ffffff; border: 1px solid #e6e9ef; border-radius:10px; padding:15px; border-top:5px solid {color_index};">
-                                <div style="display:flex; justify-content:space-between; align-items: flex-start; min-height:60px;">
-                                    <div style="width:45%; text-align:left;">
-                                        <div style="font-size:0.85rem; color:#666; font-weight:500; line-height:1.1; margin-bottom:4px;">{sel_a}</div>
-                                        <div style="font-size:1.05rem; font-weight:800; color:#111;">${val_a:.1f}</div>
+                            <div style="background:#ffffff; border: 1px solid #e6e9ef; border-radius:10px; padding:12px; border-top:5px solid {color_index};">
+                                <div style="display:flex; justify-content:space-between; align-items: center; background:#f8f9fa; padding:5px 8px; border-radius:5px; margin-bottom:10px;">
+                                    <div style="font-size:0.8rem; font-weight:700; color:#444;">${val_a_des:.1f}</div>
+                                    <div style="text-align:center;">
+                                        <div style="font-size:0.85rem; font-weight:900; color:#555; line-height:1;">{index_des}</div>
+                                        <div style="font-size:0.55rem; color:#888; text-transform:uppercase; font-weight:bold;">Idx Deseb.</div>
                                     </div>
-                                    <div style="width:10%; text-align:center; padding-top:15px; font-weight:bold; color:#ccc; font-size:0.8rem;">vs</div>
+                                    <div style="font-size:0.8rem; font-weight:700; color:#444;">${val_b_des:.1f}</div>
+                                </div>
+
+                                <div style="display:flex; justify-content:space-between; align-items: flex-start; min-height:50px;">
+                                    <div style="width:45%; text-align:left;">
+                                        <div style="font-size:0.75rem; color:#666; font-weight:500; line-height:1.1; margin-bottom:4px; height:30px; overflow:hidden;">{sel_a}</div>
+                                        <div style="font-size:1.1rem; font-weight:800; color:#111;">${int(val_a_pkg)}</div>
+                                    </div>
+                                    <div style="width:10%; text-align:center; padding-top:25px; font-weight:bold; color:#ccc; font-size:0.7rem;">vs</div>
                                     <div style="width:45%; text-align:right;">
-                                        <div style="font-size:0.85rem; color:#666; font-weight:500; line-height:1.1; margin-bottom:4px;">{sel_b}</div>
-                                        <div style="font-size:1.05rem; font-weight:800; color:#111;">${val_b:.1f}</div>
+                                        <div style="font-size:0.75rem; color:#666; font-weight:500; line-height:1.1; margin-bottom:4px; height:30px; overflow:hidden;">{sel_b}</div>
+                                        <div style="font-size:1.1rem; font-weight:800; color:#111;">${int(val_b_pkg)}</div>
                                     </div>
                                 </div>
-                                <div style="text-align:center; margin-top:10px; padding-top:10px; border-top:1px solid #f0f2f6;">
-                                    <div style="font-size:2.2rem; font-weight:900; color:{color_index}; line-height:1; margin-bottom:2px;">{index_val}</div>
+
+                                <div style="text-align:center; margin-top:10px; padding-top:8px; border-top:1px solid #f0f2f6;">
+                                    <div style="font-size:2.2rem; font-weight:900; color:{color_index}; line-height:1; margin-bottom:2px;">{index_pkg}</div>
                                     <div style="font-size:0.7rem; font-weight:bold; letter-spacing:1px; color:#999; text-transform:uppercase;">Index $/Kg</div>
                                 </div>
                             </div>
