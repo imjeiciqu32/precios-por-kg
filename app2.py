@@ -847,12 +847,14 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         st.warning("No hay datos disponibles.")
 
 
-# --- 12. ANALISTA MAESTRO INTEGRAL: LADDER ULTRA 2.6 + ARQUITECTURA PRO ---
+# --- 12. ANALISTA MAESTRO INTEGRAL: LADDER ULTRA 2.6 + ARQUITECTURA PRO (FIXED) ---
 if not st.session_state.data.empty:
     st.divider()
     
     # 1. PREPARACIÓN DE DATOS (Común para ambos modos)
     df_p = st.session_state.data.copy()
+    
+    # Limpieza segura de columnas numéricas
     for c in ["Precio ($)", "SOM (%)", "Precio por Kg ($)", "Gramaje (g)"]:
         if c in df_p.columns:
             df_p[c] = pd.to_numeric(df_p[c], errors='coerce').fillna(0)
@@ -901,118 +903,135 @@ if not st.session_state.data.empty:
         vistos = set()
 
         try:
-            pesos_oca = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
+            # Validación de columna Ocasión
+            if "Ocasión" in df_p.columns:
+                pesos_oca = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-            # --- BLOQUE A: ESTRATEGIA DE PORTAFOLIO (GAPS) ---
-            df_b_global = df_p[df_p["Fabricante"] == "BARCEL"].sort_values("Precio ($)")
-            if len(df_b_global) >= 2:
-                for i in range(len(df_b_global) - 1):
-                    p1, p2 = df_b_global.iloc[i]["Precio ($)"], df_b_global.iloc[i+1]["Precio ($)"]
-                    if (p2 - p1) > 10:
-                        id_gap = f"GAP_{int(p1)}_{int(p2)}"
-                        if id_gap not in vistos:
-                            p_sug = ajustar_precio_psicologico((p1 + p2) / 2)
-                            p1_txt, p2_txt, p_sug_txt = f"\${int(p1)}", f"\${int(p2)}", f"\${int(p_sug)}"
+                # --- BLOQUE A: ESTRATEGIA DE PORTAFOLIO (GAPS) ---
+                if "Fabricante" in df_p.columns:
+                    df_b_global = df_p[df_p["Fabricante"] == "BARCEL"].sort_values("Precio ($)")
+                    if len(df_b_global) >= 2:
+                        for i in range(len(df_b_global) - 1):
+                            p1, p2 = df_b_global.iloc[i]["Precio ($)"], df_b_global.iloc[i+1]["Precio ($)"]
+                            if (p2 - p1) > 10:
+                                id_gap = f"GAP_{int(p1)}_{int(p2)}"
+                                if id_gap not in vistos:
+                                    p_sug = ajustar_precio_psicologico((p1 + p2) / 2)
+                                    p1_txt, p2_txt, p_sug_txt = f"\${int(p1)}", f"\${int(p2)}", f"\${int(p_sug)}"
+                                    hallazgos.append({
+                                        "Prioridad": "BAJA", "Tipo": "ESCALÓN DE PRECIO", "Ocasión": "PORTAFOLIO GLOBAL",
+                                        "Msg": f"Hueco detectado entre {p1_txt} y {p2_txt}",
+                                        "Detalle": f"Salto de \${int(p2-p1)} en la escalera. Riesgo de fuga de transacciones.",
+                                        "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **{p_sug_txt}**."
+                                    })
+                                    vistos.add(id_gap)
+
+                # --- BLOQUE B: ANÁLISIS TÁCTICO POR OCASIÓN ---
+                for oca in df_p["Ocasión"].unique():
+                    df_oca = df_p[df_p["Ocasión"] == oca].copy()
+                    if "Fabricante" in df_oca.columns:
+                        df_barcel = df_oca[df_oca["Fabricante"] == "BARCEL"]
+                        df_comp = df_oca[df_oca["Fabricante"] != "BARCEL"]
+                        if df_oca.empty: continue
+                        
+                        peso_seg = pesos_oca.get(oca, 0)
+                        lider_abs = df_oca.loc[df_oca["SOM (%)"].idxmax()]
+                        lider_c = df_comp.sort_values("SOM (%)", ascending=False).iloc[0] if not df_comp.empty else None
+
+                        if df_barcel.empty and lider_c is not None:
+                            p_sug = ajustar_precio_psicologico(lider_c["Precio ($)"])
                             hallazgos.append({
-                                "Prioridad": "BAJA", "Tipo": "ESCALÓN DE PRECIO", "Ocasión": "PORTAFOLIO GLOBAL",
-                                "Msg": f"Hueco detectado entre {p1_txt} y {p2_txt}",
-                                "Detalle": f"Salto de \${int(p2-p1)} en la escalera. Riesgo de fuga de transacciones.",
-                                "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **{p_sug_txt}**."
+                                "Prioridad": "ALTA" if peso_seg > 15 else "MEDIA", "Tipo": "WHITE SPACE", "Ocasión": oca,
+                                "Msg": f"Barcel no participa ({peso_seg:.1f}% Occ)",
+                                "Detalle": f"Segmento dominado por {lider_abs['Producto']}.",
+                                "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(p_sug, lider_c['Precio por Kg ($)'])}** a **\${int(p_sug)}**."
                             })
-                            vistos.add(id_gap)
+                        else:
+                            for _, row_b in df_barcel.iterrows():
+                                if row_b["Producto"] == lider_abs["Producto"] and lider_c is not None:
+                                    idx = int((row_b["Precio por Kg ($)"] / lider_c["Precio por Kg ($)"]) * 100)
+                                    if idx < 95:
+                                        hallazgos.append({
+                                            "Prioridad": "MEDIA", "Tipo": "DOMINANCIA", "Ocasión": oca,
+                                            "Msg": f"Barcel lidera ({peso_seg:.1f}% Occ)",
+                                            "Detalle": f"Index {idx} vs competidor. Oportunidad de rentabilidad.",
+                                            "Accion": f"📈 **Modo Líder:** Evaluar ajuste a **{calcular_rango_g(row_b['Precio ($)'], lider_c['Precio por Kg ($)'])}**."
+                                        })
+                                elif lider_c is not None:
+                                    marca_b = identificar_marca(row_b["Producto"])
+                                    rivales = df_comp[df_comp.apply(lambda x: es_rival_de(x["Producto"], marca_b), axis=1)]
+                                    bench = rivales.sort_values("SOM (%)", ascending=False).iloc[0] if not rivales.empty else lider_c
+                                    idx = int((row_b["Precio por Kg ($)"] / bench["Precio por Kg ($)"]) * 100)
+                                    if idx > 95:
+                                        hallazgos.append({
+                                            "Prioridad": "ALTA", "Tipo": f"DUELO vs {bench['Producto']}", "Ocasión": oca,
+                                            "Msg": f"{row_b['Producto']} fuera de rango ({peso_seg:.1f}% Occ)",
+                                            "Detalle": f"Index {idx} vs rival. Riesgo de pérdida de preferencia.",
+                                            "Accion": f"⚖️ **R&D:** Ajustar a **{calcular_rango_g(row_b['Precio ($)'], bench['Precio por Kg ($)'])}**."
+                                        })
+            else:
+                st.warning("⚠️ El análisis de mercado requiere la columna 'Ocasión'.")
+        except Exception as e: 
+            st.error(f"Error en Ultra 2.6: {e}")
 
-            # --- BLOQUE B: ANÁLISIS TÁCTICO POR OCASIÓN ---
-            for oca in df_p["Ocasión"].unique():
-                df_oca = df_p[df_p["Ocasión"] == oca].copy()
-                df_barcel = df_oca[df_oca["Fabricante"] == "BARCEL"]
-                df_comp = df_oca[df_oca["Fabricante"] != "BARCEL"]
-                if df_oca.empty: continue
-                
-                peso_seg = pesos_oca.get(oca, 0)
-                lider_abs = df_oca.loc[df_oca["SOM (%)"].idxmax()]
-                lider_c = df_comp.sort_values("SOM (%)", ascending=False).iloc[0] if not df_comp.empty else None
-
-                if df_barcel.empty and lider_c is not None:
-                    p_sug = ajustar_precio_psicologico(lider_c["Precio ($)"])
-                    hallazgos.append({
-                        "Prioridad": "ALTA" if peso_seg > 15 else "MEDIA", "Tipo": "WHITE SPACE", "Ocasión": oca,
-                        "Msg": f"Barcel no participa ({peso_seg:.1f}% Occ)",
-                        "Detalle": f"Segmento dominado por {lider_abs['Producto']}.",
-                        "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(p_sug, lider_c['Precio por Kg ($)'])}** a **\${int(p_sug)}**."
-                    })
-                else:
-                    for _, row_b in df_barcel.iterrows():
-                        if row_b["Producto"] == lider_abs["Producto"] and lider_c is not None:
-                            idx = int((row_b["Precio por Kg ($)"] / lider_c["Precio por Kg ($)"]) * 100)
-                            if idx < 95:
-                                hallazgos.append({
-                                    "Prioridad": "MEDIA", "Tipo": "DOMINANCIA", "Ocasión": oca,
-                                    "Msg": f"Barcel lidera ({peso_seg:.1f}% Occ)",
-                                    "Detalle": f"Index {idx} vs competidor. Oportunidad de rentabilidad.",
-                                    "Accion": f"📈 **Modo Líder:** Evaluar ajuste a **{calcular_rango_g(row_b['Precio ($)'], lider_c['Precio por Kg ($)'])}**."
-                                })
-                        elif lider_c is not None:
-                            marca_b = identificar_marca(row_b["Producto"])
-                            rivales = df_comp[df_comp.apply(lambda x: es_rival_de(x["Producto"], marca_b), axis=1)]
-                            bench = rivales.sort_values("SOM (%)", ascending=False).iloc[0] if not rivales.empty else lider_c
-                            idx = int((row_b["Precio por Kg ($)"] / bench["Precio por Kg ($)"]) * 100)
-                            if idx > 95:
-                                hallazgos.append({
-                                    "Prioridad": "ALTA", "Tipo": f"DUELO vs {bench['Producto']}", "Ocasión": oca,
-                                    "Msg": f"{row_b['Producto']} fuera de rango ({peso_seg:.1f}% Occ)",
-                                    "Detalle": f"Index {idx} vs rival. Riesgo de pérdida de preferencia.",
-                                    "Accion": f"⚖️ **R&D:** Ajustar a **{calcular_rango_g(row_b['Precio ($)'], bench['Precio por Kg ($)'])}**."
-                                })
-        except Exception as e: st.error(f"Error en Ultra 2.6: {e}")
-
-    # --- MODO B: ARQUITECTURA DINÁMICA (Semáforo y Cascada) ---
+    # --- MODO B: ARQUITECTURA DINÁMICA (Price Pack / Arquitectura) ---
     else:
         st.subheader("🏛️ Auditoría de Arquitectura y Cascada de Precios")
-        hallazgos = [] # Reutilizamos la lista para el renderizado
+        hallazgos = [] 
         
-        # Objetivos para Semáforo
         objetivos = {
             "INSTITUCIONALES": (55, 65), "MAYOREO": (65, 75), "CLUBES": (75, 85), 
             "AUTOSERVICIO": (110, 125), "CONVENIENCIA": (120, 140)
         }
 
         # 1. Semáforo de Objetivos
-        if 'selecciones_usuario' in locals():
+        if 'selecciones_usuario' in locals() and "Canal" in df_p.columns:
             for canal, lista_prods in selecciones_usuario.items():
                 min_obj, max_obj = objetivos.get(canal, (0, 200))
                 for p_name, b_name in lista_prods:
-                    v_t = df_p[(df_p["Canal"].str.upper() == canal) & (df_p["Producto"] == p_name)]["Precio por Kg ($)"].mean()
-                    v_b = df_p[(df_p["Canal"].str.upper() == "DETALLE") & (df_p["Producto"] == b_name)]["Precio por Kg ($)"].mean()
-                    idx = int((v_t / v_b * 100)) if v_b > 0 else 0
+                    # Filtros con protección de existencia
+                    f_target = df_p[(df_p["Canal"].str.upper() == canal) & (df_p["Producto"] == p_name)]
+                    f_base = df_p[(df_p["Canal"].str.upper() == "DETALLE") & (df_p["Producto"] == b_name)]
                     
-                    if idx < min_obj:
-                        hallazgos.append({
-                            "Prioridad": "ALTA", "Tipo": "BAJO INDEX", "Ocasión": canal,
-                            "Msg": f"{p_name} está sub-valuado",
-                            "Detalle": f"Index {idx} vs Base {b_name}. Objetivo min: {min_obj}.",
-                            "Accion": f"💰 **Revenue:** Incrementar precio o reducir gramaje para alcanzar el corredor estratégico."
-                        })
-                    elif idx > max_obj:
-                        hallazgos.append({
-                            "Prioridad": "MEDIA", "Tipo": "SOBREPRECIO", "Ocasión": canal,
-                            "Msg": f"{p_name} con riesgo de volumen",
-                            "Detalle": f"Index {idx} vs Base {b_name}. Objetivo máx: {max_obj}.",
-                            "Accion": f"⚠️ **Competitividad:** Evaluar si el valor agregado justifica el sobreprecio o ajustar a la baja."
-                        })
+                    if not f_target.empty and not f_base.empty:
+                        v_t = f_target["Precio por Kg ($)"].mean()
+                        v_b = f_base["Precio por Kg ($)"].mean()
+                        idx = int((v_t / v_b * 100)) if v_b > 0 else 0
+                        
+                        if idx < min_obj:
+                            hallazgos.append({
+                                "Prioridad": "ALTA", "Tipo": "BAJO INDEX", "Ocasión": canal,
+                                "Msg": f"{p_name} está sub-valuado",
+                                "Detalle": f"Index {idx} vs Base {b_name}. Objetivo min: {min_obj}.",
+                                "Accion": f"💰 **Revenue:** Incrementar precio o reducir gramaje para alcanzar el corredor estratégico."
+                            })
+                        elif idx > max_obj:
+                            hallazgos.append({
+                                "Prioridad": "MEDIA", "Tipo": "SOBREPRECIO", "Ocasión": canal,
+                                "Msg": f"{p_name} con riesgo de volumen",
+                                "Detalle": f"Index {idx} vs Base {b_name}. Objetivo máx: {max_obj}.",
+                                "Accion": f"⚠️ **Competitividad:** Evaluar si el valor agregado justifica el sobreprecio."
+                            })
 
-        # 2. Cascada de Gramaje (Regla: Mayor gramaje = Menor $/Kg)
-        for canal in df_p["Canal"].unique():
-            df_c = df_p[(df_p["Canal"] == canal) & (df_p["Fabricante"] == "BARCEL")].sort_values("Gramaje (g)")
-            if len(df_c) >= 2:
-                for i in range(len(df_c) - 1):
-                    p_chico, p_grande = df_c.iloc[i], df_c.iloc[i+1]
-                    if p_grande["Precio por Kg ($)"] > p_chico["Precio por Kg ($)"]:
-                        hallazgos.append({
-                            "Prioridad": "ALTA", "Tipo": "ERROR CASCADA", "Ocasión": canal,
-                            "Msg": f"Inconsistencia en {p_grande['Producto']}",
-                            "Detalle": f"El SKU de {int(p_grande['Gramaje (g)'])}g es más caro por kilo que el de {int(p_chico['Gramaje (g)'])}g.",
-                            "Accion": f"📉 **Arquitectura:** Corregir $/Kg. El formato familiar debe ser más eficiente que el individual."
-                        })
+        # 2. Cascada de Gramaje (CORRECCIÓN DE KEYERROR)
+        if "Canal" in df_p.columns and "Gramaje (g)" in df_p.columns and "Fabricante" in df_p.columns:
+            for canal in df_p["Canal"].unique():
+                # Filtramos Barcel y ordenamos por Gramaje asegurándonos que la columna existe
+                df_c = df_p[(df_p["Canal"] == canal) & (df_p["Fabricante"] == "BARCEL")].sort_values("Gramaje (g)")
+                
+                if len(df_c) >= 2:
+                    for i in range(len(df_c) - 1):
+                        p_chico, p_grande = df_c.iloc[i], df_c.iloc[i+1]
+                        # Regla: Mayor gramaje debe tener menor $/Kg
+                        if p_grande["Precio por Kg ($)"] > p_chico["Precio por Kg ($)"] and p_chico["Gramaje (g)"] > 0:
+                            hallazgos.append({
+                                "Prioridad": "ALTA", "Tipo": "ERROR CASCADA", "Ocasión": canal,
+                                "Msg": f"Inconsistencia en {p_grande['Producto']}",
+                                "Detalle": f"El SKU de {int(p_grande['Gramaje (g)'])}g es más caro por kilo que el de {int(p_chico['Gramaje (g)'])}g.",
+                                "Accion": f"📉 **Arquitectura:** Corregir $/Kg. El formato familiar debe ser más eficiente que el individual."
+                            })
+        else:
+            st.info("ℹ️ Para activar la auditoría de cascada, asegúrate de que el archivo contenga: Canal, Fabricante y Gramaje.")
 
     # --- RENDERIZADO VISUAL ÚNICO (Para ambos modos) ---
     if hallazgos:
@@ -1033,6 +1052,7 @@ if not st.session_state.data.empty:
     else:
         st.balloons()
         st.success("✅ **Estrategia en Paridad Optimizada (Sin hallazgos críticos).**")
+
 
 # --- 12. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO (V4: FIX ARQUITECTURA) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
