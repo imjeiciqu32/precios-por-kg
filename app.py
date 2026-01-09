@@ -537,20 +537,6 @@ if not df_p.empty:
             mime="application/vnd.ms-excel",
             use_container_width=True
         )
-
-    with col_exp2:
-        # PDF
-        try:
-            pdf_bytes = generar_pdf(df_p, modo)
-            st.download_button(
-                label="📄 Descargar PDF",
-                data=pdf_bytes,
-                file_name=f"Reporte_{modo}.pdf",
-                mime="application/pdf",
-                use_container_width=True
-            )
-        except Exception as e:
-            st.error(f"Error al generar PDF: {e}")
             
 # --- 9. COMPARATIVAS INDEX (DOBLE FILA: DESEMBOLSO Y $/KG) ---
 if not st.session_state.data.empty:
