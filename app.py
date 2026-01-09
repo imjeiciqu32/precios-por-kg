@@ -306,7 +306,7 @@ if not st.session_state.data.empty:
     if modo == "Price Ladder":
         ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5,"REUNIÓN":6, "FIESTA":7,"TRANSFORMADOR":8}
         df_p["O_Oca"] = df_p["Ocasión"].str.upper().map(ord_oca).fillna(99)
-        df_p = df_p.sort_values(by=["O_Oca", "Precio ($)"]).reset_index(drop=True)
+        df_p = df_p.sort_values(by=["O_Oca", "Precio ($)", "Precio por Kg ($)"]).reset_index(drop=True)
         som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
         # Mantenemos el alto para que no se vea "chaparro"
