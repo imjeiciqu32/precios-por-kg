@@ -525,12 +525,13 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
 
-# --- 10. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA (FORMATO UNIFICADO FINAL) ---
+# --- 10. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA (VERSIÓN FINAL CORREGIDA) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("🚀 Sugerencias / Observaciones en base al Mercado")
     
     df_p = st.session_state.data.copy()
+    # Conversión robusta a números
     for c in ["Precio ($)", "SOM (%)", "Precio por Kg ($)"]:
         df_p[c] = pd.to_numeric(df_p[c], errors='coerce').fillna(0)
 
@@ -586,19 +587,18 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     if id_gap not in vistos:
                         p_sug = ajustar_precio_psicologico((p1 + p2) / 2)
                         
-                        # SOLUCIÓN MAESTRA: El carácter \u00ad (guion blando) es invisible
-                        # pero evita que Streamlit detecte el número como código o enlace.
-                        # Formateamos como: $ <invisible> número
-                        p1_fmt = f"$\u00ad{int(p1)}"
-                        p2_fmt = f"$\u00ad{int(p2)}"
+                        # USAMOS \$ PARA ESCAPAR EL SÍMBOLO Y EVITAR EL FORMATO DE CÓDIGO
+                        p1_txt = f"\${int(p1)}"
+                        p2_txt = f"\${int(p2)}"
+                        p_sug_txt = f"\${int(p_sug)}"
                         
                         hallazgos.append({
                             "Prioridad": "BAJA", 
                             "Tipo": "ESCALÓN DE PRECIO", 
                             "Ocasión": "PORTAFOLIO GLOBAL",
-                            "Msg": f"Hueco detectado entre {p1_fmt} y {p2_fmt}",
-                            "Detalle": f"Salto de ${int(p2-p1)} en la escalera. Riesgo de fuga de transacciones.",
-                            "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **${int(p_sug)}**."
+                            "Msg": f"Hueco detectado entre {p1_txt} y {p2_txt}",
+                            "Detalle": f"Salto de \${int(p2-p1)} en la escalera. Riesgo de fuga de transacciones.",
+                            "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **{p_sug_txt}**."
                         })
                         vistos.add(id_gap)
 
@@ -619,7 +619,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     "Prioridad": "ALTA" if peso_seg > 15 else "MEDIA", "Tipo": "WHITE SPACE", "Ocasión": oca,
                     "Msg": f"Barcel no participa ({peso_seg:.1f}% Occ)",
                     "Detalle": f"Segmento dominado por {lider_abs['Producto']}.",
-                    "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(p_sug, lider_c['Precio por Kg ($)'])}** a **${int(p_sug)}**."
+                    "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(p_sug, lider_c['Precio por Kg ($)'])}** a **\${int(p_sug)}**."
                 })
             else:
                 for _, row_b in df_barcel.iterrows():
@@ -658,11 +658,14 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     else: st.info(f"🔵 **{h['Tipo']}**")
                 with col_t:
                     st.markdown(f"#### {h['Ocasión']}")
-                    # Renderizado como texto plano en negrita
+                    # Renderizado limpio en negrita
                     st.markdown(f"**{h['Msg']}**")
                     st.caption(h['Detalle'])
                 with col_a:
                     st.success(f"🧪 **Sugerencia:**\n\n{h['Accion']}")
+    else:
+        st.balloons()
+        st.success("✅ **Portafolio en Paridad Optimizada.**")
 
 # --- 11. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO (V4: FIX ARQUITECTURA) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
