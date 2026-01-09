@@ -501,7 +501,7 @@ if not st.session_state.data.empty:
                 fig.add_trace(go.Bar(
                     x=df_p.index, 
                     y=df_p["Precio por Kg ($)"], 
-                    marker_color="#F8F9FA", # Un gris aún más sutil para limpieza
+                    marker_color="#F8F9FA", 
                     showlegend=False
                 ))
                 
@@ -528,15 +528,15 @@ if not st.session_state.data.empty:
                         borderwidth=1
                     )
                     
-                    # DESEMBOLSO EN LA BASE: Con contorno (bordercolor) y letras blancas
+                    # DESEMBOLSO EN LA BASE: Con contorno NEGRO y letras blancas
                     fig.add_annotation(
                         x=i, y=15, 
                         text=f"<b>${r['Precio ($)']:.1f}</b>", 
                         showarrow=False, 
                         font=dict(size=12, color="white"),
                         bgcolor="#00B0F0", 
-                        bordercolor="white", # Contorno blanco para resaltar sobre la barra
-                        borderwidth=2,       # Grosor del contorno
+                        bordercolor="black", # Contorno negro solicitado
+                        borderwidth=1.5,     # Grosor equilibrado
                         borderpad=4
                     )
                 
@@ -555,7 +555,7 @@ if not st.session_state.data.empty:
                         x=center, y=-0.6, xref="x", yref="paper", 
                         text=cat, 
                         showarrow=False, 
-                        font=dict(size=14, color="#424242", family="Verdana") # Fuente limpia
+                        font=dict(size=14, color="#424242", family="Verdana")
                     )
                 
                 # 5. CONFIGURACIÓN DEL LAYOUT
@@ -568,17 +568,19 @@ if not st.session_state.data.empty:
                         tickvals=list(df_p.index), 
                         ticktext=df_p["Producto"], 
                         tickangle=-90, 
-                        # CAMBIO DE LETRA: Verdana es más legible en vertical
-                        tickfont=dict(color="#333333", size=11, family="Verdana"), 
+                        # PRODUCTOS: Verdana con NEGRITAS (<b>)
+                        tickfont=dict(color="#000000", size=11, family="Verdana"), 
                         showgrid=False
                     ),
                     yaxis=dict(showgrid=True, gridcolor="#F5F5F5")
                 )
+                
+                # Aplicamos negritas a los ticks del eje X mediante un pequeño truco de Plotly
+                fig.update_xaxes(ticktext=["<b>"+str(t)+"</b>" for t in df_p["Producto"]])
         
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("Utiliza los filtros para visualizar los datos del Price Pack.")
-                    
 # --- 8. COMPARATIVAS INDEX (DOBLE FILA: DESEMBOLSO Y $/KG) ---
 if not st.session_state.data.empty:
     st.divider()
