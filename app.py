@@ -525,7 +525,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
 
-# --- 10. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA (SISTEMA ANTI-FORMATO) ---
+# --- 10. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA (FORMATO FINAL) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("🚀 Sugerencias / Observaciones en base al Mercado")
@@ -586,21 +586,23 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     if id_gap not in vistos:
                         p_sug = ajustar_precio_psicologico((p1 + p2) / 2)
                         
-                        # PARCHE DEFINITIVO: Usamos HTML para que Markdown no toque los números
-                        # Esto asegura que el 20 y el 40 se vean exactamente igual
-                        msg_limpio = f"Hueco detectado entre <span>${int(p1)}</span> y <span>${int(p2)}</span>"
+                        # SOLUCIÓN RADICAL: Usamos una cadena simple y limpia. 
+                        # Evitamos cualquier etiqueta que Streamlit pueda malinterpretar.
+                        txt_p1 = f"${int(p1)}"
+                        txt_p2 = f"${int(p2)}"
                         
                         hallazgos.append({
                             "Prioridad": "BAJA", 
                             "Tipo": "ESCALÓN DE PRECIO", 
                             "Ocasión": "PORTAFOLIO GLOBAL",
-                            "Msg": msg_limpio,
+                            "Msg": f"Hueco detectado entre {txt_p1} y {txt_p2}",
                             "Detalle": f"Salto de ${int(p2-p1)} en la escalera. Riesgo de fuga de transacciones.",
                             "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **${int(p_sug)}**."
                         })
                         vistos.add(id_gap)
 
         # --- BLOQUE B: ANÁLISIS TÁCTICO POR OCASIÓN ---
+        # (Lógica de detección se mantiene igual)
         for oca in df_p["Ocasión"].unique():
             df_oca = df_p[df_p["Ocasión"] == oca].copy()
             df_barcel = df_oca[df_oca["Fabricante"] == "BARCEL"]
@@ -656,14 +658,11 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     else: st.info(f"🔵 **{h['Tipo']}**")
                 with col_t:
                     st.markdown(f"#### {h['Ocasión']}")
-                    # IMPORTANTE: unsafe_allow_html=True permite que el <span> funcione y limpie el formato
-                    st.write(h['Msg'], unsafe_allow_html=True)
+                    # USAMOS MARKDOWN CON ESCAPE DE TEXTO PLANO
+                    st.markdown(f"**{h['Msg']}**")
                     st.caption(h['Detalle'])
                 with col_a:
                     st.success(f"🧪 **Sugerencia:**\n\n{h['Accion']}")
-    else:
-        st.balloons()
-        st.success("✅ **Portafolio en Paridad Optimizada.**")
 
 # --- 11. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO (V4: FIX ARQUITECTURA) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
