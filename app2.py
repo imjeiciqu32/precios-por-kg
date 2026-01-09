@@ -497,11 +497,12 @@ if not st.session_state.data.empty:
             if not df_p.empty:
                 fig = go.Figure()
         
-                # 1. BARRAS: Color grisáceo claro
+                # 1. BARRAS: Con contorno sutil (marker_line)
                 fig.add_trace(go.Bar(
                     x=df_p.index, 
                     y=df_p["Precio por Kg ($)"], 
-                    marker_color="#F8F9FA", 
+                    marker_color="#F8F9FA",
+                    marker_line=dict(color="#D1D1D1", width=1), # Contorno sutil para que no se pierdan
                     showlegend=False
                 ))
                 
@@ -535,8 +536,8 @@ if not st.session_state.data.empty:
                         showarrow=False, 
                         font=dict(size=12, color="white"),
                         bgcolor="#00B0F0", 
-                        bordercolor="black", # Contorno negro solicitado
-                        borderwidth=1.5,     # Grosor equilibrado
+                        bordercolor="black", 
+                        borderwidth=1.5,     
                         borderpad=4
                     )
                 
@@ -566,21 +567,24 @@ if not st.session_state.data.empty:
                     xaxis=dict(
                         tickmode='array', 
                         tickvals=list(df_p.index), 
-                        ticktext=df_p["Producto"], 
+                        ticktext=["<b>"+str(t)+"</b>" for t in df_p["Producto"]], # Negritas aplicadas
                         tickangle=-90, 
-                        # PRODUCTOS: Verdana con NEGRITAS (<b>)
                         tickfont=dict(color="#000000", size=11, family="Verdana"), 
                         showgrid=False
                     ),
-                    yaxis=dict(showgrid=True, gridcolor="#F5F5F5")
+                    # YAXIS: Añadido prefijo $ para las etiquetas del eje
+                    yaxis=dict(
+                        tickprefix="$", 
+                        showgrid=True, 
+                        gridcolor="#F5F5F5"
+                    )
                 )
-                
-                # Aplicamos negritas a los ticks del eje X mediante un pequeño truco de Plotly
-                fig.update_xaxes(ticktext=["<b>"+str(t)+"</b>" for t in df_p["Producto"]])
         
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("Utiliza los filtros para visualizar los datos del Price Pack.")
+
+
 # --- 8. COMPARATIVAS INDEX (DOBLE FILA: DESEMBOLSO Y $/KG) ---
 if not st.session_state.data.empty:
     st.divider()
