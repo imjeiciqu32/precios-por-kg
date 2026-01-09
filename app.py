@@ -418,13 +418,13 @@ if not st.session_state.data.empty:
 
     st.plotly_chart(fig, use_container_width=True)
 
-# --- 8. COMPARATIVAS INDEX ACTUALIZADO ---
+# --- 8. COMPARATIVAS INDEX (CORREGIDO: DESEMBOLSO + $/KG) ---
 if not st.session_state.data.empty:
     st.divider()
     st.subheader(f"📈 Comparativas Index ({modo})")
     df_comp = st.session_state.data.copy()
     
-    # Asegurar que las columnas sean numéricas para evitar errores en el cálculo
+    # Limpieza de datos
     for col in ["Precio ($)", "Precio por Kg ($)"]:
         df_comp[col] = pd.to_numeric(df_comp[col], errors='coerce').fillna(0)
     
@@ -443,57 +443,52 @@ if not st.session_state.data.empty:
         idx_cols = st.columns(4)
         for i in range(4):
             with idx_cols[i]:
-                with st.container(border=True):
-                    sel_a = st.selectbox(f"{label_a}", list_a, key=f"sa{i}")
-                    sel_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=min(i+1, len(list_b)-1))
+                # Selectores
+                sel_a = st.selectbox(f"{label_a}", list_a, key=f"sa{i}")
+                sel_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=min(i+1, len(list_b)-1))
+                
+                # Extracción de valores
+                row_a = df_comp[df_comp["Lookup_Key"] == sel_a].iloc[0]
+                row_b = df_comp[df_comp["Lookup_Key"] == sel_b].iloc[0]
+                
+                val_a_des = row_a["Precio ($)"]
+                val_b_des = row_b["Precio ($)"]
+                val_a_pkg = row_a["Precio por Kg ($)"]
+                val_b_pkg = row_b["Precio por Kg ($)"]
+                
+                if val_b_pkg > 0 and val_b_des > 0:
+                    idx_pkg = int((val_a_pkg / val_b_pkg) * 100)
+                    idx_des = int((val_a_des / val_b_des) * 100)
+                    color_idx = "#0B3C8C" if idx_pkg <= 100 else "#D32F2F"
                     
-                    # Extraer datos de Producto A
-                    row_a = df_comp[df_comp["Lookup_Key"] == sel_a].iloc[0]
-                    val_a_pkg = row_a["Precio por Kg ($)"]
-                    val_a_des = row_a["Precio ($)"]
-                    
-                    # Extraer datos de Producto B
-                    row_b = df_comp[df_comp["Lookup_Key"] == sel_b].iloc[0]
-                    val_b_pkg = row_b["Precio por Kg ($)"]
-                    val_b_des = row_b["Precio ($)"]
-                    
-                    if val_b_pkg > 0 and val_b_des > 0:
-                        # Cálculos de Index
-                        index_pkg = int((val_a_pkg / val_b_pkg) * 100)
-                        index_des = int((val_a_des / val_b_des) * 100)
-                        
-                        # Color basado en Index $/Kg (como el original)
-                        color_index = "#0B3C8C" if index_pkg <= 100 else "#D32F2F"
-                        
-                        st.markdown(f"""
-                            <div style="background:#ffffff; border: 1px solid #e6e9ef; border-radius:10px; padding:12px; border-top:5px solid {color_index};">
-                                <div style="display:flex; justify-content:space-between; align-items: center; background:#f8f9fa; padding:5px 8px; border-radius:5px; margin-bottom:10px;">
-                                    <div style="font-size:0.8rem; font-weight:700; color:#444;">${val_a_des:.1f}</div>
-                                    <div style="text-align:center;">
-                                        <div style="font-size:0.85rem; font-weight:900; color:#555; line-height:1;">{index_des}</div>
-                                        <div style="font-size:0.55rem; color:#888; text-transform:uppercase; font-weight:bold;">Idx Deseb.</div>
-                                    </div>
-                                    <div style="font-size:0.8rem; font-weight:700; color:#444;">${val_b_des:.1f}</div>
+                    # Renderizado HTML único por tarjeta
+                    st.markdown(f"""
+                        <div style="background:white; border:1px solid #ddd; border-top:5px solid {color_idx}; border-radius:10px; padding:10px; font-family:sans-serif;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; background:#f0f2f6; padding:5px; border-radius:5px; margin-bottom:10px;">
+                                <span style="font-weight:bold; font-size:0.9rem;">${val_a_des:.1f}</span>
+                                <div style="text-align:center; line-height:1;">
+                                    <span style="display:block; font-weight:900; font-size:0.8rem; color:#444;">{idx_des}</span>
+                                    <span style="font-size:0.55rem; color:#666; text-transform:uppercase;">Idx Deseb.</span>
                                 </div>
-
-                                <div style="display:flex; justify-content:space-between; align-items: flex-start; min-height:50px;">
-                                    <div style="width:45%; text-align:left;">
-                                        <div style="font-size:0.75rem; color:#666; font-weight:500; line-height:1.1; margin-bottom:4px; height:30px; overflow:hidden;">{sel_a}</div>
-                                        <div style="font-size:1.1rem; font-weight:800; color:#111;">${int(val_a_pkg)}</div>
-                                    </div>
-                                    <div style="width:10%; text-align:center; padding-top:25px; font-weight:bold; color:#ccc; font-size:0.7rem;">vs</div>
-                                    <div style="width:45%; text-align:right;">
-                                        <div style="font-size:0.75rem; color:#666; font-weight:500; line-height:1.1; margin-bottom:4px; height:30px; overflow:hidden;">{sel_b}</div>
-                                        <div style="font-size:1.1rem; font-weight:800; color:#111;">${int(val_b_pkg)}</div>
-                                    </div>
+                                <span style="font-weight:bold; font-size:0.9rem;">${val_b_des:.1f}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; min-height:40px;">
+                                <div style="width:45%; text-align:left;">
+                                    <div style="font-size:0.7rem; color:#666; height:20px; overflow:hidden; line-height:1;">{sel_a}</div>
+                                    <div style="font-size:1.1rem; font-weight:bold;">${int(val_a_pkg)}</div>
                                 </div>
-
-                                <div style="text-align:center; margin-top:10px; padding-top:8px; border-top:1px solid #f0f2f6;">
-                                    <div style="font-size:2.2rem; font-weight:900; color:{color_index}; line-height:1; margin-bottom:2px;">{index_pkg}</div>
-                                    <div style="font-size:0.7rem; font-weight:bold; letter-spacing:1px; color:#999; text-transform:uppercase;">Index $/Kg</div>
+                                <div style="width:10%; color:#ccc; font-weight:bold; font-size:0.6rem; padding-top:15px;">vs</div>
+                                <div style="width:45%; text-align:right;">
+                                    <div style="font-size:0.7rem; color:#666; height:20px; overflow:hidden; line-height:1;">{sel_b}</div>
+                                    <div style="font-size:1.1rem; font-weight:bold;">${int(val_b_pkg)}</div>
                                 </div>
                             </div>
-                        """, unsafe_allow_html=True)
+                            <div style="text-align:center; margin-top:10px; padding-top:5px; border-top:1px solid #eee;">
+                                <div style="font-size:2rem; font-weight:900; color:{color_idx}; line-height:1;">{idx_pkg}</div>
+                                <div style="font-size:0.65rem; font-weight:bold; color:#999; text-transform:uppercase; letter-spacing:1px;">Index $/Kg</div>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
                         
 # --- 9. PIRÁMIDE DE POSICIONAMIENTO (SOLO LADDER) ---
 # Movimos el título y la lógica dentro del condicional para que no aparezca en Price Pack
