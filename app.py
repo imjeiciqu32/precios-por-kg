@@ -487,45 +487,49 @@ st.write("### 📥 Descargar Reporte")
 import io
 from fpdf import FPDF
 
-# --- FUNCIÓN ROBUSTA PARA EL PDF ---
+# --- FUNCIÓN CORREGIDA PARA EL PDF (Sin errores de bytearray) ---
 def generar_pdf(df, titulo_modo):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", "B", 16)
+    # Usamos Helvetica que es una fuente estándar muy estable
+    pdf.set_font("Helvetica", "B", 16)
     pdf.cell(0, 10, f"Reporte de Precios: {titulo_modo}", ln=True, align='C')
     pdf.ln(10)
     
-    # Encabezados
-    pdf.set_font("Arial", "B", 10)
+    # Encabezados de la tabla
+    pdf.set_font("Helvetica", "B", 10)
     pdf.cell(75, 10, "Producto", 1)
     pdf.cell(40, 10, "Fabricante", 1)
-    pdf.cell(35, 10, "Precio", 1)
+    pdf.cell(35, 10, "Precio ($)", 1)
     pdf.cell(35, 10, "Precio/Kg", 1)
     pdf.ln()
     
-    # Filas
-    pdf.set_font("Arial", size=10)
+    # Filas de la tabla
+    pdf.set_font("Helvetica", size=10)
     for _, row in df.iterrows():
-        # Usamos .encode('latin-1', 'replace').decode('latin-1') para evitar errores de caracteres
-        prod = str(row['Producto'])[:35].encode('latin-1', 'replace').decode('latin-1')
-        fab = str(row['Fabricante']).encode('latin-1', 'replace').decode('latin-1')
+        # Limpieza de caracteres para evitar errores de codificación
+        p_nom = str(row['Producto'])[:35].encode('latin-1', 'replace').decode('latin-1')
+        f_nom = str(row['Fabricante']).encode('latin-1', 'replace').decode('latin-1')
         
-        pdf.cell(75, 10, prod, 1)
-        pdf.cell(40, 10, fab, 1)
-        pdf.cell(35, 10, f"{row['Precio ($)']:,.1f}", 1)
-        pdf.cell(35, 10, f"{row['Precio por Kg ($)']:,.0f}", 1)
+        pdf.cell(75, 10, p_nom, 1)
+        pdf.cell(40, 10, f_nom, 1)
+        pdf.cell(35, 10, f"${row['Precio ($)']:,.1f}", 1)
+        pdf.cell(35, 10, f"${row['Precio por Kg ($)']:,.0f}", 1)
         pdf.ln()
     
-    return pdf.output(dest='S').encode('latin-1')
+    # IMPORTANTE: En fpdf2, output() ya devuelve los bytes necesarios
+    return pdf.output()
 
 # --- BOTONES DE DESCARGA ---
 if not df_p.empty:
     col_exp1, col_exp2 = st.columns(2)
 
     with col_exp1:
+        # EXCEL
         buffer_excel = io.BytesIO()
         with pd.ExcelWriter(buffer_excel, engine='xlsxwriter') as writer:
             df_p.to_excel(writer, index=False)
+        
         st.download_button(
             label="📊 Descargar Excel",
             data=buffer_excel.getvalue(),
@@ -535,6 +539,7 @@ if not df_p.empty:
         )
 
     with col_exp2:
+        # PDF
         try:
             pdf_bytes = generar_pdf(df_p, modo)
             st.download_button(
@@ -546,7 +551,7 @@ if not df_p.empty:
             )
         except Exception as e:
             st.error(f"Error al generar PDF: {e}")
-        
+            
 # --- 9. COMPARATIVAS INDEX (DOBLE FILA: DESEMBOLSO Y $/KG) ---
 if not st.session_state.data.empty:
     st.divider()
