@@ -525,7 +525,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
 
-# --- 10. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA (FORMATO FINAL LIMPIO) ---
+# --- 10. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA (FORMATO UNIFICADO FINAL) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("🚀 Sugerencias / Observaciones en base al Mercado")
@@ -549,10 +549,6 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         "PIX":["TORCIDITOS"]
     }
 
-    def ajustar_precio_psicologico(p):
-        puntos_magicos = [10, 12, 15, 18, 20, 22, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80]
-        return min(puntos_magicos, key=lambda x: abs(x - p))
-
     def identificar_marca(n):
         n = str(n).upper()
         for m in mapa_rivales.keys():
@@ -565,6 +561,10 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             for r in mapa_rivales[m_barcel]:
                 if r in n_comp: return True
         return False
+
+    def ajustar_precio_psicologico(p):
+        puntos_magicos = [10, 12, 15, 18, 20, 22, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80]
+        return min(puntos_magicos, key=lambda x: abs(x - p))
 
     def calcular_rango_g(p_target, pkg_ref):
         if pkg_ref <= 0: return "N/A"
@@ -586,19 +586,19 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     if id_gap not in vistos:
                         p_sug = ajustar_precio_psicologico((p1 + p2) / 2)
                         
-                        # TRUCO FINAL: \u200b es un espacio de ancho cero.
-                        # Esto rompe el formato automático de código de Streamlit.
-                        p1_f = f"$\u200b{int(p1)}"
-                        p2_f = f"$\u200b{int(p2)}"
-                        p_sug_f = f"$\u200b{int(p_sug)}"
+                        # SOLUCIÓN MAESTRA: El carácter \u00ad (guion blando) es invisible
+                        # pero evita que Streamlit detecte el número como código o enlace.
+                        # Formateamos como: $ <invisible> número
+                        p1_fmt = f"$\u00ad{int(p1)}"
+                        p2_fmt = f"$\u00ad{int(p2)}"
                         
                         hallazgos.append({
                             "Prioridad": "BAJA", 
                             "Tipo": "ESCALÓN DE PRECIO", 
                             "Ocasión": "PORTAFOLIO GLOBAL",
-                            "Msg": f"Hueco detectado entre {p1_f} y {p2_f}",
+                            "Msg": f"Hueco detectado entre {p1_fmt} y {p2_fmt}",
                             "Detalle": f"Salto de ${int(p2-p1)} en la escalera. Riesgo de fuga de transacciones.",
-                            "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **{p_sug_f}**."
+                            "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **${int(p_sug)}**."
                         })
                         vistos.add(id_gap)
 
@@ -619,7 +619,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     "Prioridad": "ALTA" if peso_seg > 15 else "MEDIA", "Tipo": "WHITE SPACE", "Ocasión": oca,
                     "Msg": f"Barcel no participa ({peso_seg:.1f}% Occ)",
                     "Detalle": f"Segmento dominado por {lider_abs['Producto']}.",
-                    "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(p_sug, lider_c['Precio por Kg ($)'])}** a **$\u200b{int(p_sug)}**."
+                    "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(p_sug, lider_c['Precio por Kg ($)'])}** a **${int(p_sug)}**."
                 })
             else:
                 for _, row_b in df_barcel.iterrows():
@@ -658,28 +658,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     else: st.info(f"🔵 **{h['Tipo']}**")
                 with col_t:
                     st.markdown(f"#### {h['Ocasión']}")
-                    # Usamos negrita directa en markdown para todo el mensaje
-                    st.markdown(f"**{h['Msg']}**")
-                    st.caption(h['Detalle'])
-                with col_a:
-                    st.success(f"🧪 **Sugerencia:**\n\n{h['Accion']}")
-    else:
-        st.balloons()
-        st.success("✅ **Portafolio en Paridad Optimizada.**")
-
-    # --- RENDERIZADO VISUAL ---
-    if hallazgos:
-        hallazgos.sort(key=lambda x: {"ALTA": 0, "MEDIA": 1, "BAJA": 2}.get(x["Prioridad"], 2))
-        for h in hallazgos:
-            with st.container(border=True):
-                col_i, col_t, col_a = st.columns([1.5, 3.5, 3])
-                with col_i:
-                    if h["Prioridad"] == "ALTA": st.error(f"🔴 **{h['Tipo']}**")
-                    elif h["Prioridad"] == "MEDIA": st.warning(f"🟡 **{h['Tipo']}**")
-                    else: st.info(f"🔵 **{h['Tipo']}**")
-                with col_t:
-                    st.markdown(f"#### {h['Ocasión']}")
-                    # USAMOS MARKDOWN CON ESCAPE DE TEXTO PLANO
+                    # Renderizado como texto plano en negrita
                     st.markdown(f"**{h['Msg']}**")
                     st.caption(h['Detalle'])
                 with col_a:
