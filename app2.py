@@ -468,116 +468,116 @@ if not st.session_state.data.empty:
             fig.update_yaxes(showticklabels=False, row=1, col=1)
             fig.update_yaxes(showgrid=True, gridcolor="#DCDCDC", tickprefix="$", tickfont=dict(size=14), row=2, col=1)
         else:
-    # --- 6.9 FILTROS DINÁMICOS PARA PRICE PACK ---
-    st.write("") 
-    with st.container(border=True):
-        st.markdown("### 🔍 Filtros de Visualización (Price Pack)")
-        col_pp1, col_pp2 = st.columns(2)
-
-        with col_pp1:
-            lista_canales = sorted(st.session_state.data["Canal"].unique().tolist())
-            sel_canal_pp = st.multiselect("Filtrar por Canal", lista_canales, key="filter_pp_canal")
-
-        with col_pp2:
-            lista_prod_pp = sorted(st.session_state.data["Producto"].unique().tolist())
-            sel_prod_pp = st.multiselect("Filtrar por Producto", lista_prod_pp, key="filter_pp_prod")
-
-    # --- APLICACIÓN DE FILTROS ---
-    df_p = st.session_state.data.copy()
-    if sel_canal_pp:
-        df_p = df_p[df_p["Canal"].isin(sel_canal_pp)]
-    if sel_prod_pp:
-        df_p = df_p[df_p["Producto"].isin(sel_prod_pp)]
-
-    # --- LÓGICA DE ORDENAMIENTO ---
-    ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIO": 5, "CONVENIENCIA": 6}
-    df_p["O_Can"] = df_p["Canal"].str.upper().map(ord_can).fillna(99)
-    df_p = df_p.sort_values(by=["O_Can", "Precio ($)"]).reset_index(drop=True)
-    
-    if not df_p.empty:
-        fig = go.Figure()
-
-        # 1. BARRAS: Color grisáceo claro
-        fig.add_trace(go.Bar(
-            x=df_p.index, 
-            y=df_p["Precio por Kg ($)"], 
-            marker_color="#F2F2F2", 
-            showlegend=False
-        ))
+            # --- 6.9 FILTROS DINÁMICOS PARA PRICE PACK ---
+            st.write("") 
+            with st.container(border=True):
+                st.markdown("### 🔍 Filtros de Visualización (Price Pack)")
+                col_pp1, col_pp2 = st.columns(2)
         
-        # 2. LÍNEAS DIVISORIAS ENTRE NOMBRES
-        for i in range(len(df_p) + 1):
-            fig.add_shape(
-                type="line", x0=i-0.5, x1=i-0.5, 
-                y0=-0.45, y1=0, 
-                xref="x", yref="paper",
-                line=dict(color="#DDDDDD", width=1)
-            ) 
-
-        # 3. ANOTACIONES (ETIQUETAS)
-        for i, r in df_p.iterrows():
-            # PRECIO POR KG (Arriba): Negritas y tamaño 14
-            fig.add_annotation(
-                x=i, y=r["Precio por Kg ($)"], 
-                text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", 
-                yshift=15, 
-                showarrow=False, 
-                font=dict(size=14, color="black"),
-                bgcolor="rgba(255,255,255,0.9)", 
-                bordercolor="#444444", 
-                borderwidth=1
-            )
-            
-            # DESEMBOLSO EN LA BASE: Azul cielo, letras blancas
-            fig.add_annotation(
-                x=i, y=15, 
-                text=f"<b>${r['Precio ($)']:.1f}</b>", 
-                showarrow=False, 
-                font=dict(size=12, color="white"),
-                bgcolor="#00B0F0", 
-                bordercolor="#00B0F0", 
-                borderwidth=1, 
-                borderpad=4
-            )
+                with col_pp1:
+                    lista_canales = sorted(st.session_state.data["Canal"].unique().tolist())
+                    sel_canal_pp = st.multiselect("Filtrar por Canal", lista_canales, key="filter_pp_canal")
         
-        # 4. DIVISIONES DE CANALES
-        for cat in df_p["Canal"].unique():
-            indices = df_p.index[df_p["Canal"] == cat].tolist()
-            center = (indices[0] + indices[-1]) / 2
-            
-            fig.add_shape(
-                type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, 
-                y0=-0.6, y1=1, xref="x", yref="paper", 
-                line=dict(color="#CCCCCC", width=1.5) 
-            )
-            
-            fig.add_annotation(
-                x=center, y=-0.6, xref="x", yref="paper", 
-                text=cat, 
-                showarrow=False, 
-                font=dict(size=14, color="#333333")
-            )
+                with col_pp2:
+                    lista_prod_pp = sorted(st.session_state.data["Producto"].unique().tolist())
+                    sel_prod_pp = st.multiselect("Filtrar por Producto", lista_prod_pp, key="filter_pp_prod")
         
-        # 5. CONFIGURACIÓN DEL LAYOUT
-        fig.update_layout(
-            height=850, 
-            margin=dict(b=300, t=50, l=50, r=50), 
-            template="plotly_white", 
-            xaxis=dict(
-                tickmode='array', 
-                tickvals=list(df_p.index), 
-                ticktext=df_p["Producto"], 
-                tickangle=-90, 
-                tickfont=dict(color="#333333", size=12, family="Arial"),
-                showgrid=False
-            ),
-            yaxis=dict(showgrid=True, gridcolor="#F0F0F0")
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("Selecciona canales o productos para visualizar el Price Pack.")
+            # --- APLICACIÓN DE FILTROS ---
+            df_p = st.session_state.data.copy()
+            if sel_canal_pp:
+                df_p = df_p[df_p["Canal"].isin(sel_canal_pp)]
+            if sel_prod_pp:
+                df_p = df_p[df_p["Producto"].isin(sel_prod_pp)]
+        
+            # --- LÓGICA DE ORDENAMIENTO ---
+            ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIO": 5, "CONVENIENCIA": 6}
+            df_p["O_Can"] = df_p["Canal"].str.upper().map(ord_can).fillna(99)
+            df_p = df_p.sort_values(by=["O_Can", "Precio ($)"]).reset_index(drop=True)
             
+            if not df_p.empty:
+                fig = go.Figure()
+        
+                # 1. BARRAS: Color grisáceo claro
+                fig.add_trace(go.Bar(
+                    x=df_p.index, 
+                    y=df_p["Precio por Kg ($)"], 
+                    marker_color="#F2F2F2", 
+                    showlegend=False
+                ))
+                
+                # 2. LÍNEAS DIVISORIAS ENTRE NOMBRES
+                for i in range(len(df_p) + 1):
+                    fig.add_shape(
+                        type="line", x0=i-0.5, x1=i-0.5, 
+                        y0=-0.45, y1=0, 
+                        xref="x", yref="paper",
+                        line=dict(color="#DDDDDD", width=1)
+                    ) 
+        
+                # 3. ANOTACIONES (ETIQUETAS)
+                for i, r in df_p.iterrows():
+                    # PRECIO POR KG (Arriba): Negritas y tamaño 14
+                    fig.add_annotation(
+                        x=i, y=r["Precio por Kg ($)"], 
+                        text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", 
+                        yshift=15, 
+                        showarrow=False, 
+                        font=dict(size=14, color="black"),
+                        bgcolor="rgba(255,255,255,0.9)", 
+                        bordercolor="#444444", 
+                        borderwidth=1
+                    )
+                    
+                    # DESEMBOLSO EN LA BASE: Azul cielo, letras blancas
+                    fig.add_annotation(
+                        x=i, y=15, 
+                        text=f"<b>${r['Precio ($)']:.1f}</b>", 
+                        showarrow=False, 
+                        font=dict(size=12, color="white"),
+                        bgcolor="#00B0F0", 
+                        bordercolor="#00B0F0", 
+                        borderwidth=1, 
+                        borderpad=4
+                    )
+                
+                # 4. DIVISIONES DE CANALES
+                for cat in df_p["Canal"].unique():
+                    indices = df_p.index[df_p["Canal"] == cat].tolist()
+                    center = (indices[0] + indices[-1]) / 2
+                    
+                    fig.add_shape(
+                        type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, 
+                        y0=-0.6, y1=1, xref="x", yref="paper", 
+                        line=dict(color="#CCCCCC", width=1.5) 
+                    )
+                    
+                    fig.add_annotation(
+                        x=center, y=-0.6, xref="x", yref="paper", 
+                        text=cat, 
+                        showarrow=False, 
+                        font=dict(size=14, color="#333333")
+                    )
+                
+                # 5. CONFIGURACIÓN DEL LAYOUT
+                fig.update_layout(
+                    height=850, 
+                    margin=dict(b=300, t=50, l=50, r=50), 
+                    template="plotly_white", 
+                    xaxis=dict(
+                        tickmode='array', 
+                        tickvals=list(df_p.index), 
+                        ticktext=df_p["Producto"], 
+                        tickangle=-90, 
+                        tickfont=dict(color="#333333", size=12, family="Arial"),
+                        showgrid=False
+                    ),
+                    yaxis=dict(showgrid=True, gridcolor="#F0F0F0")
+                )
+        
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Selecciona canales o productos para visualizar el Price Pack.")
+                    
 # --- 8. COMPARATIVAS INDEX (DOBLE FILA: DESEMBOLSO Y $/KG) ---
 if not st.session_state.data.empty:
     st.divider()
