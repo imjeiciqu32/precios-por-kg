@@ -607,13 +607,15 @@ if not st.session_state.data.empty:
         label_a, label_b = "Producto A", "Producto B"
 
     if len(list_a) > 0 and len(list_b) > 0:
-        # 1. Selectores (se mantienen arriba para controlar ambas filas)
+        # 1. Selectores
         sel_cols = st.columns(4)
         selections = []
         for i in range(4):
             with sel_cols[i]:
                 s_a = st.selectbox(f"{label_a}", list_a, key=f"sa{i}")
-                s_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=min(i+1, len(list_b)-1))
+                # Ajuste de index para evitar error si la lista es corta
+                idx_default = min(i+1, len(list_b)-1) if len(list_b) > 1 else 0
+                s_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=idx_default)
                 selections.append((s_a, s_b))
 
         # 2. PRIMERA FILA: INDEX DESEMBOLSO
@@ -644,7 +646,7 @@ if not st.session_state.data.empty:
                     </div>
                 """, unsafe_allow_html=True)
 
-        st.write("") # Espaciador
+        st.write("") 
 
         # 3. SEGUNDA FILA: INDEX PRECIO X KG
         st.markdown("### ⚖️ Index Precio por Kg")
@@ -673,6 +675,39 @@ if not st.session_state.data.empty:
                         <div style="font-size:0.6rem; font-weight:bold; color:#999; text-transform:uppercase;">Index $/Kg</div>
                     </div>
                 """, unsafe_allow_html=True)
+
+        # --- 4. NUEVA SECCIÓN: MATRIZ ESTRATÉGICA (SOLO PARA PRICE ARCHITECTURE) ---
+        if modo != "Price Ladder":
+            st.write("")
+            st.markdown("### 🏛️ Arquitectura de Precios vs. Canal DETALLE (Base 100)")
+            
+            # Calculamos la base de Detalle por producto para los seleccionados
+            base_detalle = df_comp[df_comp["Canal"].str.upper() == "DETALLE"].groupby("Producto")["Precio por Kg ($)"].mean().to_dict()
+            
+            idx_cols = st.columns(4)
+            for i, (sel_a, _) in enumerate(selections):
+                row_a = df_comp[df_comp["Lookup_Key"] == sel_a].iloc[0]
+                prod_name = row_a["Producto"]
+                val_pkg = row_a["Precio por Kg ($)"]
+                val_base = base_detalle.get(prod_name)
+                
+                # Cálculo de Index vs Detalle
+                idx_vs_det = int((val_pkg / val_base * 100)) if val_base and val_base > 0 else 0
+                
+                # Color basado en arquitectura (Morado si es barato como Mayoreo, Verde si es caro como Conveniencia)
+                color_arch = "#7F8C8D"
+                if idx_vs_det != 0:
+                    if idx_vs_det < 95: color_arch = "#8E44AD"
+                    elif idx_vs_det > 105: color_arch = "#27AE60"
+
+                with idx_cols[i]:
+                    st.markdown(f"""
+                        <div style="background:{color_arch}; color:white; border-radius:8px; padding:8px; text-align:center;">
+                            <div style="font-size:0.65rem; text-transform:uppercase; opacity:0.8;">Index vs Detalle</div>
+                            <div style="font-size:1.5rem; font-weight:bold;">{idx_vs_det if idx_vs_det > 0 else 'N/A'}</div>
+                            <div style="font-size:0.7rem; font-family:Verdana;">{prod_name}</div>
+                        </div>
+                    """, unsafe_allow_html=True)
                         
 # --- 10. PIRÁMIDE DE POSICIONAMIENTO (SOLO LADDER) ---
 # Movimos el título y la lógica dentro del condicional para que no aparezca en Price Pack
