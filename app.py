@@ -525,13 +525,12 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                 st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
             st.write("")
 
-# --- 10. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA (FIXED FORMAT) ---
+# --- 10. ANALISTA MAESTRO ULTRA 2.6: ESTRATEGIA INTEGRAL OPTIMIZADA (FORMATO UNIFICADO) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
     st.subheader("🚀 Sugerencias / Observaciones en base al Mercado")
     
     df_p = st.session_state.data.copy()
-    # Aseguramos conversión numérica
     for c in ["Precio ($)", "SOM (%)", "Precio por Kg ($)"]:
         df_p[c] = pd.to_numeric(df_p[c], errors='coerce').fillna(0)
 
@@ -586,12 +585,20 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     id_gap = f"GAP_{int(p1)}_{int(p2)}"
                     if id_gap not in vistos:
                         p_sug = ajustar_precio_psicologico((p1 + p2) / 2)
-                        # SOLUCIÓN: Usamos :.0f para forzar la eliminación del decimal en el texto
+                        
+                        # CORRECCIÓN DE FORMATO: Usamos texto plano sin ticks o etiquetas raras
+                        # Forzamos a que ambos sean tratados exactamente igual como strings limpios
+                        p1_str = str(int(p1))
+                        p2_str = str(int(p2))
+                        p_sug_str = str(int(p_sug))
+                        
                         hallazgos.append({
-                            "Prioridad": "BAJA", "Tipo": "ESCALÓN DE PRECIO", "Ocasión": "PORTAFOLIO GLOBAL",
-                            "Msg": f"Hueco detectado entre ${p1:.0f} y ${p2:.0f}",
-                            "Detalle": f"Salto de ${p2-p1:.0f} en la escalera. Riesgo de fuga de transacciones.",
-                            "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **${p_sug:.0f}**."
+                            "Prioridad": "BAJA", 
+                            "Tipo": "ESCALÓN DE PRECIO", 
+                            "Ocasión": "PORTAFOLIO GLOBAL",
+                            "Msg": f"Hueco detectado entre ${p1_str} y ${p2_str}",
+                            "Detalle": f"Salto de ${int(p2-p1)} en la escalera. Riesgo de fuga de transacciones.",
+                            "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **${p_sug_str}**."
                         })
                         vistos.add(id_gap)
 
@@ -612,7 +619,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     "Prioridad": "ALTA" if peso_seg > 15 else "MEDIA", "Tipo": "WHITE SPACE", "Ocasión": oca,
                     "Msg": f"Barcel no participa ({peso_seg:.1f}% Occ)",
                     "Detalle": f"Segmento dominado por {lider_abs['Producto']}.",
-                    "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(p_sug, lider_c['Precio por Kg ($)'])}** a **${p_sug:.0f}**."
+                    "Accion": f"⚡ **Entrada:** Lanzar **{calcular_rango_g(p_sug, lider_c['Precio por Kg ($)'])}** a **${int(p_sug)}**."
                 })
             else:
                 for _, row_b in df_barcel.iterrows():
@@ -651,6 +658,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
                     else: st.info(f"🔵 **{h['Tipo']}**")
                 with col_t:
                     st.markdown(f"#### {h['Ocasión']}")
+                    # Usamos st.write para evitar interpretaciones de Markdown raras en el mensaje
                     st.write(f"**{h['Msg']}**")
                     st.caption(h['Detalle'])
                 with col_a:
