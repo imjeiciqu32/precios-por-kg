@@ -231,24 +231,6 @@ with st.sidebar:
 # --- 5. PANEL PRINCIPAL ---
 st.title(f"📊 {modo.upper()}")
 
-# RESUMEN RÁPIDO (Métricas Pro)
-if not st.session_state.data.empty:
-    m1, m2, m3, m4 = st.columns(4)
-    with m1:
-        st.metric("Total Productos", len(st.session_state.data))
-    with m2:
-        avg_p = st.session_state.data["Precio ($)"].mean()
-        st.metric("Precio Promedio", f"${avg_p:.1f}")
-    with m3:
-        avg_kg = st.session_state.data["Precio por Kg ($)"].mean()
-        st.metric("Avg $/Kg", f"${avg_kg:,.0f}")
-    with m4:
-        if modo == "Price Ladder":
-            st.metric("Líder SOM", f"{st.session_state.data['SOM (%)'].max()}%")
-        else:
-            st.metric("Canales", st.session_state.data['Canal'].nunique())
-    
-    st.markdown("---")
 
 # --- 5. FORMULARIOS DE AGREGAR ---
 with st.expander(f"➕ Agregar nuevo SKU a {modo}", expanded=False):
