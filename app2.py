@@ -375,6 +375,14 @@ if modo == "Price Ladder" and not df_p.empty:
 if not st.session_state.data.empty:
     df_p = st.session_state.data.copy()
     
+    # --- NUEVO: CONTROLES DE TAMAÑO DE TEXTO EN EL SIDEBAR ---
+    with st.sidebar:
+        st.divider()
+        st.subheader("📏 Tamaño de Etiquetas")
+        t_nombres = st.slider("Nombres de Producto", 8, 24, 14)
+        t_precios = st.slider("Precios ($)", 10, 30, 18)
+        t_pkg = st.slider("Precio por Kg", 10, 30, 16)
+    
     # --- INSERCIÓN DE FILTROS (MODO LADDER) ---
     if modo == "Price Ladder":
         if sel_fab:
@@ -416,35 +424,31 @@ if not st.session_state.data.empty:
                 x=df_p["Producto"], y=df_p["Precio ($)"],
                 marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]],
                 text=[f"<b>${p:.1f}</b>" for p in df_p["Precio ($)"]], 
-                textposition="outside", textfont=dict(size=18, color="black") 
+                textposition="outside", 
+                textfont=dict(size=t_precios, color="black") # <--- DINÁMICO
             ), row=2, col=1)
 
             # Anotaciones de Precio por Kg dentro de las barras
             for i, row in df_p.iterrows():
                 fig.add_annotation(
                     x=i, y=2.5, text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
-                    showarrow=False, font=dict(size=16, color="white" if row["Fabricante"] == "BARCEL" else "black"),
+                    showarrow=False, 
+                    font=dict(size=t_pkg, color="white" if row["Fabricante"] == "BARCEL" else "black"), # <--- DINÁMICO
                     bgcolor="rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)",
                     bordercolor="#444" if row["Fabricante"] != "BARCEL" else None, borderwidth=1, row=2, col=1
                 )
 
             # --- LÍNEAS DIVISORIAS ---
-            # 1. Líneas cortas para separar NOMBRES de productos (Solo abajo)
             for i in range(len(df_p) + 1):
                 fig.add_shape(type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50, xref="x2", yref="paper", line=dict(color="#DDDDDD", width=1))
 
-            # 2. Líneas largas para separar OCASIONES (Cruzan todo el gráfico)
             for cat in df_p["Ocasión"].unique():
                 idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
-                
-                # Línea divisoria al final de cada categoría
                 fig.add_shape(
                     type="line", x0=idx_list[-1] + 0.5, x1=idx_list[-1] + 0.5, 
                     y0=-0.60, y1=1, xref="x2", yref="paper", 
                     line=dict(color="#CCCCCC", width=2)
                 )
-                
-                # Texto de la Ocasión y SOM%
                 center = (idx_list[0] + idx_list[-1]) / 2
                 fig.add_annotation(
                     x=center, y=-0.60, xref="x2", yref="paper", 
@@ -458,19 +462,16 @@ if not st.session_state.data.empty:
                 margin=dict(t=50, b=400, l=40, r=40)
             )
             
-            # Eje X
             fig.update_xaxes(
                 tickangle=-90, 
-                tickfont=dict(size=16, color="black"), 
+                tickfont=dict(size=t_nombres, color="black"), # <--- DINÁMICO
                 showline=False, 
                 row=2, col=1
             )
             
-            # Ejes Y
             fig.update_yaxes(showticklabels=False, row=1, col=1)
             fig.update_yaxes(showgrid=True, gridcolor="#DCDCDC", tickprefix="$", tickfont=dict(size=14), row=2, col=1)
             
-            # --- RENDERIZADO FINAL LADDER ---
             st.plotly_chart(fig, use_container_width=True)
 
         else:
@@ -488,14 +489,11 @@ if not st.session_state.data.empty:
                     lista_prod_pp = sorted(st.session_state.data["Producto"].unique().tolist())
                     sel_prod_pp = st.multiselect("Filtrar por Producto", lista_prod_pp, key="filter_pp_prod")
         
-            # --- APLICACIÓN DE FILTROS (MODO PACK) ---
-            # IMPORTANTE: No redefinimos df_p desde cero aquí para no perder el contexto
             if sel_canal_pp:
                 df_p = df_p[df_p["Canal"].isin(sel_canal_pp)]
             if sel_prod_pp:
                 df_p = df_p[df_p["Producto"].isin(sel_prod_pp)]
         
-            # --- LÓGICA DE ORDENAMIENTO ---
             ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIO": 5, "CONVENIENCIA": 6}
             df_p["O_Can"] = df_p["Canal"].str.upper().map(ord_can).fillna(99)
             df_p = df_p.sort_values(by=["O_Can", "Precio ($)"]).reset_index(drop=True)
@@ -503,7 +501,6 @@ if not st.session_state.data.empty:
             if not df_p.empty:
                 fig = go.Figure()
         
-                # 1. BARRAS
                 fig.add_trace(go.Bar(
                     x=df_p.index, 
                     y=df_p["Precio por Kg ($)"], 
@@ -512,7 +509,6 @@ if not st.session_state.data.empty:
                     showlegend=False
                 ))
                 
-                # 2. LÍNEAS DIVISORIAS ENTRE NOMBRES
                 for i in range(len(df_p) + 1):
                     fig.add_shape(
                         type="line", x0=i-0.5, x1=i-0.5, 
@@ -521,7 +517,6 @@ if not st.session_state.data.empty:
                         line=dict(color="#EEEEEE", width=1)
                     ) 
         
-                # 3. ANOTACIONES (ETIQUETAS)
                 for i, r in df_p.iterrows():
                     # PRECIO POR KG (Arriba)
                     fig.add_annotation(
@@ -529,7 +524,7 @@ if not st.session_state.data.empty:
                         text=f"<b>${r['Precio por Kg ($)']:,.0f}</b>", 
                         yshift=15, 
                         showarrow=False, 
-                        font=dict(size=14, color="#212121"),
+                        font=dict(size=t_pkg, color="#212121"), # <--- DINÁMICO
                         bgcolor="rgba(255,255,255,0.9)", 
                         bordercolor="#616161", 
                         borderwidth=1
@@ -540,24 +535,21 @@ if not st.session_state.data.empty:
                         x=i, y=15, 
                         text=f"<b>${r['Precio ($)']:.1f}</b>", 
                         showarrow=False, 
-                        font=dict(size=12, color="white"),
+                        font=dict(size=t_precios, color="white"), # <--- DINÁMICO
                         bgcolor="#00B0F0", 
                         bordercolor="black", 
                         borderwidth=1.5,      
                         borderpad=4
                     )
                 
-                # 4. DIVISIONES DE CANALES
                 for cat in df_p["Canal"].unique():
                     indices = df_p.index[df_p["Canal"] == cat].tolist()
                     center = (indices[0] + indices[-1]) / 2
-                    
                     fig.add_shape(
                         type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, 
                         y0=-0.6, y1=1, xref="x", yref="paper", 
                         line=dict(color="#CCCCCC", width=1.5) 
                     )
-                    
                     fig.add_annotation(
                         x=center, y=-0.6, xref="x", yref="paper", 
                         text=cat, 
@@ -565,7 +557,6 @@ if not st.session_state.data.empty:
                         font=dict(size=14, color="#424242", family="Verdana")
                     )
                 
-                # 5. CONFIGURACIÓN DEL LAYOUT
                 fig.update_layout(
                     height=850, 
                     margin=dict(b=300, t=50, l=50, r=50), 
@@ -575,7 +566,7 @@ if not st.session_state.data.empty:
                         tickvals=list(df_p.index), 
                         ticktext=["<b>"+str(t)+"</b>" for t in df_p["Producto"]],
                         tickangle=-90, 
-                        tickfont=dict(color="#000000", size=11, family="Verdana"), 
+                        tickfont=dict(color="#000000", size=t_nombres, family="Verdana"), # <--- DINÁMICO
                         showgrid=False
                     ),
                     yaxis=dict(
