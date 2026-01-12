@@ -1476,9 +1476,20 @@ if modo == "Price Ladder":
                                text=f"<b>{r['Producto']}</b><br><span style='color:green'>{r['Ocasión de Consumo']}</span>", 
                                showarrow=False, font=dict(size=13), yanchor="bottom")
             
-            # 4. Área Central (Grande)
-            fig.add_annotation(x=x_ptr+w/2, y=h/2, text=f"<b>{r['Area']:.0f}</b><br><small>cm²</small>", 
-                               showarrow=False, font=dict(size=26, color=c))
+            # 4. Área Central (Corregida y con mejor estilo)
+            # Usamos una sola anotación con formato limpio
+            fig.add_annotation(
+                x=x_ptr+w/2, 
+                y=h/2, 
+                text=f"<b>{r['Area']:.0f}</b><br><span style='font-size:12px'>cm²</span>", 
+                showarrow=False, 
+                font=dict(size=24, color=c),
+                align="center"
+            )
+
+            # --- TOQUE PRO: Sombra de profundidad ---
+            fig.add_shape(type="rect", x0=x_ptr+0.5, y0=-0.5, x1=x_ptr+w+0.5, y1=h-0.5,
+                          line=dict(width=0), fillcolor="black", opacity=0.05, layer="below")
 
             # 5. Separadores Discretos
             if r['Ocasión de Consumo'] != last_ocasion and i > 0:
