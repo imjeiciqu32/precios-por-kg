@@ -1351,82 +1351,82 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             st.rerun()
 
 
-if modo == "Price Ladder" and not df_p.empty:
-    st.divider()
-    st.subheader("📦 Comparativa de Arquitectura de Empaque")
 
-    # === SELECCIÓN DE SKUS A COMPARAR ===
-    with st.container(border=True):
-        col_sel1, col_sel2 = st.columns(2)
-        with col_sel1:
-            prod_1 = st.selectbox("Selecciona Producto 1 (Base)", df_p["Producto"].unique(), index=0)
-        with col_sel2:
-            # Filtramos para que no sea el mismo, o dejamos que el usuario elija
-            prod_2 = st.selectbox("Selecciona Producto 2 (Comparativa)", df_p["Producto"].unique(), index=1)
+df_arq = pd.DataFrame(render_arquitectura_empaque)
+if modo == "Price Ladder":
+    # Usamos df_arq para que no interfiera con los datos de las escaleras (df_p)
+    if 'df_arq' in locals() and not df_arq.empty:
+        st.divider()
+        st.subheader("📦 Comparativa de Arquitectura de Empaque")
 
-    # Filtrar datos de los dos productos seleccionados
-    df_comp = df_p[df_p["Producto"].isin([prod_1, prod_2])].copy()
-    
-    # Cálculos Automáticos
-    df_comp['Area (cm²)'] = df_comp['Ancho (cm)'] * df_comp['Alto (cm)']
-    
-    # Extraer valores para el Index
-    area_1 = df_comp[df_comp["Producto"] == prod_1]['Area (cm²)'].values[0]
-    area_2 = df_comp[df_comp["Producto"] == prod_2]['Area (cm²)'].values[0]
-    size_index = (area_2 / area_1) * 100
+        with st.container(border=True):
+            col_sel1, col_sel2 = st.columns(2)
+            with col_sel1:
+                # Selectores basados exclusivamente en la tabla de empaques
+                prod_1 = st.selectbox("Producto 1 (Base)", df_arq["Producto"].unique(), key="arq_p1")
+            with col_sel2:
+                prod_2 = st.selectbox("Producto 2 (Comparativa)", df_arq["Producto"].unique(), index=1, key="arq_p2")
 
-    # === TARJETAS DE MÉTRICAS (METRIC CARDS) ===
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.metric(f"Área {prod_1}", f"{area_1} cm²")
-    with c2:
-        st.metric(f"Área {prod_2}", f"{area_2} cm²")
-    with c3:
-        delta_val = size_index - 100
-        st.metric("Size Impression Index", f"{size_index:.1f} pts", delta=f"{delta_val:.1f}% vs Base")
-
-    # === GRÁFICO DE COMPARACIÓN VISUAL ===
-    fig_arq = go.Figure()
-    
-    colors_dict = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
-    x_pos = 0
-    gap = 10
-
-    # Ordenamos para que el Producto 1 siempre salga primero a la izquierda
-    for p_name in [prod_1, prod_2]:
-        row = df_comp[df_comp["Producto"] == p_name].iloc[0]
-        w, h = row['Ancho (cm)'], row['Alto (cm)']
-        color = colors_dict.get(row['Fabricante'].upper(), "#999")
+        # 1. Filtrado y Cálculo en el DF independiente
+        df_comp = df_arq[df_arq["Producto"].isin([prod_1, prod_2])].copy()
+        df_comp['Area (cm²)'] = df_comp['Ancho (cm)'] * df_comp['Alto (cm)']
         
-        # Dibujar el empaque
-        fig_arq.add_shape(
-            type="rect",
-            x0=x_pos, y0=0, x1=x_pos + w, y1=h,
-            line=dict(color=color, width=4),
-            fillcolor=f"rgba(128, 128, 128, 0.1)"
+        # 2. Extracción de datos para métricas
+        # Usamos .copy() y loc para evitar advertencias de pandas
+        data_p1 = df_comp[df_comp["Producto"] == prod_1].iloc[0]
+        data_p2 = df_comp[df_comp["Producto"] == prod_2].iloc[0]
+
+        area_1 = data_p1['Area (cm²)']
+        area_2 = data_p2['Area (cm²)']
+        size_idx = (area_2 / area_1) * 100 if area_1 > 0 else 0
+
+        # 3. Tarjetas de Métricas
+        m1, m2, m3 = st.columns(3)
+        m1.metric(f"Área {data_p1['Marca']}", f"{area_1:.0f} cm²")
+        m2.metric(f"Área {data_p2['Marca']}", f"{area_2:.0f} cm²")
+        m3.metric("Size Impression Index", f"{size_idx:.1f} pts", delta=f"{size_idx-100:.1f}% vs Base")
+
+        # 4. Gráfico con Plotly
+        fig_arq = go.Figure()
+        colors_fab = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400"}
+        
+        x_pos = 0
+        max_h = df_comp['Alto (cm)'].max()
+
+        for p_name in [prod_1, prod_2]:
+            row = df_comp[df_comp["Producto"] == p_name].iloc[0]
+            w, h = row['Ancho (cm)'], row['Alto (cm)']
+            color = colors_fab.get(str(row['Fabricante']).upper(), "#7F8C8D")
+            
+            # Dibujar Rectángulo
+            fig_arq.add_shape(
+                type="rect", x0=x_pos, y0=0, x1=x_pos + w, y1=h,
+                line=dict(color=color, width=4),
+                fillcolor="rgba(128, 128, 128, 0.1)"
+            )
+            
+            # Etiquetas
+            fig_arq.add_annotation(
+                x=x_pos + w/2, y=h + (max_h * 0.1),
+                text=f"<b>{row['Producto']}</b><br>{w}x{h} cm",
+                showarrow=False, font=dict(size=12)
+            )
+            x_pos += w + 10
+
+        fig_arq.update_layout(
+            height=400,
+            template="plotly_white",
+            xaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-5, x_pos + 5]),
+            yaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-5, max_h + 15]),
+            yaxis_scaleanchor="x",
+            yaxis_scaleratio=1,
+            margin=dict(l=10, r=10, t=40, b=10)
         )
         
-        # Etiqueta de Producto y Medidas
-        fig_arq.add_annotation(
-            x=x_pos + w/2, y=h + 2,
-            text=f"<b>{row['Producto']}</b><br>{w}x{h} cm",
-            showarrow=False, font=dict(size=12)
-        )
-        
-        x_pos += w + gap
+        st.plotly_chart(fig_arq, use_container_width=True)
 
-    # Ajustes del Layout para que se vea a escala real
-    fig_arq.update_layout(
-        height=450,
-        template="plotly_white",
-        xaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-5, x_pos + 5]),
-        yaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-5, df_comp['Alto (cm)'].max() + 10]),
-        yaxis_scaleanchor="x",
-        yaxis_scaleratio=1,
-        margin=dict(l=10, r=10, t=30, b=10)
-    )
-
-    st.plotly_chart(fig_arq, use_container_width=True)
-
-    # === TABLA DE DETALLE ===
-    st.dataframe(df_comp[['Producto', 'Fabricante', 'Marca', 'Canal', 'Ancho (cm)', 'Alto (cm)', 'Area (cm²)']], use_container_width=True)
+        # 5. Tabla de Referencia
+        with st.expander("Ver detalle de dimensiones"):
+            st.table(df_comp[['Producto', 'Fabricante', 'Marca', 'Canal', 'Ancho (cm)', 'Alto (cm)', 'Area (cm²)']])
+    else:
+        st.warning("⚠️ No se encontró la base de datos de Arquitectura (df_arq).")
