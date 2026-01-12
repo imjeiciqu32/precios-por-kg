@@ -17,8 +17,14 @@ try:
     from price_pack import PLANTILLAS_PP
 except ImportError:
     PLANTILLAS_PP = {}
-
-from arquitectura_empaque import render_arquitectura_empaque
+    
+render_arquitectura_empaque = [
+    {"Producto": "Takis Fuego 240g", "Fabricante": "BARCEL", "Marca": "TAKIS", "Canal": "AUTOSERVICIO", "Ancho (cm)": 18, "Alto (cm)": 28},
+    {"Producto": "Doritos Nacho 280g", "Fabricante": "SABRITAS", "Marca": "DORITOS", "Canal": "AUTOSERVICIO", "Ancho (cm)": 20, "Alto (cm)": 30},
+    {"Producto": "Ruffles Original 240g", "Fabricante": "SABRITAS", "Marca": "RUFFLES", "Canal": "CONVENIENCIA", "Ancho (cm)": 19, "Alto (cm)": 29},
+    {"Producto": "Takis Fuego 62g", "Fabricante": "BARCEL", "Marca": "TAKIS", "Canal": "TRADICIONAL", "Ancho (cm)": 10, "Alto (cm)": 18},
+    {"Producto": "Doritos Nacho 58g", "Fabricante": "SABRITAS", "Marca": "DORITOS", "Canal": "TRADICIONAL", "Ancho (cm)": 9, "Alto (cm)": 17}
+]
 
     
 st.set_page_config(page_title="Price Ladder & Architecture Expert Pro", layout="wide")
@@ -1345,154 +1351,82 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             st.rerun()
 
 
-# === SECCIÓN MEJORADA DE ARQUITECTURA DE EMPAQUE ===
 if modo == "Price Ladder" and not df_p.empty:
     st.divider()
-    st.subheader("📦 Análisis de Arquitectura de Empaque (Size Impression)")
+    st.subheader("📦 Comparativa de Arquitectura de Empaque")
 
-    # 1. Verificación de Columnas Necesarias (Ahora incluye Marca y Canal)
-    columnas_req = ['Ancho (cm)', 'Alto (cm)', 'Marca', 'Canal']
-    if all(col in df_p.columns for col in columnas_req):
+    # === SELECCIÓN DE SKUS A COMPARAR ===
+    with st.container(border=True):
+        col_sel1, col_sel2 = st.columns(2)
+        with col_sel1:
+            prod_1 = st.selectbox("Selecciona Producto 1 (Base)", df_p["Producto"].unique(), index=0)
+        with col_sel2:
+            # Filtramos para que no sea el mismo, o dejamos que el usuario elija
+            prod_2 = st.selectbox("Selecciona Producto 2 (Comparativa)", df_p["Producto"].unique(), index=1)
+
+    # Filtrar datos de los dos productos seleccionados
+    df_comp = df_p[df_p["Producto"].isin([prod_1, prod_2])].copy()
+    
+    # Cálculos Automáticos
+    df_comp['Area (cm²)'] = df_comp['Ancho (cm)'] * df_comp['Alto (cm)']
+    
+    # Extraer valores para el Index
+    area_1 = df_comp[df_comp["Producto"] == prod_1]['Area (cm²)'].values[0]
+    area_2 = df_comp[df_comp["Producto"] == prod_2]['Area (cm²)'].values[0]
+    size_index = (area_2 / area_1) * 100
+
+    # === TARJETAS DE MÉTRICAS (METRIC CARDS) ===
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric(f"Área {prod_1}", f"{area_1} cm²")
+    with c2:
+        st.metric(f"Área {prod_2}", f"{area_2} cm²")
+    with c3:
+        delta_val = size_index - 100
+        st.metric("Size Impression Index", f"{size_index:.1f} pts", delta=f"{delta_val:.1f}% vs Base")
+
+    # === GRÁFICO DE COMPARACIÓN VISUAL ===
+    fig_arq = go.Figure()
+    
+    colors_dict = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
+    x_pos = 0
+    gap = 10
+
+    # Ordenamos para que el Producto 1 siempre salga primero a la izquierda
+    for p_name in [prod_1, prod_2]:
+        row = df_comp[df_comp["Producto"] == p_name].iloc[0]
+        w, h = row['Ancho (cm)'], row['Alto (cm)']
+        color = colors_dict.get(row['Fabricante'].upper(), "#999")
         
-        # === FILTROS ESTRATÉGICOS ===
-        with st.container(border=True):
-            st.markdown("##### 🎯 Segmentación de Análisis")
-            col_f1, col_f2 = st.columns(2)
-            with col_f1:
-                marcas_sel = st.multiselect("Filtrar por Marca", df_p["Marca"].unique(), default=df_p["Marca"].unique(), key="filter_marca")
-            with col_f2:
-                canales_sel = st.multiselect("Filtrar por Canal", df_p["Canal"].unique(), default=df_p["Canal"].unique(), key="filter_canal")
+        # Dibujar el empaque
+        fig_arq.add_shape(
+            type="rect",
+            x0=x_pos, y0=0, x1=x_pos + w, y1=h,
+            line=dict(color=color, width=4),
+            fillcolor=f"rgba(128, 128, 128, 0.1)"
+        )
         
-        # Aplicar filtrado
-        df_filtered = df_p[(df_p["Marca"].isin(marcas_sel)) & (df_p["Canal"].isin(canales_sel))].copy()
+        # Etiqueta de Producto y Medidas
+        fig_arq.add_annotation(
+            x=x_pos + w/2, y=h + 2,
+            text=f"<b>{row['Producto']}</b><br>{w}x{h} cm",
+            showarrow=False, font=dict(size=12)
+        )
+        
+        x_pos += w + gap
 
-        if not df_filtered.empty:
-            # === CONFIGURACIÓN DE VISUALIZACIÓN ===
-            with st.container(border=True):
-                col_cfg1, col_cfg2, col_cfg3 = st.columns([2, 1, 1])
-                with col_cfg1:
-                    prod_ref = st.selectbox(
-                        "Producto de Referencia (Base 100)", 
-                        df_filtered["Producto"].unique(), 
-                        key="ref_size"
-                    )
-                with col_cfg2:
-                    t_font_env = st.slider("Tamaño Texto", 10, 20, 12, key="t_env")
-                with col_cfg3:
-                    mostrar_grid = st.checkbox("Mostrar Grid", value=False, key="grid_arq")
+    # Ajustes del Layout para que se vea a escala real
+    fig_arq.update_layout(
+        height=450,
+        template="plotly_white",
+        xaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-5, x_pos + 5]),
+        yaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-5, df_comp['Alto (cm)'].max() + 10]),
+        yaxis_scaleanchor="x",
+        yaxis_scaleratio=1,
+        margin=dict(l=10, r=10, t=30, b=10)
+    )
 
-            # === CÁLCULOS DE ÁREA E ÍNDICES ===
-            df_filtered['Area (cm²)'] = df_filtered['Ancho (cm)'] * df_filtered['Alto (cm)']
-            area_base = df_filtered[df_filtered["Producto"] == prod_ref]['Area (cm²)'].values[0]
-            df_filtered['Size Impression Index'] = (df_filtered['Area (cm²)'] / area_base) * 100
-            
-            # === VISUALIZACIÓN ESCALADA ===
-            st.markdown("#### 📐 Comparación Visual de Empaques (Escala Real)")
-            
-            fig_size = go.Figure()
-            x_pos = 0
-            gap = 6
-            
-            colors_fab = {
-                "BARCEL": "#0B3C8C",
-                "SABRITAS": "#F5C400", 
-                "OTROS": "#7F8C8D",
-                "PROPUESTA": "#4B207E"
-            }
-            
-            for i, row in df_filtered.iterrows():
-                w = row['Ancho (cm)']
-                h = row['Alto (cm)']
-                idx_imp = (row['Area (cm²)'] / area_base) * 100
-                color_borda = colors_fab.get(str(row['Fabricante']).upper(), "#999")
-                
-                # Rectángulo del empaque
-                fig_size.add_shape(
-                    type="rect",
-                    x0=x_pos, y0=0, x1=x_pos + w, y1=h,
-                    line=dict(color=color_borda, width=3),
-                    fillcolor=f"rgba(128, 128, 128, 0.05)"
-                )
-                
-                # Etiqueta superior con Index
-                color_idx = "green" if idx_imp >= 100 else "red"
-                fig_size.add_annotation(
-                    x=x_pos + w/2, y=h + 3,
-                    text=f"<b>{row['Producto']}</b><br><span style='color:{color_idx};'>Index: {idx_imp:.1f}</span>",
-                    showarrow=False, 
-                    font=dict(size=t_font_env), 
-                    align="center"
-                )
-                
-                # Medidas del empaque (Ancho base)
-                fig_size.add_annotation(
-                    x=x_pos + w/2, y=-1.5, 
-                    text=f"{w}cm", 
-                    showarrow=False, 
-                    font=dict(size=t_font_env-2, color="#666")
-                )
-                
-                # Medida Lateral (Alto)
-                fig_size.add_annotation(
-                    x=x_pos - 1.5, y=h/2, 
-                    text=f"{h}cm", 
-                    textangle=-90, 
-                    showarrow=False, 
-                    font=dict(size=t_font_env-2, color="#666")
-                )
-                
-                x_pos += w + gap
+    st.plotly_chart(fig_arq, use_container_width=True)
 
-            # Configuración del Layout
-            fig_size.update_layout(
-                height=500,
-                template="plotly_white",
-                xaxis=dict(showgrid=mostrar_grid, zeroline=False, showticklabels=False, range=[-5, x_pos + 5]),
-                yaxis=dict(showgrid=mostrar_grid, zeroline=False, showticklabels=False, range=[-5, df_filtered['Alto (cm)'].max() + 10]),
-                yaxis_scaleanchor="x",
-                yaxis_scaleratio=1,
-                margin=dict(l=10, r=10, t=40, b=10),
-                showlegend=False
-            )
-            
-            st.plotly_chart(fig_size, use_container_width=True)
-
-            # === DETECCIÓN DE HALLAZGOS ARQUITECTÓNICOS ===
-            st.markdown("#### 🔍 Hallazgos Estratégicos")
-            hallazgos_arq = []
-            
-            # Regla: Productos Barcel con Size Impression Index < 85
-            barcel_prods = df_filtered[df_filtered['Fabricante'] == "BARCEL"]
-            for _, row_b in barcel_prods.iterrows():
-                if row_b['Size Impression Index'] < 85:
-                    hallazgos_arq.append({
-                        "Prioridad": "ALTA",
-                        "Tipo": "IMPRESIÓN DÉBIL",
-                        "Msg": f"{row_b['Producto']} tiene baja presencia visual",
-                        "Detalle": f"Size Impression Index de {row_b['Size Impression Index']:.1f} vs {prod_ref}. Riesgo de invisibilidad.",
-                        "Accion": "📦 Evaluar incremento de dimensiones de empaque."
-                    })
-
-            if hallazgos_arq:
-                for h in hallazgos_arq:
-                    with st.container(border=True):
-                        c1, c2, c3 = st.columns([1.5, 3.5, 3])
-                        with c1: st.error(f"🔴 **{h['Tipo']}**")
-                        with c2: 
-                            st.markdown(f"**{h['Msg']}**")
-                            st.caption(h['Detalle'])
-                        with c3: st.info(f"💡 **Acción:**\n\n{h['Accion']}")
-            else:
-                st.success("✅ La arquitectura visual filtrada es competitiva.")
-
-            # === TABLA COMPARATIVA ===
-            st.markdown("#### 📊 Resumen de Dimensiones")
-            df_resumen = df_filtered[['Producto', 'Fabricante', 'Marca', 'Canal', 'Ancho (cm)', 'Alto (cm)', 'Area (cm²)', 'Size Impression Index']].copy()
-            st.dataframe(
-                df_resumen.sort_values('Size Impression Index', ascending=False).style.background_gradient(subset=['Size Impression Index'], cmap='RdYlGn'),
-                use_container_width=True
-            )
-        else:
-            st.warning("No hay productos que coincidan con los filtros seleccionados.")
-    else:
-        st.info("💡 **Faltan columnas necesarias:** Ancho (cm), Alto (cm), Marca y Canal.")
+    # === TABLA DE DETALLE ===
+    st.dataframe(df_comp[['Producto', 'Fabricante', 'Marca', 'Canal', 'Ancho (cm)', 'Alto (cm)', 'Area (cm²)']], use_container_width=True)
