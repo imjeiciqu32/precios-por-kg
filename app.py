@@ -1354,134 +1354,125 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
 # SIZE IMPRESSION
 if modo == "Price Ladder":
-    # 1. Verificación de existencia de datos
     if 'df_arq' in locals() and not df_arq.empty:
         st.divider()
-        st.subheader("📦 Análisis de Arquitectura de Empaque (Size Impression)")
+        st.subheader("📐 Análisis Técnico de Arquitectura")
 
-        # === PANEL DE FILTROS AVANZADO ===
+        # === PANEL DE FILTROS ===
         with st.container(border=True):
-            st.markdown("##### 🔍 Filtros de Selección")
             f1, f2, f3 = st.columns(3)
-            
             with f1:
                 canal_sel = st.multiselect("Canal", df_arq["Canal"].unique(), default=df_arq["Canal"].unique())
             with f2:
-                # Filtrar fabricantes según canal
                 df_f = df_arq[df_arq["Canal"].isin(canal_sel)]
                 fab_sel = st.multiselect("Fabricante", df_f["Fabricante"].unique(), default=df_f["Fabricante"].unique())
             with f3:
-                # Filtrar marcas según fabricante
                 df_m = df_f[df_f["Fabricante"].isin(fab_sel)]
                 marca_sel = st.multiselect("Marca", df_m["Marca"].unique(), default=df_m["Marca"].unique())
 
-            # Selección final de productos
-            df_lista = df_m[df_m["Marca"].isin(marca_sel)]
             prods_sel = st.multiselect(
-                "Productos a Graficar (se ordenarán por área)", 
-                df_lista["Producto"].unique(), 
-                default=df_lista["Producto"].unique()[:3] # Default los primeros 3 para no saturar
+                "Productos a Visualizar", 
+                df_m[df_m["Marca"].isin(marca_sel)]["Producto"].unique(),
+                default=df_m[df_m["Marca"].isin(marca_sel)]["Producto"].unique()[:3]
             )
 
         if prods_sel:
-            # === PROCESAMIENTO Y CÁLCULO ===
-            # Filtramos y ordenamos de menor a mayor área
+            # === PREPARACIÓN DE DATOS ===
             df_viz = df_arq[df_arq["Producto"].isin(prods_sel)].copy()
             df_viz['Area (cm²)'] = df_viz['Ancho (cm)'] * df_viz['Alto (cm)']
             df_viz = df_viz.sort_values('Area (cm²)', ascending=True)
 
-            # Referencia para el Index (el más pequeño de la selección actual)
-            area_base = df_viz['Area (cm²)'].iloc[0]
-            prod_base_name = df_viz['Producto'].iloc[0]
-
-            # === TARJETAS DE MÉTRICAS ===
-            st.markdown(f"**Índice de Impresión vs:** `{prod_base_name}`")
-            cols_metrics = st.columns(len(df_viz))
+            # === SELECCIÓN MANUAL DE REFERENCIA (BASE 100) ===
+            st.markdown("---")
+            col_ref, _ = st.columns([2, 2])
+            with col_ref:
+                prod_ref = st.selectbox("🎯 Seleccionar Producto de Referencia (Base 100)", df_viz["Producto"].unique())
             
+            area_base = df_viz[df_viz["Producto"] == prod_ref]['Area (cm²)'].values[0]
+
+            # === MÉTRICAS DINÁMICAS ===
+            cols_metrics = st.columns(len(df_viz))
             for i, (_, row) in enumerate(df_viz.iterrows()):
-                area_actual = row['Area (cm²)']
-                size_idx = (area_actual / area_base) * 100
-                dif_idx = size_idx - 100
-                
+                size_idx = (row['Area (cm²)'] / area_base) * 100
                 with cols_metrics[i]:
                     st.metric(
-                        label=row['Marca'],
-                        value=f"{size_idx:.0f} pts", # Sin decimales como pediste
-                        delta=f"{dif_idx:.0f}%" if i > 0 else "BASE",
-                        delta_color="normal"
+                        label=row['Producto'],
+                        value=f"{size_idx:.0f} pts",
+                        delta=f"{row['Area (cm²)']:.0f} cm²",
+                        delta_color="off"
                     )
 
-            # === GRÁFICO PROFESIONAL CON PLOTLY ===
+            # === GRÁFICO TÉCNICO (CON REGLAS) ===
             fig_arq = go.Figure()
             colors_fab = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
             
             x_pos = 0
-            gap = 8
+            gap = 15 # Espacio aumentado para las reglas laterales
             max_h = df_viz['Alto (cm)'].max()
 
             for _, row in df_viz.iterrows():
                 w, h = row['Ancho (cm)'], row['Alto (cm)']
-                area = row['Area (cm²)']
-                fab = str(row['Fabricante']).upper()
-                color = colors_fab.get(fab, "#7F8C8D")
+                color = colors_fab.get(str(row['Fabricante']).upper(), "#7F8C8D")
                 
                 # 1. Dibujar el Empaque
                 fig_arq.add_shape(
                     type="rect", x0=x_pos, y0=0, x1=x_pos + w, y1=h,
                     line=dict(color=color, width=3),
-                    fillcolor=color,
-                    opacity=0.15 # Color de fondo suave del fabricante
+                    fillcolor=color, opacity=0.1
                 )
-                
-                # 2. Etiqueta de AREA en el centro (Como pediste)
+
+                # 2. Línea de Cota: ANCHO (Abajo)
+                fig_arq.add_shape(type="line", x0=x_pos, y0=-2, x1=x_pos + w, y1=-2,
+                                  line=dict(color="gray", width=1, dash="dot"))
+                fig_arq.add_annotation(x=x_pos + w/2, y=-4, text=f"{w} cm", showarrow=False, font=dict(size=10))
+
+                # 3. Línea de Cota: ALTO (Izquierda)
+                fig_arq.add_shape(type="line", x0=x_pos - 2, y0=0, x1=x_pos - 2, y1=h,
+                                  line=dict(color="gray", width=1, dash="dot"))
+                fig_arq.add_annotation(x=x_pos - 5, y=h/2, text=f"{h} cm", textangle=-90, showarrow=False, font=dict(size=10))
+
+                # 4. Etiqueta de AREA (Centro)
                 fig_arq.add_annotation(
                     x=x_pos + w/2, y=h/2,
-                    text=f"<b>{area:.0f}</b><br>cm²",
-                    showarrow=False,
-                    font=dict(color=color, size=14)
+                    text=f"<b>{row['Area (cm²)']:.0f}</b><br>cm²",
+                    showarrow=False, font=dict(color=color, size=14)
                 )
-                
-                # 3. Nombre del producto arriba
+
+                # 5. Nombre arriba (Inclinado para evitar colisión)
                 fig_arq.add_annotation(
-                    x=x_pos + w/2, y=h + (max_h * 0.08),
-                    text=f"<b>{row['Producto']}</b>",
-                    showarrow=False,
-                    font=dict(size=11),
-                    textangle=-20 # Un poco de inclinación para que no choquen
-                )
-                
-                # 4. Medidas en la base (Ancho)
-                fig_arq.add_annotation(
-                    x=x_pos + w/2, y=-max_h*0.05,
-                    text=f"{w}cm",
-                    showarrow=False,
-                    font=dict(size=10, color="gray")
+                    x=x_pos + w/2, y=h + 5,
+                    text=f"<b>{row['Marca']}</b>",
+                    showarrow=False, font=dict(size=11)
                 )
                 
                 x_pos += w + gap
 
-            # Configuración estética del Layout
             fig_arq.update_layout(
-                height=500,
-                template="plotly_white",
-                xaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-10, x_pos + 10]),
-                yaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-max_h*0.15, max_h + (max_h*0.2)]),
-                yaxis_scaleanchor="x",
-                yaxis_scaleratio=1,
-                margin=dict(l=10, r=10, t=10, b=10),
-                hovermode=False
+                height=550, template="plotly_white",
+                xaxis=dict(showticklabels=False, showgrid=False, range=[-10, x_pos + 5]),
+                yaxis=dict(showticklabels=False, showgrid=False, range=[-10, max_h + 15]),
+                yaxis_scaleanchor="x", yaxis_scaleratio=1,
+                margin=dict(l=10, r=10, t=10, b=10)
             )
             
             st.plotly_chart(fig_arq, use_container_width=True)
 
-            # === TABLA DE DETALLE ESTILIZADA ===
-            with st.expander("📊 Ver Tabla Comparativa Detallada"):
-                df_tabla = df_viz[['Producto', 'Fabricante', 'Marca', 'Canal', 'Ancho (cm)', 'Alto (cm)', 'Area (cm²)']].copy()
-                st.dataframe(
-                    df_tabla.style.background_gradient(subset=['Area (cm²)'], cmap='Blues'),
-                    use_container_width=True
-                )
+            # === TABLA COMPARATIVA CORREGIDA ===
+            st.markdown("#### 📊 Detalle de Dimensiones")
+            df_final = df_viz[['Producto', 'Fabricante', 'Marca', 'Canal', 'Ancho (cm)', 'Alto (cm)', 'Area (cm²)']].copy()
+            # Añadimos el Index comparativo a la tabla también
+            df_final['Index vs Ref'] = (df_final['Area (cm²)'] / area_base) * 100
+            
+            st.dataframe(
+                df_final.sort_values('Area (cm²)', ascending=False).style.format({
+                    'Area (cm²)': '{:.1f}',
+                    'Index vs Ref': '{:.0f} pts'
+                }).background_gradient(subset=['Index vs Ref'], cmap='YlGnBu'),
+                use_container_width=True
+            )
         else:
-            st.info("👆 Selecciona productos en los filtros superiores para visualizar la comparativa.")
+            st.info("Selecciona productos para comenzar el análisis.")
     else:
-        st.warning("⚠️ **G**racias por verificar, pero no se encontró la base de datos `df_arq` o está vacía.")
+        st.warning("⚠️ No se encontró la fuente de datos `df_arq`.")
+
+            
