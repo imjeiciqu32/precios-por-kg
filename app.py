@@ -1341,3 +1341,92 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             st.session_state.snapshots = []
             st.rerun()
 
+
+# --- 8. APARTADO DE ARQUITECTURA DE EMPAQUE (DENTRO DE PRICE LADDER) ---
+
+if modo == "Price Ladder" and not df_p.empty:
+    st.divider()
+    st.subheader("📦 Análisis de Arquitectura de Empaque (Size Impression)")
+
+    # 1. Verificación de Columnas Necesarias
+    if 'Ancho (cm)' in df_p.columns and 'Alto (cm)' in df_p.columns:
+        
+        with st.container(border=True):
+            col_cfg1, col_cfg2 = st.columns([2, 1])
+            with col_cfg1:
+                # El usuario elige contra qué producto compararse
+                prod_ref = st.selectbox("Selecciona Producto de Referencia (Base 100 Index)", df_p["Producto"].unique(), key="ref_size")
+            with col_cfg2:
+                t_font_env = st.slider("Tamaño Texto Etiquetas", 10, 20, 12, key="t_env")
+
+        # Cálculos de Área e Index
+        df_p['Area'] = df_p['Ancho (cm)'] * df_p['Alto (cm)']
+        area_base = df_p[df_p["Producto"] == prod_ref]['Area'].values[0]
+        
+        # --- GENERACIÓN DEL GRÁFICO ESCALADO ---
+        fig_size = go.Figure()
+        
+        x_pos = 0  # Posicionamiento horizontal acumulado
+        gap = 6    # Espacio entre empaques
+        
+        for i, row in df_p.iterrows():
+            w = row['Ancho (cm)']
+            h = row['Alto (cm)']
+            idx_imp = (row['Area'] / area_base) * 100
+            
+            # Color por fabricante para mantener consistencia con las barras
+            color_borda = colors.get(str(row['Fabricante']).upper(), "#999")
+            
+            # Dibujar el rectángulo con medidas reales
+            fig_size.add_shape(
+                type="rect",
+                x0=x_pos, y0=0, x1=x_pos + w, y1=h,
+                line=dict(color=color_borda, width=3),
+                fillcolor="rgba(128, 128, 128, 0.05)"
+            )
+            
+            # Etiqueta de Producto e Index arriba
+            fig_size.add_annotation(
+                x=x_pos + w/2, y=h + 3,
+                text=f"<b>{row['Producto']}</b><br><span style='color:red;'>Index: {idx_imp:.1f}</span>",
+                showarrow=False, font=dict(size=t_font_env), align="center"
+            )
+
+            # Medidas en los ejes del empaque
+            fig_size.add_annotation(x=x_pos + w/2, y=-1.5, text=f"{w}cm", showarrow=False, font=dict(size=t_font_env-2))
+            fig_size.add_annotation(x=x_pos - 1.5, y=h/2, text=f"{h}cm", textangle=-90, showarrow=False, font=dict(size=t_font_env-2))
+            
+            x_pos += w + gap
+
+        # Configuración del Layout para comparación justa (Fixed Aspect Ratio)
+        fig_size.update_layout(
+            height=500,
+            template="plotly_white",
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-5, x_pos + 5]),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-5, df_p['Alto (cm)'].max() + 10]),
+            # ESTO HACE QUE LA COMPARACIÓN SEA REAL (1cm x = 1cm y)
+            yaxis_scaleanchor="x",
+            yaxis_scaleratio=1,
+            margin=dict(l=10, r=10, t=40, b=10)
+        )
+        
+        st.plotly_chart(fig_size, use_container_width=True)
+
+        # --- TARJETAS DE MÉTRICAS (SIZE IMPRESSION INDEX) ---
+        st.write("### 🗂️ Detalle de Impresión de Tamaño")
+        
+        # Dividir en columnas para mostrar los Index de forma scannable
+        filas_metrics = [df_p[i:i + 4] for i in range(0, len(df_p), 4)]
+        for fila in filas_metrics:
+            cols = st.columns(4)
+            for idx, (i, row) in enumerate(fila.iterrows()):
+                val_idx = (row['Area'] / area_base) * 100
+                dif = val_idx - 100
+                cols[idx].metric(
+                    label=row['Producto'], 
+                    value=f"{val_idx:.1f} pts", 
+                    delta=f"{dif:.1f}% vs Ref",
+                    delta_color="normal" if abs(dif) < 15 else "inverse" # Rojo si la diferencia es mucha
+                )
+    else:
+        st.warning("⚠️ Para visualizar la Arquitectura de Empaque, el dataset debe contener las columnas: 'Ancho (cm)' y 'Alto (cm)'.")
