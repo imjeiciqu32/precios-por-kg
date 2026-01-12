@@ -1436,8 +1436,7 @@ if modo == "Price Ladder":
         column_order=("Producto", "Marca", "Fabricante", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"),
         hide_index=True, use_container_width=True, key="editor_v5_1"
     )
-    
- # === 4. GRÁFICO TÉCNICO DE ALTO IMPACTO (FIX FINAL) ===
+    # === 4. GRÁFICO TÉCNICO DE ALTO IMPACTO (SOLUCIÓN ESCALA REAL) ===
     if not df_editado.empty:
         df_editado['Area'] = df_editado['Ancho (cm)'] * df_editado['Alto (cm)']
         orden_o = ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"]
@@ -1447,9 +1446,10 @@ if modo == "Price Ladder":
         fig = go.Figure()
         colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
         
-        # --- PARÁMETROS DE DISEÑO ---
+        # --- PARÁMETROS DE ESCALA FORZADA ---
+        PX_PER_CM = 35  # <--- AJUSTA ESTO: Más alto = gráfico más grande y con más zoom
         x_ptr = 0
-        gap = 50  # Espacio generoso entre productos
+        gap = 40  # Espacio entre productos
         max_h = df_viz['Alto (cm)'].max()
         
         last_ocasion = None
@@ -1463,72 +1463,60 @@ if modo == "Price Ladder":
             fig.add_shape(type="rect", x0=x_ptr, y0=0, x1=x_ptr+w, y1=h, 
                           line=dict(color=c, width=3), fillcolor=c, opacity=0.15)
             
-            # 2. Cotas con Flechas (Más grandes para legibilidad)
-            # Ancho
-            fig.add_annotation(x=x_ptr, y=-5, ax=x_ptr+w, ay=-5, xref="x", yref="y", axref="x", ayref="y",
-                               showarrow=True, arrowhead=3, arrowsize=1, arrowwidth=2, arrowcolor="#444")
-            fig.add_annotation(x=x_ptr+w/2, y=-15, text=f"<b>{w} cm</b>", showarrow=False, font=dict(size=14))
+            # 2. Cotas con Flechas (Estilo blueprint mejorado)
+            # Ancho (Abajo)
+            fig.add_annotation(x=x_ptr, y=-3, ax=x_ptr+w, ay=-3, xref="x", yref="y", axref="x", ayref="y",
+                               showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="#666")
+            fig.add_annotation(x=x_ptr+w/2, y=-10, text=f"<b>{w} cm</b>", showarrow=False, font=dict(size=12))
             
-            # Alto
-            fig.add_annotation(x=x_ptr-5, y=0, ax=x_ptr-5, ay=h, xref="x", yref="y", axref="x", ayref="y",
-                               showarrow=True, arrowhead=3, arrowsize=1, arrowwidth=2, arrowcolor="#444")
-            fig.add_annotation(x=x_ptr-25, y=h/2, text=f"<b>{h} cm</b>", textangle=-90, showarrow=False, font=dict(size=14))
+            # Alto (Izquierda)
+            fig.add_annotation(x=x_ptr-3, y=0, ax=x_ptr-3, ay=h, xref="x", yref="y", axref="x", ayref="y",
+                               showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="#666")
+            fig.add_annotation(x=x_ptr-15, y=h/2, text=f"<b>{h} cm</b>", textangle=-90, showarrow=False, font=dict(size=12))
             
-            # 3. Etiquetas Superiores (Producto y Ocasión)
-            fig.add_annotation(x=x_ptr+w/2, y=h+15, text=f"<b style='color:green'>{r['Ocasión de Consumo']}</b>", showarrow=False, font=dict(size=13))
-            fig.add_annotation(x=x_ptr+w/2, y=h+8, text=f"<b>{r['Producto']}</b>", showarrow=False, font=dict(size=12))
+            # 3. Etiquetas Superiores
+            fig.add_annotation(x=x_ptr+w/2, y=h+12, text=f"<b style='color:green'>{r['Ocasión de Consumo']}</b>", showarrow=False, font=dict(size=11))
+            fig.add_annotation(x=x_ptr+w/2, y=h+6, text=f"<b>{r['Producto']}</b>", showarrow=False, font=dict(size=11))
             
-            # 4. Área Central (Grande)
-            fig.add_annotation(x=x_ptr+w/2, y=h/2, text=f"<b>{r['Area']:.0f}</b><br><span style='font-size:12px'>cm²</span>", 
-                               showarrow=False, font=dict(size=26, color=c))
+            # 4. Área Central
+            fig.add_annotation(x=x_ptr+w/2, y=h/2, text=f"<b>{r['Area']:.0f}</b><br><span style='font-size:10px'>cm²</span>", 
+                               showarrow=False, font=dict(size=22, color=c))
 
-            # 5. Agrupadores de Ocasión
+            # 5. Agrupadores de Ocasión (Líneas de techo)
             if r['Ocasión de Consumo'] != last_ocasion:
                 if last_ocasion is not None:
-                    fig.add_shape(type="line", x0=group_start_x, y0=max_h + 35, x1=x_ptr-gap+10, y1=max_h + 35, 
-                                  line=dict(color="#222", width=3))
-                    fig.add_annotation(x=(group_start_x + x_ptr - gap + 10)/2, y=max_h + 45, 
-                                       text=f"📦 <b>{last_ocasion.upper()}</b>", showarrow=False, font=dict(size=16))
-                
+                    fig.add_shape(type="line", x0=group_start_x, y0=max_h + 25, x1=x_ptr-gap+5, y1=max_h + 25, 
+                                  line=dict(color="#444", width=2, dash="dot"))
+                    fig.add_annotation(x=(group_start_x + x_ptr - gap)/2, y=max_h + 35, 
+                                       text=f"📂 <b>{last_ocasion.upper()}</b>", showarrow=False, font=dict(size=14))
                 last_ocasion = r['Ocasión de Consumo']
                 group_start_x = x_ptr
             
-            if i == len(df_viz) - 1:
-                fig.add_shape(type="line", x0=group_start_x, y0=max_h + 35, x1=x_ptr+w, y1=max_h + 35, 
-                              line=dict(color="#222", width=3))
-                fig.add_annotation(x=(group_start_x + x_ptr + w)/2, y=max_h + 45, 
-                                   text=f"📦 <b>{last_ocasion.upper()}</b>", showarrow=False, font=dict(size=16))
+            if i == len(df_viz) - 1: # Cierre último grupo
+                fig.add_shape(type="line", x0=group_start_x, y0=max_h + 25, x1=x_ptr+w, y1=max_h + 25, 
+                              line=dict(color="#444", width=2, dash="dot"))
+                fig.add_annotation(x=(group_start_x + x_ptr + w)/2, y=max_h + 35, 
+                                   text=f"📂 <b>{last_ocasion.upper()}</b>", showarrow=False, font=dict(size=14))
 
             x_ptr += w + gap
 
-        # === SOLUCIÓN MAESTRA DE ESCALADO ===
-        # Calculamos el ancho necesario: cada cm del gráfico tendrá píxeles dedicados
-        # Si el gráfico es muy ancho, aparecerá una barra de desplazamiento en Streamlit
-        ancho_calculado = max(1000, x_ptr + 100) 
-        
+        # === EL AJUSTE FINAL DE TAMAÑO ===
+        # Multiplicamos los cm totales por nuestros píxeles por cm
+        total_width_px = (x_ptr + 80) * PX_PER_CM
+        total_height_px = (max_h + 80) * PX_PER_CM
+
         fig.update_layout(
-            width=ancho_calculado, # Forzamos el ancho para que no se comprima
-            height=800, 
+            width=total_width_px, 
+            height=total_height_px, 
             template="plotly_white",
-            showlegend=False,
-            xaxis=dict(
-                range=[-60, x_ptr + 20], 
-                showgrid=True, 
-                gridcolor='#f0f0f0',
-                zeroline=False,
-                showticklabels=False
-            ),
-            yaxis=dict(
-                range=[-40, max_h + 80], 
-                showgrid=True, 
-                gridcolor='#f0f0f0',
-                scaleanchor="x", 
-                scaleratio=1, # Escala real 1 a 1
-                zeroline=False,
-                showticklabels=False
-            ),
-            margin=dict(l=0, r=0, t=10, b=10)
+            xaxis=dict(range=[-40, x_ptr + 20], showgrid=True, gridcolor='#f2f2f2', zeroline=False, showticklabels=False),
+            yaxis=dict(range=[-30, max_h + 60], showgrid=True, gridcolor='#f2f2f2', zeroline=False, showticklabels=False,
+                       scaleanchor="x", scaleratio=1),
+            margin=dict(l=0, r=0, t=0, b=0),
+            showlegend=False
         )
         
-        # El "plus": Contenedor con scroll horizontal si hay muchos productos
-        st.plotly_chart(fig, use_container_width=False) # Importante: False para respetar el width calculado
+        # Centramos el gráfico usando un contenedor de Streamlit con CSS para el scroll
+        st.markdown('<div style="overflow-x: auto;">', unsafe_allow_html=True)
+        st.plotly_chart(fig, use_container_width=False)
+        st.markdown('</div>', unsafe_allow_html=True)
