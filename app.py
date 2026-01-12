@@ -18,6 +18,9 @@ try:
 except ImportError:
     PLANTILLAS_PP = {}
 
+from arquitectura_empaque import render_arquitectura_empaque
+
+    
 st.set_page_config(page_title="Price Ladder & Architecture Expert Pro", layout="wide")
 
 # 2. AQUÍ PEGAS LA FUNCIÓN Y EL BLOQUE DEL LOGO
@@ -1342,7 +1345,8 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             st.rerun()
 
 
-# --- 8. APARTADO DE ARQUITECTURA DE EMPAQUE (DENTRO DE PRICE LADDER) ---
+# === SECCIÓN MEJORADA DE ARQUITECTURA DE EMPAQUE ===
+# con este código completo:
 
 if modo == "Price Ladder" and not df_p.empty:
     st.divider()
@@ -1351,82 +1355,276 @@ if modo == "Price Ladder" and not df_p.empty:
     # 1. Verificación de Columnas Necesarias
     if 'Ancho (cm)' in df_p.columns and 'Alto (cm)' in df_p.columns:
         
+        # === CONFIGURACIÓN ===
         with st.container(border=True):
-            col_cfg1, col_cfg2 = st.columns([2, 1])
+            col_cfg1, col_cfg2, col_cfg3 = st.columns([2, 1, 1])
             with col_cfg1:
-                # El usuario elige contra qué producto compararse
-                prod_ref = st.selectbox("Selecciona Producto de Referencia (Base 100 Index)", df_p["Producto"].unique(), key="ref_size")
+                prod_ref = st.selectbox(
+                    "Producto de Referencia (Base 100)", 
+                    df_p["Producto"].unique(), 
+                    key="ref_size"
+                )
             with col_cfg2:
-                t_font_env = st.slider("Tamaño Texto Etiquetas", 10, 20, 12, key="t_env")
+                t_font_env = st.slider("Tamaño Texto", 10, 20, 12, key="t_env")
+            with col_cfg3:
+                mostrar_grid = st.checkbox("Mostrar Grid", value=False, key="grid_arq")
 
-        # Cálculos de Área e Index
-        df_p['Area'] = df_p['Ancho (cm)'] * df_p['Alto (cm)']
-        area_base = df_p[df_p["Producto"] == prod_ref]['Area'].values[0]
+        # === CÁLCULOS DE ÁREA E ÍNDICES ===
+        df_p['Area (cm²)'] = df_p['Ancho (cm)'] * df_p['Alto (cm)']
+        area_base = df_p[df_p["Producto"] == prod_ref]['Area (cm²)'].values[0]
         
-        # --- GENERACIÓN DEL GRÁFICO ESCALADO ---
+        if 'Gramaje (g)' in df_p.columns:
+            gramaje_base = df_p[df_p["Producto"] == prod_ref]['Gramaje (g)'].values[0]
+            df_p['Size Impression Index'] = (df_p['Area (cm²)'] / area_base) * 100
+            df_p['Eficiencia Visual (cm²/g)'] = df_p['Area (cm²)'] / df_p['Gramaje (g)']
+        
+        # === VISUALIZACIÓN ESCALADA ===
+        st.markdown("#### 📐 Comparación Visual de Empaques (Escala Real)")
+        
         fig_size = go.Figure()
         
-        x_pos = 0  # Posicionamiento horizontal acumulado
-        gap = 6    # Espacio entre empaques
+        x_pos = 0
+        gap = 6
+        
+        colors_fab = {
+            "BARCEL": "#0B3C8C",
+            "SABRITAS": "#F5C400", 
+            "OTROS": "#7F8C8D",
+            "PROPUESTA": "#4B207E"
+        }
         
         for i, row in df_p.iterrows():
             w = row['Ancho (cm)']
             h = row['Alto (cm)']
-            idx_imp = (row['Area'] / area_base) * 100
+            idx_imp = (row['Area (cm²)'] / area_base) * 100
+            color_borda = colors_fab.get(str(row['Fabricante']).upper(), "#999")
             
-            # Color por fabricante para mantener consistencia con las barras
-            color_borda = colors.get(str(row['Fabricante']).upper(), "#999")
-            
-            # Dibujar el rectángulo con medidas reales
+            # Rectángulo del empaque
             fig_size.add_shape(
                 type="rect",
                 x0=x_pos, y0=0, x1=x_pos + w, y1=h,
                 line=dict(color=color_borda, width=3),
-                fillcolor="rgba(128, 128, 128, 0.05)"
+                fillcolor=f"rgba(128, 128, 128, 0.05)"
             )
             
-            # Etiqueta de Producto e Index arriba
+            # Etiqueta superior con Index
+            color_idx = "green" if idx_imp >= 100 else "red"
             fig_size.add_annotation(
                 x=x_pos + w/2, y=h + 3,
-                text=f"<b>{row['Producto']}</b><br><span style='color:red;'>Index: {idx_imp:.1f}</span>",
-                showarrow=False, font=dict(size=t_font_env), align="center"
+                text=f"<b>{row['Producto']}</b><br><span style='color:{color_idx};'>Index: {idx_imp:.1f}</span>",
+                showarrow=False, 
+                font=dict(size=t_font_env), 
+                align="center"
             )
-
-            # Medidas en los ejes del empaque
-            fig_size.add_annotation(x=x_pos + w/2, y=-1.5, text=f"{w}cm", showarrow=False, font=dict(size=t_font_env-2))
-            fig_size.add_annotation(x=x_pos - 1.5, y=h/2, text=f"{h}cm", textangle=-90, showarrow=False, font=dict(size=t_font_env-2))
+            
+            # Medidas del empaque
+            fig_size.add_annotation(
+                x=x_pos + w/2, y=-1.5, 
+                text=f"{w}cm", 
+                showarrow=False, 
+                font=dict(size=t_font_env-2, color="#666")
+            )
+            
+            if 'Gramaje (g)' in df_p.columns:
+                fig_size.add_annotation(
+                    x=x_pos - 1.5, y=h/2, 
+                    text=f"{h}cm<br>{int(row['Gramaje (g)'])}g", 
+                    textangle=-90, 
+                    showarrow=False, 
+                    font=dict(size=t_font_env-2, color="#666")
+                )
+            else:
+                fig_size.add_annotation(
+                    x=x_pos - 1.5, y=h/2, 
+                    text=f"{h}cm", 
+                    textangle=-90, 
+                    showarrow=False, 
+                    font=dict(size=t_font_env-2, color="#666")
+                )
             
             x_pos += w + gap
 
-        # Configuración del Layout para comparación justa (Fixed Aspect Ratio)
+        # Configuración del Layout (Aspecto Real)
         fig_size.update_layout(
             height=500,
             template="plotly_white",
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-5, x_pos + 5]),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-5, df_p['Alto (cm)'].max() + 10]),
-            # ESTO HACE QUE LA COMPARACIÓN SEA REAL (1cm x = 1cm y)
+            xaxis=dict(
+                showgrid=mostrar_grid, 
+                zeroline=False, 
+                showticklabels=False, 
+                range=[-5, x_pos + 5],
+                gridcolor="#F0F0F0"
+            ),
+            yaxis=dict(
+                showgrid=mostrar_grid, 
+                zeroline=False, 
+                showticklabels=False, 
+                range=[-5, df_p['Alto (cm)'].max() + 10],
+                gridcolor="#F0F0F0"
+            ),
             yaxis_scaleanchor="x",
             yaxis_scaleratio=1,
-            margin=dict(l=10, r=10, t=40, b=10)
+            margin=dict(l=10, r=10, t=40, b=10),
+            showlegend=False
         )
         
         st.plotly_chart(fig_size, use_container_width=True)
 
-        # --- TARJETAS DE MÉTRICAS (SIZE IMPRESSION INDEX) ---
-        st.write("### 🗂️ Detalle de Impresión de Tamaño")
+        # === ANÁLISIS DE EFICIENCIA VISUAL (SI HAY GRAMAJE) ===
+        if 'Gramaje (g)' in df_p.columns and 'Eficiencia Visual (cm²/g)' in df_p.columns:
+            st.markdown("#### 🎯 Eficiencia Visual vs Contenido")
+            
+            import plotly.express as px
+            
+            fig_efic = go.Figure()
+            
+            for fab in df_p['Fabricante'].unique():
+                df_fab = df_p[df_p['Fabricante'] == fab]
+                fig_efic.add_trace(go.Scatter(
+                    x=df_fab['Gramaje (g)'],
+                    y=df_fab['Eficiencia Visual (cm²/g)'],
+                    mode='markers+text',
+                    name=fab,
+                    text=df_fab['Producto'],
+                    textposition='top center',
+                    textfont=dict(size=10),
+                    marker=dict(
+                        size=15, 
+                        color=colors_fab.get(fab, "#999"),
+                        line=dict(width=1.5, color='white')
+                    )
+                ))
+            
+            fig_efic.update_layout(
+                xaxis_title="Gramaje (g)",
+                yaxis_title="Eficiencia Visual (cm²/g)",
+                template="plotly_white",
+                height=400,
+                hovermode='closest',
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="center",
+                    x=0.5
+                )
+            )
+            
+            st.plotly_chart(fig_efic, use_container_width=True)
+
+        # === DETECCIÓN DE HALLAZGOS ARQUITECTÓNICOS ===
+        st.markdown("#### 🔍 Hallazgos Estratégicos de Arquitectura")
         
-        # Dividir en columnas para mostrar los Index de forma scannable
-        filas_metrics = [df_p[i:i + 4] for i in range(0, len(df_p), 4)]
+        hallazgos_arq = []
+        
+        # Regla 1: Productos con gramaje similar pero área muy diferente
+        if 'Gramaje (g)' in df_p.columns:
+            for i, row1 in df_p.iterrows():
+                for j, row2 in df_p.iterrows():
+                    if i < j and row1['Fabricante'] != row2['Fabricante']:
+                        dif_gramaje = abs(row1['Gramaje (g)'] - row2['Gramaje (g)']) / row1['Gramaje (g)'] * 100
+                        dif_area = abs(row1['Area (cm²)'] - row2['Area (cm²)']) / row1['Area (cm²)'] * 100
+                        
+                        # Si el gramaje es similar (+/- 15%) pero el área difiere mucho (+/- 25%)
+                        if dif_gramaje < 15 and dif_area > 25:
+                            ventaja = "BARCEL" if row1['Area (cm²)'] > row2['Area (cm²)'] and row1['Fabricante'] == "BARCEL" else row2['Fabricante']
+                            
+                            hallazgos_arq.append({
+                                "Prioridad": "ALTA" if ventaja != "BARCEL" else "MEDIA",
+                                "Tipo": "DESVENTAJA VISUAL" if ventaja != "BARCEL" else "VENTAJA VISUAL",
+                                "Ocasión": "Arquitectura",
+                                "Msg": f"Oportunidad: {row1['Producto']} vs {row2['Producto']}",
+                                "Detalle": f"Gramaje similar ({dif_gramaje:.1f}% diff) pero área difiere {dif_area:.1f}%. {ventaja} tiene mayor presencia en góndola.",
+                                "Accion": f"💡 Evaluar rediseño para {'recuperar' if ventaja != 'BARCEL' else 'mantener'} ventaja visual."
+                            })
+        
+        # Regla 2: Productos Barcel con Size Impression Index < 85
+        barcel_prods = df_p[df_p['Fabricante'] == "BARCEL"]
+        for _, row_b in barcel_prods.iterrows():
+            idx_size = (row_b['Area (cm²)'] / area_base) * 100
+            if idx_size < 85:
+                hallazgos_arq.append({
+                    "Prioridad": "ALTA",
+                    "Tipo": "IMPRESIÓN DÉBIL",
+                    "Ocasión": "Arquitectura",
+                    "Msg": f"{row_b['Producto']} tiene baja presencia visual",
+                    "Detalle": f"Size Impression Index de {idx_size:.1f} (Meta: >90). Puede pasar desapercibido en góndola.",
+                    "Accion": f"📦 Considerar aumento de dimensiones o rediseño gráfico para mejorar impacto visual."
+                })
+        
+        # Mostrar hallazgos
+        if hallazgos_arq:
+            for h in hallazgos_arq:
+                with st.container(border=True):
+                    col1, col2, col3 = st.columns([1.5, 3.5, 3])
+                    with col1:
+                        if h["Prioridad"] == "ALTA":
+                            st.error(f"🔴 **{h['Tipo']}**")
+                        else:
+                            st.warning(f"🟡 **{h['Tipo']}**")
+                    with col2:
+                        st.markdown(f"**{h['Msg']}**")
+                        st.caption(h['Detalle'])
+                    with col3:
+                        st.info(f"💡 **Acción:**\n\n{h['Accion']}")
+        else:
+            st.success("✅ La arquitectura de empaque está optimizada.")
+
+        # === TABLA COMPARATIVA ===
+        st.markdown("#### 📊 Tabla Comparativa de Size Impression")
+        
+        columnas_mostrar = ['Producto', 'Fabricante', 'Ancho (cm)', 'Alto (cm)', 'Area (cm²)']
+        
+        if 'Gramaje (g)' in df_p.columns:
+            columnas_mostrar.extend(['Gramaje (g)', 'Size Impression Index', 'Eficiencia Visual (cm²/g)'])
+            df_resumen = df_p[columnas_mostrar].copy()
+            df_resumen = df_resumen.sort_values('Size Impression Index', ascending=False)
+            
+            st.dataframe(
+                df_resumen.style.background_gradient(subset=['Size Impression Index'], cmap='RdYlGn'),
+                use_container_width=True
+            )
+        else:
+            idx_col_name = 'Size Index vs Ref'
+            df_p[idx_col_name] = (df_p['Area (cm²)'] / area_base) * 100
+            columnas_mostrar.append(idx_col_name)
+            df_resumen = df_p[columnas_mostrar].copy()
+            df_resumen = df_resumen.sort_values(idx_col_name, ascending=False)
+            
+            st.dataframe(
+                df_resumen.style.background_gradient(subset=[idx_col_name], cmap='RdYlGn'),
+                use_container_width=True
+            )
+
+        # === MÉTRICAS RÁPIDAS ===
+        st.markdown("#### 🗂️ Métricas de Impresión")
+        
+        filas_metrics = [df_p.iloc[i:i + 4] for i in range(0, len(df_p), 4)]
         for fila in filas_metrics:
             cols = st.columns(4)
             for idx, (i, row) in enumerate(fila.iterrows()):
-                val_idx = (row['Area'] / area_base) * 100
+                val_idx = (row['Area (cm²)'] / area_base) * 100
                 dif = val_idx - 100
-                cols[idx].metric(
-                    label=row['Producto'], 
-                    value=f"{val_idx:.1f} pts", 
-                    delta=f"{dif:.1f}% vs Ref",
-                    delta_color="normal" if abs(dif) < 15 else "inverse" # Rojo si la diferencia es mucha
-                )
+                with cols[idx]:
+                    st.metric(
+                        label=row['Producto'], 
+                        value=f"{val_idx:.1f} pts", 
+                        delta=f"{dif:.1f}% vs Ref",
+                        delta_color="normal" if abs(dif) < 15 else "inverse"
+                    )
+                    
     else:
-        st.warning("⚠️ Para visualizar la Arquitectura de Empaque, el dataset debe contener las columnas: 'Ancho (cm)' y 'Alto (cm)'.")
+        st.info("💡 **Para activar el análisis de Arquitectura de Empaque:**")
+        st.markdown("""
+        Tu archivo debe contener las columnas:
+        - **Ancho (cm)**: Ancho del empaque en centímetros
+        - **Alto (cm)**: Alto del empaque en centímetros
+        - **Gramaje (g)** (opcional): Para análisis de eficiencia visual
+        
+        Ejemplo de estructura:
+        
+        | Producto | Fabricante | Ancho (cm) | Alto (cm) | Gramaje (g) |
+        |----------|------------|------------|-----------|-------------|
+        | Takis Fuego 240g | BARCEL | 18 | 28 | 240 |
+        | Doritos Nacho 280g | SABRITAS | 20 | 30 | 280 |
+        """)
