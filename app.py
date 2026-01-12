@@ -1436,7 +1436,7 @@ if modo == "Price Ladder":
         hide_index=True, use_container_width=True, key="editor_v5_1"
     )    
 
-# === 4. GRÁFICO TÉCNICO DE ALTO IMPACTO (FIX PROPORCIONES Y ETIQUETAS) ===
+# === 4. GRÁFICO TÉCNICO DE ALTO IMPACTO (FIX TAMAÑO Y VISIBILIDAD) ===
     if not df_editado.empty:
         df_editado['Area'] = df_editado['Ancho (cm)'] * df_editado['Alto (cm)']
         orden_o = ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"]
@@ -1446,9 +1446,10 @@ if modo == "Price Ladder":
         fig = go.Figure()
         colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
         
-        # --- CONFIGURACIÓN DE ESCALA ---
-        PX_UNIT = 25  # Píxeles por cada cm. Aumenta a 30 si lo quieres aún más grande.
-        gap = 15      # Espacio entre productos en cm
+        # --- CONFIGURACIÓN DE ESCALA AGRESIVA ---
+        # Aumentamos PX_UNIT para que el gráfico sea físicamente más grande
+        PX_UNIT = 45  
+        gap = 12      # Espacio entre productos
         x_ptr = 0
         max_h = df_viz['Alto (cm)'].max()
         
@@ -1458,79 +1459,83 @@ if modo == "Price Ladder":
             w, h = r['Ancho (cm)'], r['Alto (cm)']
             c = colors.get(str(r['Fabricante']).upper(), "#7F8C8D")
             
-            # 1. Empaque
+            # 1. Empaque (Rectángulo)
             fig.add_shape(type="rect", x0=x_ptr, y0=0, x1=x_ptr+w, y1=h, 
-                          line=dict(color=c, width=3), fillcolor=c, opacity=0.2)
+                          line=dict(color=c, width=4), fillcolor=c, opacity=0.25)
             
-            # 2. Etiquetas de Medidas (Pegadas al empaque)
-            # Ancho (Justo debajo del rectángulo)
-            fig.add_annotation(x=x_ptr+w/2, y=-2, text=f"<b>{w} cm</b>", 
-                               showarrow=False, font=dict(size=12, color="#444"), yanchor="top")
+            # 2. Etiquetas de Medidas (Posición absoluta para evitar solapamiento)
+            # Ancho
+            fig.add_annotation(x=x_ptr+w/2, y=-1.5, text=f"<b>{w} cm</b>", 
+                               showarrow=False, font=dict(size=14, color="#333"), yanchor="top")
+            # Alto
+            fig.add_annotation(x=x_ptr-1.2, y=h/2, text=f"<b>{h} cm</b>", 
+                               textangle=-90, showarrow=False, font=dict(size=14, color="#333"), xanchor="right")
             
-            # Alto (Justo a la izquierda del rectángulo)
-            fig.add_annotation(x=x_ptr-1.5, y=h/2, text=f"<b>{h} cm</b>", 
-                               textangle=-90, showarrow=False, font=dict(size=12, color="#444"), xanchor="right")
+            # 3. Información Superior (Producto y Ocasión)
+            fig.add_annotation(x=x_ptr+w/2, y=h+1.5, 
+                               text=f"<b>{r['Producto']}</b><br><span style='color:green'>{r['Ocasión de Consumo']}</span>", 
+                               showarrow=False, font=dict(size=13), yanchor="bottom")
             
-            # 3. Datos del Producto (Encima del empaque)
-            fig.add_annotation(x=x_ptr+w/2, y=h+2, 
-                               text=f"<b>{r['Producto']}</b><br><span style='color:green; size:10px'>{r['Ocasión de Consumo']}</span>", 
-                               showarrow=False, font=dict(size=11), yanchor="bottom")
-            
-            # 4. Área Central
-            fig.add_annotation(x=x_ptr+w/2, y=h/2, text=f"<b>{r['Area']:.0f}</b><br><span style='font-size:10px'>cm²</span>", 
-                               showarrow=False, font=dict(size=20, color=c))
+            # 4. Área Central (Grande)
+            fig.add_annotation(x=x_ptr+w/2, y=h/2, text=f"<b>{r['Area']:.0f}</b><br><small>cm²</small>", 
+                               showarrow=False, font=dict(size=26, color=c))
 
-            # 5. Línea divisoria de Ocasión
+            # 5. Separadores Discretos
             if r['Ocasión de Consumo'] != last_ocasion and i > 0:
-                fig.add_shape(type="line", x0=x_ptr-(gap/2), y0=-5, x1=x_ptr-(gap/2), y1=max_h+10,
-                              line=dict(color="#E0E0E0", width=1, dash="dot"))
+                fig.add_shape(type="line", x0=x_ptr-(gap/2), y0=-4, x1=x_ptr-(gap/2), y1=max_h+6,
+                              line=dict(color="#CCC", width=1, dash="dot"))
             
             last_ocasion = r['Ocasión de Consumo']
             x_ptr += w + gap
 
-        # === CÁLCULO DE LIENZO PERFECTO ===
-        total_width_px = (x_ptr) * PX_UNIT
-        # Mantenemos una altura mínima de 500px pero escalamos si es necesario
-        total_height_px = max(500, (max_h + 15) * PX_UNIT)
+        # === AJUSTE DE LIENZO DINÁMICO ===
+        # Forzamos un ancho mínimo para evitar que se vea chico con pocos productos
+        min_canvas_width = 1000 
+        calculated_width = x_ptr * PX_UNIT
+        final_width = max(min_canvas_width, calculated_width)
+        final_height = (max_h + 15) * PX_UNIT
 
         fig.update_layout(
-            width=total_width_px,
-            height=total_height_px,
+            width=final_width,
+            height=final_height,
             template="plotly_white",
             showlegend=False,
-            margin=dict(l=50, r=50, t=50, b=50), # Margen para que las etiquetas de las orillas no se corten
+            margin=dict(l=60, r=60, t=60, b=60),
             xaxis=dict(
-                range=[-10, x_ptr],
+                range=[-10, x_ptr + 5],
                 showgrid=False,
                 zeroline=False,
                 showticklabels=False,
-                fixedrange=True # Evita que el usuario deforme el zoom
+                fixedrange=False # Permitimos zoom manual si es necesario
             ),
             yaxis=dict(
-                range=[-8, max_h + 12], 
+                range=[-6, max_h + 10], 
                 showgrid=False,
                 zeroline=False,
                 showticklabels=False,
-                scaleanchor="x", # ESTO GARANTIZA QUE 1CM ALTO = 1CM ANCHO
+                scaleanchor="x", 
                 scaleratio=1,
-                fixedrange=True
+                fixedrange=False
             )
         )
         
-        # Contenedor con scroll para que si el gráfico es muy ancho, se pueda navegar
+        # Contenedor con Scroll CSS mejorado
         st.markdown(
             """
             <style>
-            .scroll-container {
+            .main-chart-wrapper {
                 overflow-x: auto;
-                white-space: nowrap;
-                padding: 10px;
+                overflow-y: hidden;
+                width: 100%;
+                border-radius: 10px;
+                padding: 20px 0;
             }
             </style>
             """, unsafe_allow_html=True
         )
         
-        st.write('<div class="scroll-container">', unsafe_allow_html=True)
-        st.plotly_chart(fig, use_container_width=False) # False para respetar el width calculado en PX
+        st.write('<div class="main-chart-wrapper">', unsafe_allow_html=True)
+        # IMPORTANTE: use_container_width=False es clave para que respete el tamaño PX
+        st.plotly_chart(fig, use_container_width=False, config={'displayModeBar': True})
         st.write('</div>', unsafe_allow_html=True)
     
