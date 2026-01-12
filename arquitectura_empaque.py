@@ -1,4 +1,4 @@
-data_ejemplos_arquitectura = {
+render_arquitectura_empaque = {
     "Ocasión Compartir (Fiesta)": [
         {"Producto": "Takis Fuego 240g", "Ancho": 18, "Alto": 28, "Gramaje": 240, "Fabricante": "BARCEL"},
         {"Producto": "Doritos Nacho 280g", "Ancho": 20, "Alto": 30, "Gramaje": 280, "Fabricante": "SABRITAS"},
