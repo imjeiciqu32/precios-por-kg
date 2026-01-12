@@ -1437,7 +1437,7 @@ if modo == "Price Ladder":
         hide_index=True, use_container_width=True, key="editor_v5_1"
     )
     
-    # === 4. GRÁFICO TÉCNICO DE ALTO IMPACTO (FIXED SCALING & COTAS) ===
+   # === 4. GRÁFICO TÉCNICO DE ALTO IMPACTO (EJE Y DINÁMICO) ===
     if not df_editado.empty:
         df_editado['Area'] = df_editado['Ancho (cm)'] * df_editado['Alto (cm)']
         orden_o = ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"]
@@ -1448,8 +1448,8 @@ if modo == "Price Ladder":
         colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
         
         x_ptr = 0
-        gap = 50 # Un poco más de espacio para las flechas de cota
-        max_h = df_viz['Alto (cm)'].max()
+        gap = 35  # Espaciado optimizado para mejor visualización
+        max_h = df_viz['Alto (cm)'].max() if not df_viz.empty else 50
         
         last_ocasion = None
         group_start_x = 0
@@ -1458,69 +1458,66 @@ if modo == "Price Ladder":
             w, h = r['Ancho (cm)'], r['Alto (cm)']
             c = colors.get(str(r['Fabricante']).upper(), "#7F8C8D")
             
-            # 1. Dibujo del Rectángulo (Empaque) - Borde más grueso
+            # 1. Dibujo del Rectángulo
             fig.add_shape(type="rect", x0=x_ptr, y0=0, x1=x_ptr+w, y1=h, 
-                          line=dict(color=c, width=3), fillcolor=c, opacity=0.15)
+                          line=dict(color=c, width=2.5), fillcolor=c, opacity=0.18)
             
-            # 2. COTAS TÉCNICAS (El "Plus" de escalado)
-            # Flecha Ancho (Abajo)
-            fig.add_annotation(x=x_ptr, y=-4, ax=x_ptr+w, ay=-4, xref="x", yref="y", axref="x", ayref="y",
-                               showarrow=True, arrowhead=3, arrowsize=1, arrowwidth=1.5, arrowcolor="#555")
-            fig.add_annotation(x=x_ptr+w/2, y=-12, text=f"<b>{w} cm</b>", showarrow=False, font=dict(size=12, color="#333"))
+            # 2. Cotas Técnicas (Estilo Blueprint)
+            # Ancho con flechas
+            fig.add_annotation(x=x_ptr, y=-3, ax=x_ptr+w, ay=-3, xref="x", yref="y", axref="x", ayref="y",
+                               showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=1, arrowcolor="#666")
+            fig.add_annotation(x=x_ptr+w/2, y=-10, text=f"<b>{w} cm</b>", showarrow=False, font=dict(size=11))
             
-            # Flecha Alto (Izquierda)
-            fig.add_annotation(x=x_ptr-4, y=0, ax=x_ptr-4, ay=h, xref="x", yref="y", axref="x", ayref="y",
-                               showarrow=True, arrowhead=3, arrowsize=1, arrowwidth=1.5, arrowcolor="#555")
-            fig.add_annotation(x=x_ptr-18, y=h/2, text=f"<b>{h} cm</b>", textangle=-90, showarrow=False, font=dict(size=12, color="#333"))
+            # Alto con flechas
+            fig.add_annotation(x=x_ptr-3, y=0, ax=x_ptr-3, ay=h, xref="x", yref="y", axref="x", ayref="y",
+                               showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=1, arrowcolor="#666")
+            fig.add_annotation(x=x_ptr-15, y=h/2, text=f"<b>{h} cm</b>", textangle=-90, showarrow=False, font=dict(size=11))
             
-            # 3. Etiquetas de Información (Arriba)
-            # Ocasión y Peso (Si existe)
-            info_label = f"<span style='color:green'><b>{r['Ocasión de Consumo']}</b></span>"
-            fig.add_annotation(x=x_ptr+w/2, y=h+12, text=info_label, showarrow=False, font=dict(size=13))
+            # 3. Etiquetas Superiores
+            fig.add_annotation(x=x_ptr+w/2, y=h+8, text=f"<b>{r['Producto']}</b>", showarrow=False, font=dict(size=12))
             
-            # Nombre del Producto
-            fig.add_annotation(x=x_ptr+w/2, y=h+6, text=f"<b>{r['Producto']}</b>", showarrow=False, font=dict(size=12, color="#555"))
-            
-            # 4. Valor del Área Central (Grande)
-            fig.add_annotation(x=x_ptr+w/2, y=h/2, text=f"<b>{r['Area']:.0f}</b><br><span style='font-size:11px'>cm²</span>", 
-                               showarrow=False, font=dict(size=24, color=c))
+            # 4. Área Central
+            fig.add_annotation(x=x_ptr+w/2, y=h/2, text=f"<b>{r['Area']:.0f}</b><br><span style='font-size:10px'>cm²</span>", 
+                               showarrow=False, font=dict(size=20, color=c))
 
-            # 5. Lógica de Agrupación Visual (Línea Superior)
+            # 5. Agrupación por Ocasión (Líneas de Techo)
             if r['Ocasión de Consumo'] != last_ocasion:
                 if last_ocasion is not None:
-                    fig.add_shape(type="line", x0=group_start_x, y0=max_h + 30, x1=x_ptr-gap+10, y1=max_h + 30, 
-                                  line=dict(color="#333", width=2, dash="solid"))
-                    fig.add_annotation(x=(group_start_x + x_ptr - gap + 10)/2, y=max_h + 40, 
-                                       text=f"📂 <b>{last_ocasion.upper()}</b>", showarrow=False, font=dict(size=15, color="#222"))
+                    # Línea de grupo anterior
+                    fig.add_shape(type="line", x0=group_start_x, y0=max_h + 15, x1=x_ptr-gap+5, y1=max_h + 15, 
+                                  line=dict(color="#444", width=2, dash="dot"))
+                    fig.add_annotation(x=(group_start_x + x_ptr - gap)/2, y=max_h + 22, 
+                                       text=f"📦 {last_ocasion.upper()}", showarrow=False, font=dict(size=14, color="#444"))
                 
                 last_ocasion = r['Ocasión de Consumo']
                 group_start_x = x_ptr
             
-            if i == len(df_viz) - 1: # Cierre último grupo
-                fig.add_shape(type="line", x0=group_start_x, y0=max_h + 30, x1=x_ptr+w, y1=max_h + 30, 
-                              line=dict(color="#333", width=2, dash="solid"))
-                fig.add_annotation(x=(group_start_x + x_ptr + w)/2, y=max_h + 40, 
-                                   text=f"📂 <b>{last_ocasion.upper()}</b>", showarrow=False, font=dict(size=15, color="#222"))
+            if i == len(df_viz) - 1: # Cierre del último grupo
+                fig.add_shape(type="line", x0=group_start_x, y0=max_h + 15, x1=x_ptr+w, y1=max_h + 15, 
+                              line=dict(color="#444", width=2, dash="dot"))
+                fig.add_annotation(x=(group_start_x + x_ptr + w)/2, y=max_h + 22, 
+                                   text=f"📦 {last_ocasion.upper()}", showarrow=False, font=dict(size=14, color="#444"))
 
             x_ptr += w + gap
 
-        # CONFIGURACIÓN FINAL DEL CANVAS (CORRECCIÓN DE ESCALADO)
+        # === CONFIGURACIÓN DINÁMICA DE EJES ===
         fig.update_layout(
-            height=900, 
+            height=700, 
             template="plotly_white",
             xaxis=dict(
+                range=[-40, x_ptr], 
                 showgrid=True, 
-                gridcolor='rgba(200,200,200,0.3)', 
-                range=[-50, x_ptr + 20], 
+                gridcolor='rgba(230,230,230,0.5)',
                 zeroline=False,
-                showticklabels=False # Quitamos números de ejes para que parezca un blueprint
+                showticklabels=False # Limpieza visual
             ),
             yaxis=dict(
+                # El rango Y ahora depende del producto más alto + margen
+                range=[-25, max_h + 40], 
                 showgrid=True, 
-                gridcolor='rgba(200,200,200,0.3)', 
-                range=[-40, max_h + 70], 
+                gridcolor='rgba(230,230,230,0.5)',
                 zeroline=False,
-                scaleanchor="x", # ESTO MANTIENE EL ESCALADO 1:1
+                scaleanchor="x", # Mantiene proporción 1:1 cm real
                 scaleratio=1,
                 showticklabels=False
             ),
