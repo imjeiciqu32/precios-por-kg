@@ -1354,10 +1354,6 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
 # SIZE IMPRESSION
 
-import plotly.graph_objects as go
-import pandas as pd
-import streamlit as st
-
 if modo == "Price Ladder":
     # === 0. INICIALIZACIÓN DE ESTADO (Corrección de AttributeError) ===
     if 'df_arq_sim' not in st.session_state:
