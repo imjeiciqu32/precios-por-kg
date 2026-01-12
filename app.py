@@ -18,13 +18,15 @@ try:
 except ImportError:
     PLANTILLAS_PP = {}
     
-render_arquitectura_empaque = [
-    {"Producto": "Takis Fuego 240g", "Fabricante": "BARCEL", "Marca": "TAKIS", "Canal": "AUTOSERVICIO", "Ancho (cm)": 18, "Alto (cm)": 28},
-    {"Producto": "Doritos Nacho 280g", "Fabricante": "SABRITAS", "Marca": "DORITOS", "Canal": "AUTOSERVICIO", "Ancho (cm)": 20, "Alto (cm)": 30},
-    {"Producto": "Ruffles Original 240g", "Fabricante": "SABRITAS", "Marca": "RUFFLES", "Canal": "CONVENIENCIA", "Ancho (cm)": 19, "Alto (cm)": 29},
-    {"Producto": "Takis Fuego 62g", "Fabricante": "BARCEL", "Marca": "TAKIS", "Canal": "TRADICIONAL", "Ancho (cm)": 10, "Alto (cm)": 18},
-    {"Producto": "Doritos Nacho 58g", "Fabricante": "SABRITAS", "Marca": "DORITOS", "Canal": "TRADICIONAL", "Ancho (cm)": 9, "Alto (cm)": 17}
-]
+# --- CARGA DE ARQUITECTURA DESDE TU ARCHIVO EN GITHUB/LOCAL ---
+try:
+    # Suponiendo que tu archivo se llama arquitectura_empaque.py
+    from arquitectura_empaque import render_arquitectura_empaque
+    # Creamos un DataFrame independiente para NO tocar el df_p de las escaleras
+    df_arq = pd.DataFrame(render_arquitectura_empaque)
+except ImportError:
+    st.error("No se pudo encontrar el archivo 'arquitectura_empaque.py' en el repositorio.")
+    df_arq = pd.DataFrame() # DataFrame vacío para evitar que el código truene
 
     
 st.set_page_config(page_title="Price Ladder & Architecture Expert Pro", layout="wide")
@@ -1350,83 +1352,136 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             st.session_state.snapshots = []
             st.rerun()
 
-
-
-df_arq = pd.DataFrame(render_arquitectura_empaque)
+# SIZE IMPRESSION
 if modo == "Price Ladder":
-    # Usamos df_arq para que no interfiera con los datos de las escaleras (df_p)
+    # 1. Verificación de existencia de datos
     if 'df_arq' in locals() and not df_arq.empty:
         st.divider()
-        st.subheader("📦 Comparativa de Arquitectura de Empaque")
+        st.subheader("📦 Análisis de Arquitectura de Empaque (Size Impression)")
 
+        # === PANEL DE FILTROS AVANZADO ===
         with st.container(border=True):
-            col_sel1, col_sel2 = st.columns(2)
-            with col_sel1:
-                # Selectores basados exclusivamente en la tabla de empaques
-                prod_1 = st.selectbox("Producto 1 (Base)", df_arq["Producto"].unique(), key="arq_p1")
-            with col_sel2:
-                prod_2 = st.selectbox("Producto 2 (Comparativa)", df_arq["Producto"].unique(), index=1, key="arq_p2")
-
-        # 1. Filtrado y Cálculo en el DF independiente
-        df_comp = df_arq[df_arq["Producto"].isin([prod_1, prod_2])].copy()
-        df_comp['Area (cm²)'] = df_comp['Ancho (cm)'] * df_comp['Alto (cm)']
-        
-        # 2. Extracción de datos para métricas
-        # Usamos .copy() y loc para evitar advertencias de pandas
-        data_p1 = df_comp[df_comp["Producto"] == prod_1].iloc[0]
-        data_p2 = df_comp[df_comp["Producto"] == prod_2].iloc[0]
-
-        area_1 = data_p1['Area (cm²)']
-        area_2 = data_p2['Area (cm²)']
-        size_idx = (area_2 / area_1) * 100 if area_1 > 0 else 0
-
-        # 3. Tarjetas de Métricas
-        m1, m2, m3 = st.columns(3)
-        m1.metric(f"Área {data_p1['Marca']}", f"{area_1:.0f} cm²")
-        m2.metric(f"Área {data_p2['Marca']}", f"{area_2:.0f} cm²")
-        m3.metric("Size Impression Index", f"{size_idx:.1f} pts", delta=f"{size_idx-100:.1f}% vs Base")
-
-        # 4. Gráfico con Plotly
-        fig_arq = go.Figure()
-        colors_fab = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400"}
-        
-        x_pos = 0
-        max_h = df_comp['Alto (cm)'].max()
-
-        for p_name in [prod_1, prod_2]:
-            row = df_comp[df_comp["Producto"] == p_name].iloc[0]
-            w, h = row['Ancho (cm)'], row['Alto (cm)']
-            color = colors_fab.get(str(row['Fabricante']).upper(), "#7F8C8D")
+            st.markdown("##### 🔍 Filtros de Selección")
+            f1, f2, f3 = st.columns(3)
             
-            # Dibujar Rectángulo
-            fig_arq.add_shape(
-                type="rect", x0=x_pos, y0=0, x1=x_pos + w, y1=h,
-                line=dict(color=color, width=4),
-                fillcolor="rgba(128, 128, 128, 0.1)"
+            with f1:
+                canal_sel = st.multiselect("Canal", df_arq["Canal"].unique(), default=df_arq["Canal"].unique())
+            with f2:
+                # Filtrar fabricantes según canal
+                df_f = df_arq[df_arq["Canal"].isin(canal_sel)]
+                fab_sel = st.multiselect("Fabricante", df_f["Fabricante"].unique(), default=df_f["Fabricante"].unique())
+            with f3:
+                # Filtrar marcas según fabricante
+                df_m = df_f[df_f["Fabricante"].isin(fab_sel)]
+                marca_sel = st.multiselect("Marca", df_m["Marca"].unique(), default=df_m["Marca"].unique())
+
+            # Selección final de productos
+            df_lista = df_m[df_m["Marca"].isin(marca_sel)]
+            prods_sel = st.multiselect(
+                "Productos a Graficar (se ordenarán por área)", 
+                df_lista["Producto"].unique(), 
+                default=df_lista["Producto"].unique()[:3] # Default los primeros 3 para no saturar
+            )
+
+        if prods_sel:
+            # === PROCESAMIENTO Y CÁLCULO ===
+            # Filtramos y ordenamos de menor a mayor área
+            df_viz = df_arq[df_arq["Producto"].isin(prods_sel)].copy()
+            df_viz['Area (cm²)'] = df_viz['Ancho (cm)'] * df_viz['Alto (cm)']
+            df_viz = df_viz.sort_values('Area (cm²)', ascending=True)
+
+            # Referencia para el Index (el más pequeño de la selección actual)
+            area_base = df_viz['Area (cm²)'].iloc[0]
+            prod_base_name = df_viz['Producto'].iloc[0]
+
+            # === TARJETAS DE MÉTRICAS ===
+            st.markdown(f"**Índice de Impresión vs:** `{prod_base_name}`")
+            cols_metrics = st.columns(len(df_viz))
+            
+            for i, (_, row) in enumerate(df_viz.iterrows()):
+                area_actual = row['Area (cm²)']
+                size_idx = (area_actual / area_base) * 100
+                dif_idx = size_idx - 100
+                
+                with cols_metrics[i]:
+                    st.metric(
+                        label=row['Marca'],
+                        value=f"{size_idx:.0f} pts", # Sin decimales como pediste
+                        delta=f"{dif_idx:.0f}%" if i > 0 else "BASE",
+                        delta_color="normal"
+                    )
+
+            # === GRÁFICO PROFESIONAL CON PLOTLY ===
+            fig_arq = go.Figure()
+            colors_fab = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
+            
+            x_pos = 0
+            gap = 8
+            max_h = df_viz['Alto (cm)'].max()
+
+            for _, row in df_viz.iterrows():
+                w, h = row['Ancho (cm)'], row['Alto (cm)']
+                area = row['Area (cm²)']
+                fab = str(row['Fabricante']).upper()
+                color = colors_fab.get(fab, "#7F8C8D")
+                
+                # 1. Dibujar el Empaque
+                fig_arq.add_shape(
+                    type="rect", x0=x_pos, y0=0, x1=x_pos + w, y1=h,
+                    line=dict(color=color, width=3),
+                    fillcolor=color,
+                    opacity=0.15 # Color de fondo suave del fabricante
+                )
+                
+                # 2. Etiqueta de AREA en el centro (Como pediste)
+                fig_arq.add_annotation(
+                    x=x_pos + w/2, y=h/2,
+                    text=f"<b>{area:.0f}</b><br>cm²",
+                    showarrow=False,
+                    font=dict(color=color, size=14)
+                )
+                
+                # 3. Nombre del producto arriba
+                fig_arq.add_annotation(
+                    x=x_pos + w/2, y=h + (max_h * 0.08),
+                    text=f"<b>{row['Producto']}</b>",
+                    showarrow=False,
+                    font=dict(size=11),
+                    textangle=-20 # Un poco de inclinación para que no choquen
+                )
+                
+                # 4. Medidas en la base (Ancho)
+                fig_arq.add_annotation(
+                    x=x_pos + w/2, y=-max_h*0.05,
+                    text=f"{w}cm",
+                    showarrow=False,
+                    font=dict(size=10, color="gray")
+                )
+                
+                x_pos += w + gap
+
+            # Configuración estética del Layout
+            fig_arq.update_layout(
+                height=500,
+                template="plotly_white",
+                xaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-10, x_pos + 10]),
+                yaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-max_h*0.15, max_h + (max_h*0.2)]),
+                yaxis_scaleanchor="x",
+                yaxis_scaleratio=1,
+                margin=dict(l=10, r=10, t=10, b=10),
+                hovermode=False
             )
             
-            # Etiquetas
-            fig_arq.add_annotation(
-                x=x_pos + w/2, y=h + (max_h * 0.1),
-                text=f"<b>{row['Producto']}</b><br>{w}x{h} cm",
-                showarrow=False, font=dict(size=12)
-            )
-            x_pos += w + 10
+            st.plotly_chart(fig_arq, use_container_width=True)
 
-        fig_arq.update_layout(
-            height=400,
-            template="plotly_white",
-            xaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-5, x_pos + 5]),
-            yaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-5, max_h + 15]),
-            yaxis_scaleanchor="x",
-            yaxis_scaleratio=1,
-            margin=dict(l=10, r=10, t=40, b=10)
-        )
-        
-        st.plotly_chart(fig_arq, use_container_width=True)
-
-        # 5. Tabla de Referencia
-        with st.expander("Ver detalle de dimensiones"):
-            st.table(df_comp[['Producto', 'Fabricante', 'Marca', 'Canal', 'Ancho (cm)', 'Alto (cm)', 'Area (cm²)']])
+            # === TABLA DE DETALLE ESTILIZADA ===
+            with st.expander("📊 Ver Tabla Comparativa Detallada"):
+                df_tabla = df_viz[['Producto', 'Fabricante', 'Marca', 'Canal', 'Ancho (cm)', 'Alto (cm)', 'Area (cm²)']].copy()
+                st.dataframe(
+                    df_tabla.style.background_gradient(subset=['Area (cm²)'], cmap='Blues'),
+                    use_container_width=True
+                )
+        else:
+            st.info("👆 Selecciona productos en los filtros superiores para visualizar la comparativa.")
     else:
-        st.warning("⚠️ No se encontró la base de datos de Arquitectura (df_arq).")
+        st.warning("⚠️ **G**racias por verificar, pero no se encontró la base de datos `df_arq` o está vacía.")
