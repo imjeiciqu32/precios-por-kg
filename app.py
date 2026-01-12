@@ -1353,132 +1353,147 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             st.rerun()
 
 # SIZE IMPRESSION
+
 import plotly.graph_objects as go
 import pandas as pd
 import streamlit as st
 
 if modo == "Price Ladder":
-    if 'df_arq' in locals() and not df_arq.empty:
-        st.divider()
-        st.subheader("📐 Laboratorio de Arquitectura de Empaque v4.0")
+    # === 0. INICIALIZACIÓN DE ESTADO (Corrección de AttributeError) ===
+    if 'df_arq_sim' not in st.session_state:
+        # Cargamos los datos iniciales de la plantilla
+        if 'df_arq' in locals() and not df_arq.empty:
+            st.session_state.df_arq_sim = df_arq.copy()
+        else:
+            st.session_state.df_arq_sim = pd.DataFrame(columns=[
+                "Producto", "Fabricante", "Marca", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"
+            ])
 
-        # === 1. FORMULARIO DE NUEVO SKU ===
-        with st.expander("➕ Agregar Nuevo SKU al Análisis", expanded=False):
-            with st.form("nuevo_sku_form"):
-                col1, col2, col3 = st.columns(3)
-                nuevo_p = col1.text_input("Nombre del Producto", placeholder="Ej. Cheetos Colmillos 50g")
-                nuevo_f = col2.selectbox("Fabricante", ["BARCEL", "SABRITAS", "OTROS"])
-                nuevo_m = col3.text_input("Marca")
-                
-                col4, col5, col6 = st.columns(3)
-                nuevo_c = col4.selectbox("Canal", df_arq["Canal"].unique())
-                nuevo_o = col5.selectbox("Ocasión de Consumo", ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"])
-                nuevo_ancho = col6.number_input("Ancho (cm)", min_value=1.0, step=0.5)
-                
-                col7, col8 = st.columns([1, 2])
-                nuevo_alto = col7.number_input("Alto (cm)", min_value=1.0, step=0.5)
-                
-                if st.form_submit_button("Instalar SKU en Simulación"):
-                    nueva_fila = {
-                        "Producto": nuevo_p, "Fabricante": nuevo_f, "Marca": nuevo_m,
-                        "Canal": nuevo_c, "Ocasión de Consumo": nuevo_o,
-                        "Ancho (cm)": nuevo_ancho, "Alto (cm)": nuevo_alto
-                    }
-                    st.session_state.df_arq = pd.concat([st.session_state.df_arq, pd.DataFrame([nueva_fila])], ignore_index=True)
-                    st.rerun()
+    st.divider()
+    st.subheader("📐 Laboratorio de Arquitectura de Empaque v5.0")
 
-        # === 2. COMPARADOR 1 VS 1 (TARJETA PRO) ===
-        st.markdown("#### ⚖️ Comparativa de Size Impression")
-        with st.container(border=True):
-            c1, c2, c3 = st.columns([2, 2, 1])
-            with c1:
-                p1_name = st.selectbox("Producto 1 (Base)", df_arq["Producto"].unique(), key="comp_1")
-            with c2:
-                p2_name = st.selectbox("Producto 2 (Comparativo)", df_arq["Producto"].unique(), key="comp_2")
+    # === 1. FORMULARIO DE ALTA (NUEVO SKU) ===
+    with st.expander("➕ Instalar Nuevo SKU en la Simulación", expanded=False):
+        with st.form("nuevo_sku_form"):
+            c1, c2, c3 = st.columns(3)
+            nuevo_p = c1.text_input("Nombre Completo (Producto)", placeholder="Ej. Takis Fuego 240g")
+            nuevo_m = c2.text_input("Marca", placeholder="Ej. TAKIS")
+            nuevo_f = c3.selectbox("Fabricante", ["BARCEL", "SABRITAS", "OTROS"])
             
-            p1 = df_arq[df_arq["Producto"] == p1_name].iloc[0]
-            p2 = df_arq[df_arq["Producto"] == p2_name].iloc[0]
+            c4, c5, c6 = st.columns(3)
+            nuevo_c = c4.text_input("Canal", value="AUTOSERVICIO")
+            nuevo_o = c5.selectbox("Ocasión de Consumo", ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"])
+            nuevo_ancho = c6.number_input("Ancho (cm)", min_value=1.0, step=0.1)
             
-            area1 = p1["Ancho (cm)"] * p1["Alto (cm)"]
-            area2 = p2["Ancho (cm)"] * p2["Alto (cm)"]
-            index_comp = (area2 / area1) * 100
+            nuevo_alto = st.number_input("Alto (cm)", min_value=1.0, step=0.1)
             
-            with c3:
-                st.metric("Size Index", f"{index_comp:.0f} pts", delta=f"{index_comp-100:.1f}%")
+            if st.form_submit_button("🚀 Registrar SKU"):
+                nueva_fila = {
+                    "Producto": nuevo_p, "Fabricante": nuevo_f, "Marca": nuevo_m,
+                    "Canal": nuevo_c, "Ocasión de Consumo": nuevo_o,
+                    "Ancho (cm)": nuevo_ancho, "Alto (cm)": nuevo_alto
+                }
+                st.session_state.df_arq_sim = pd.concat([st.session_state.df_arq_sim, pd.DataFrame([nueva_fila])], ignore_index=True)
+                st.success(f"Producto {nuevo_p} añadido.")
+                st.rerun()
 
-        # === 3. FILTROS Y EDITOR ===
-        with st.container(border=True):
-            f1, f2 = st.columns(2)
-            canal_sel = f1.multiselect("Filtrar Canal", df_arq["Canal"].unique(), default=df_arq["Canal"].unique())
-            ocasion_sel = f2.multiselect("Filtrar Ocasión", df_arq["Ocasión de Consumo"].unique(), default=df_arq["Ocasión de Consumo"].unique())
-
-        df_para_editar = df_arq[(df_arq["Canal"].isin(canal_sel)) & (df_arq["Ocasión de Consumo"].isin(ocasion_sel))].copy()
+    # === 2. COMPARADOR TÉCNICO 1 VS 1 ===
+    st.markdown("#### ⚖️ Comparativa de Size Impression Index")
+    with st.container(border=True):
+        col_c1, col_c2, col_c3 = st.columns([2, 2, 1])
+        with col_c1:
+            prod_base = st.selectbox("Producto 1 (Base 100)", st.session_state.df_arq_sim["Producto"].unique(), key="sb_1")
+        with col_c2:
+            prod_comp = st.selectbox("Producto 2 (Comparativo)", st.session_state.df_arq_sim["Producto"].unique(), key="sb_2")
         
-        df_editado = st.data_editor(
-            df_para_editar,
-            column_order=("Producto", "Fabricante", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"),
-            hide_index=True, use_container_width=True, key="editor_v4"
+        d1 = st.session_state.df_arq_sim[st.session_state.df_arq_sim["Producto"] == prod_base].iloc[0]
+        d2 = st.session_state.df_arq_sim[st.session_state.df_arq_sim["Producto"] == prod_comp].iloc[0]
+        
+        a1, a2 = (d1["Ancho (cm)"] * d1["Alto (cm)"]), (d2["Ancho (cm)"] * d2["Alto (cm)"])
+        index_val = (a2 / a1) * 100
+        
+        with col_c3:
+            st.metric("Index Resultante", f"{index_val:.0f} pts", delta=f"{index_val-100:.1f}% vs base")
+
+    # === 3. FILTROS AVANZADOS Y EDITOR ===
+    with st.container(border=True):
+        f1, f2, f3 = st.columns(3)
+        sel_marcas = f1.multiselect("Marcas", st.session_state.df_arq_sim["Marca"].unique(), default=st.session_state.df_arq_sim["Marca"].unique())
+        sel_ocasiones = f2.multiselect("Ocasiones", st.session_state.df_arq_sim["Ocasión de Consumo"].unique(), default=st.session_state.df_arq_sim["Ocasión de Consumo"].unique())
+        sel_productos = f3.multiselect("Productos específicos", st.session_state.df_arq_sim["Producto"].unique(), default=st.session_state.df_arq_sim["Producto"].unique())
+
+    df_filtered = st.session_state.df_arq_sim[
+        (st.session_state.df_arq_sim["Marca"].isin(sel_marcas)) & 
+        (st.session_state.df_arq_sim["Ocasión de Consumo"].isin(sel_ocasiones)) &
+        (st.session_state.df_arq_sim["Producto"].isin(sel_productos))
+    ].copy()
+
+    # Editor con todas las columnas solicitadas
+    df_editado = st.data_editor(
+        df_filtered,
+        column_order=("Producto", "Marca", "Fabricante", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"),
+        hide_index=True, use_container_width=True, key="editor_v5"
+    )
+
+    # === 4. GRÁFICO DINÁMICO (BLUEPRINT) ===
+    if not df_editado.empty:
+        df_editado['Area'] = df_editado['Ancho (cm)'] * df_editado['Alto (cm)']
+        orden_o = ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"]
+        df_editado['Ocasión de Consumo'] = pd.Categorical(df_editado['Ocasión de Consumo'], categories=orden_o, ordered=True)
+        df_viz = df_editado.sort_values(['Ocasión de Consumo', 'Area'])
+
+        fig = go.Figure()
+        colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
+        
+        x_ptr = 0
+        gap = 40
+        max_h = df_viz['Alto (cm)'].max()
+        
+        # Agrupación de Ocasión (Etiqueta Unificada)
+        last_ocasion = None
+        group_start_x = 0
+
+        for i, (_, r) in enumerate(df_viz.iterrows()):
+            w, h = r['Ancho (cm)'], r['Alto (cm)']
+            c = colors.get(str(r['Fabricante']).upper(), "#7F8C8D")
+            
+            # Dibujo del Empaque (Contorno negro suave)
+            fig.add_shape(type="rect", x0=x_ptr, y0=0, x1=x_ptr+w, y1=h, 
+                          line=dict(color="black", width=1.5), fillcolor=c, opacity=0.2)
+            
+            # Cotas de tamaño (Fuentes grandes)
+            fig.add_annotation(x=x_ptr+w/2, y=-8, text=f"<b>{w} cm</b>", showarrow=False, font=dict(size=14))
+            fig_arq.add_annotation(x=x_ptr-10, y=h/2, text=f"<b>{h} cm</b>", textangle=-90, showarrow=False, font=dict(size=14))
+            
+            # Nombre del Producto (Arriba del empaque)
+            fig.add_annotation(x=x_ptr+w/2, y=h+6, text=f"<b>{r['Producto']}</b>", showarrow=False, font=dict(size=13))
+            
+            # Área central
+            fig.add_annotation(x=x_ptr+w/2, y=h/2, text=f"<b>{r['Area']:.0f}</b><br>cm²", showarrow=False, font=dict(size=20, color=c))
+
+            # Gestión de Ocasiones Agrupadas
+            if r['Ocasión de Consumo'] != last_ocasion:
+                if last_ocasion is not None:
+                    # Dibujar línea y etiqueta del grupo que acaba de terminar
+                    fig.add_shape(type="line", x0=group_start_x, y0=max_h + 20, x1=x_ptr-gap+5, y1=max_h + 20, line=dict(color="gray", width=2, dash="dot"))
+                    fig.add_annotation(x=(group_start_x + x_ptr - gap)/2, y=max_h + 28, text=f"📂 <b>{last_ocasion}</b>", showarrow=False, font=dict(size=15))
+                
+                last_ocasion = r['Ocasión de Consumo']
+                group_start_x = x_ptr
+            
+            if i == len(df_viz) - 1: # Cierre del último grupo
+                fig.add_shape(type="line", x0=group_start_x, y0=max_h + 20, x1=x_ptr+w, y1=max_h + 20, line=dict(color="gray", width=2, dash="dot"))
+                fig.add_annotation(x=(group_start_x + x_ptr + w)/2, y=max_h + 28, text=f"📂 <b>{last_ocasion}</b>", showarrow=False, font=dict(size=15))
+
+            x_ptr += w + gap
+
+        # Ajuste dinámico de escala y cuadrícula técnica
+        fig.update_layout(
+            height=800, # Gráfico grande
+            template="plotly_white",
+            xaxis=dict(showgrid=True, gridcolor='rgba(200,200,200,0.3)', range=[-30, x_ptr]),
+            yaxis=dict(showgrid=True, gridcolor='rgba(200,200,200,0.3)', range=[-20, max_h + 45]),
+            yaxis_scaleanchor="x", yaxis_scaleratio=1, # Mantiene proporción real de los cm
+            margin=dict(l=0, r=0, t=10, b=0)
         )
-        
-        df_editado['Area (cm²)'] = df_editado['Ancho (cm)'] * df_editado['Alto (cm)']
-        orden_ocasion = ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"]
-        df_editado['Ocasión de Consumo'] = pd.Categorical(df_editado['Ocasión de Consumo'], categories=orden_ocasion, ordered=True)
-        df_viz = df_editado.sort_values(['Ocasión de Consumo', 'Area (cm²)'])
-
-        # === 4. GRÁFICO TÉCNICO AMPLIADO ===
-        if not df_viz.empty:
-            fig_arq = go.Figure()
-            colors_fab = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
-            
-            x_pos = 0
-            gap = 45
-            max_h = df_viz['Alto (cm)'].max()
-            
-            # Lógica de Agrupación de Ocasión (Corchetes)
-            current_ocasion = None
-            start_x = 0
-
-            for i, (_, row) in enumerate(df_viz.iterrows()):
-                w, h = row['Ancho (cm)'], row['Alto (cm)']
-                color = colors_fab.get(str(row['Fabricante']).upper(), "#7F8C8D")
-                
-                # Dibujar Cuadrícula de fondo (SIMULADA)
-                fig_arq.add_shape(type="rect", x0=x_pos, y0=0, x1=x_pos+w, y1=h, 
-                                  line=dict(color="rgba(0,0,0,0.4)", width=2), fillcolor=color, opacity=0.15)
-                
-                # Ejes visibles por SKU (Cotas)
-                fig_arq.add_annotation(x=x_pos + w/2, y=-6, text=f"<b>{w} cm</b>", showarrow=False, font=dict(size=14))
-                fig_arq.add_annotation(x=x_pos - 8, y=h/2, text=f"<b>{h} cm</b>", textangle=-90, showarrow=False, font=dict(size=14))
-                
-                # Área e Info Producto
-                fig_arq.add_annotation(x=x_pos + w/2, y=h/2, text=f"<b>{row['Area (cm²)']:.0f}</b><br>cm²", showarrow=False, font=dict(size=22, color=color))
-                fig_arq.add_annotation(x=x_pos + w/2, y=h + 5, text=f"<b>{row['Producto']}</b>", showarrow=False, font=dict(size=13))
-
-                # Manejo de Etiquetas de Ocasión Agrupadas
-                if row['Ocasión de Consumo'] != current_ocasion:
-                    if current_ocasion is not None:
-                        # Dibujar línea de grupo anterior
-                        fig_arq.add_shape(type="line", x0=start_x, y0=max_h + 15, x1=x_pos - gap + 5, y1=max_h + 15, line=dict(color="gray", width=2))
-                        fig_arq.add_annotation(x=(start_x + x_pos - gap)/2, y=max_h + 20, text=f"📦 <b>{current_ocasion}</b>", showarrow=False)
-                    
-                    current_ocasion = row['Ocasión de Consumo']
-                    start_x = x_pos
-                
-                # Si es el último elemento, cerrar el grupo
-                if i == len(df_viz) - 1:
-                    fig_arq.add_shape(type="line", x0=start_x, y0=max_h + 15, x1=x_pos + w, y1=max_h + 15, line=dict(color="gray", width=2))
-                    fig_arq.add_annotation(x=(start_x + x_pos + w)/2, y=max_h + 20, text=f"📦 <b>{current_ocasion}</b>", showarrow=False)
-
-                x_pos += w + gap
-
-            # Configuración de Ejes y Cuadrícula
-            fig_arq.update_layout(
-                height=750, # Gráfico más grande
-                template="plotly_white",
-                xaxis=dict(showgrid=True, gridcolor='lightgray', zeroline=False, range=[-20, x_pos]),
-                yaxis=dict(showgrid=True, gridcolor='lightgray', zeroline=False, range=[-15, max_h + 35]),
-                yaxis_scaleanchor="x", yaxis_scaleratio=1,
-                margin=dict(l=10, r=10, t=50, b=10)
-            )
-            
-            st.plotly_chart(fig_arq, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
