@@ -1353,6 +1353,88 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             st.rerun()
 
 # SIZE IMPRESSION
+if modo == "Price Ladder":
+    # === 0. INICIALIZACIÓN DE ESTADO ===
+    if 'df_arq_sim' not in st.session_state:
+        if 'df_arq' in locals() and not df_arq.empty:
+            st.session_state.df_arq_sim = df_arq.copy()
+        else:
+            st.session_state.df_arq_sim = pd.DataFrame(columns=[
+                "Producto", "Fabricante", "Marca", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"
+            ])
+
+    st.divider()
+    st.subheader("📐 Laboratorio de Arquitectura de Empaque v5.1")
+
+    # === 1. FORMULARIO DE ALTA (NUEVO SKU) ===
+    with st.expander("➕ Instalar Nuevo SKU en la Simulación", expanded=False):
+        with st.form("nuevo_sku_form"):
+            c1, c2, c3 = st.columns(3)
+            nuevo_p = c1.text_input("Nombre Completo (Producto)", placeholder="Ej. Takis Fuego 240g")
+            nuevo_m = c2.text_input("Marca", placeholder="Ej. TAKIS")
+            nuevo_f = c3.selectbox("Fabricante", ["BARCEL", "SABRITAS", "OTROS"])
+            
+            c4, c5, c6 = st.columns(3)
+            nuevo_c = c4.text_input("Canal", value="AUTOSERVICIO")
+            nuevo_o = c5.selectbox("Ocasión de Consumo", ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"])
+            nuevo_ancho = c6.number_input("Ancho (cm)", min_value=1.0, step=0.1)
+            
+            nuevo_alto = st.number_input("Alto (cm)", min_value=1.0, step=0.1)
+            
+            if st.form_submit_button("🚀 Registrar SKU"):
+                nueva_fila = {
+                    "Producto": nuevo_p, "Fabricante": nuevo_f, "Marca": nuevo_m,
+                    "Canal": nuevo_c, "Ocasión de Consumo": nuevo_o,
+                    "Ancho (cm)": nuevo_ancho, "Alto (cm)": nuevo_alto
+                }
+                st.session_state.df_arq_sim = pd.concat([st.session_state.df_arq_sim, pd.DataFrame([nueva_fila])], ignore_index=True)
+                st.success(f"Producto {nuevo_p} añadido correctamente.")
+                st.rerun()
+
+    # === 2. COMPARADOR TÉCNICO 1 VS 1 ===
+    st.markdown("#### ⚖️ Comparativa de Size Impression Index")
+    with st.container(border=True):
+        col_c1, col_c2, col_c3 = st.columns([2, 2, 1])
+        with col_c1:
+            prod_base = st.selectbox("Producto 1 (Base 100)", st.session_state.df_arq_sim["Producto"].unique(), key="sb_1")
+        with col_c2:
+            prod_comp = st.selectbox("Producto 2 (Comparativo)", st.session_state.df_arq_sim["Producto"].unique(), key="sb_2")
+        
+        d1 = st.session_state.df_arq_sim[st.session_state.df_arq_sim["Producto"] == prod_base].iloc[0]
+        d2 = st.session_state.df_arq_sim[st.session_state.df_arq_sim["Producto"] == prod_comp].iloc[0]
+        
+        a1, a2 = (d1["Ancho (cm)"] * d1["Alto (cm)"]), (d2["Ancho (cm)"] * d2["Alto (cm)"])
+        index_val = (a2 / a1) * 100
+        
+        with col_c3:
+            st.metric("Index Resultante", f"{index_val:.0f} pts", delta=f"{index_val-100:.1f}% vs base")
+
+    # === 3. FILTROS AVANZADOS (CON FABRICANTE Y CANAL) ===
+    with st.container(border=True):
+        st.markdown("**Filtros Globales de Visualización**")
+        r1_c1, r1_c2, r1_c3 = st.columns(3)
+        sel_fab = r1_c1.multiselect("Fabricante", st.session_state.df_arq_sim["Fabricante"].unique(), default=st.session_state.df_arq_sim["Fabricante"].unique())
+        sel_can = r1_c2.multiselect("Canal", st.session_state.df_arq_sim["Canal"].unique(), default=st.session_state.df_arq_sim["Canal"].unique())
+        sel_marcas = r1_c3.multiselect("Marcas", st.session_state.df_arq_sim["Marca"].unique(), default=st.session_state.df_arq_sim["Marca"].unique())
+        
+        r2_c1, r2_c2 = st.columns(2)
+        sel_ocasiones = r2_c1.multiselect("Ocasiones", st.session_state.df_arq_sim["Ocasión de Consumo"].unique(), default=st.session_state.df_arq_sim["Ocasión de Consumo"].unique())
+        sel_productos = r2_c2.multiselect("Productos específicos", st.session_state.df_arq_sim["Producto"].unique(), default=st.session_state.df_arq_sim["Producto"].unique())
+
+    df_filtered = st.session_state.df_arq_sim[
+        (st.session_state.df_arq_sim["Fabricante"].isin(sel_fab)) & 
+        (st.session_state.df_arq_sim["Canal"].isin(sel_can)) & 
+        (st.session_state.df_arq_sim["Marca"].isin(sel_marcas)) & 
+        (st.session_state.df_arq_sim["Ocasión de Consumo"].isin(sel_ocasiones)) &
+        (st.session_state.df_arq_sim["Producto"].isin(sel_productos))
+    ].copy()
+
+    # Editor Dinámico
+    df_editado = st.data_editor(
+        df_filtered,
+        column_order=("Producto", "Marca", "Fabricante", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"),
+        hide_index=True, use_container_width=True, key="editor_v5_1"
+    )    
 
 # === 4. GRÁFICO TÉCNICO DE ALTO IMPACTO (VERSIÓN CORREGIDA) ===
     if not df_editado.empty:
