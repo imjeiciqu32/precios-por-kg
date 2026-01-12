@@ -1354,89 +1354,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
 # SIZE IMPRESSION
 
-if modo == "Price Ladder":
-    # === 0. INICIALIZACIÓN DE ESTADO ===
-    if 'df_arq_sim' not in st.session_state:
-        if 'df_arq' in locals() and not df_arq.empty:
-            st.session_state.df_arq_sim = df_arq.copy()
-        else:
-            st.session_state.df_arq_sim = pd.DataFrame(columns=[
-                "Producto", "Fabricante", "Marca", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"
-            ])
-
-    st.divider()
-    st.subheader("📐 Laboratorio de Arquitectura de Empaque v5.1")
-
-    # === 1. FORMULARIO DE ALTA (NUEVO SKU) ===
-    with st.expander("➕ Instalar Nuevo SKU en la Simulación", expanded=False):
-        with st.form("nuevo_sku_form"):
-            c1, c2, c3 = st.columns(3)
-            nuevo_p = c1.text_input("Nombre Completo (Producto)", placeholder="Ej. Takis Fuego 240g")
-            nuevo_m = c2.text_input("Marca", placeholder="Ej. TAKIS")
-            nuevo_f = c3.selectbox("Fabricante", ["BARCEL", "SABRITAS", "OTROS"])
-            
-            c4, c5, c6 = st.columns(3)
-            nuevo_c = c4.text_input("Canal", value="AUTOSERVICIO")
-            nuevo_o = c5.selectbox("Ocasión de Consumo", ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"])
-            nuevo_ancho = c6.number_input("Ancho (cm)", min_value=1.0, step=0.1)
-            
-            nuevo_alto = st.number_input("Alto (cm)", min_value=1.0, step=0.1)
-            
-            if st.form_submit_button("🚀 Registrar SKU"):
-                nueva_fila = {
-                    "Producto": nuevo_p, "Fabricante": nuevo_f, "Marca": nuevo_m,
-                    "Canal": nuevo_c, "Ocasión de Consumo": nuevo_o,
-                    "Ancho (cm)": nuevo_ancho, "Alto (cm)": nuevo_alto
-                }
-                st.session_state.df_arq_sim = pd.concat([st.session_state.df_arq_sim, pd.DataFrame([nueva_fila])], ignore_index=True)
-                st.success(f"Producto {nuevo_p} añadido correctamente.")
-                st.rerun()
-
-    # === 2. COMPARADOR TÉCNICO 1 VS 1 ===
-    st.markdown("#### ⚖️ Comparativa de Size Impression Index")
-    with st.container(border=True):
-        col_c1, col_c2, col_c3 = st.columns([2, 2, 1])
-        with col_c1:
-            prod_base = st.selectbox("Producto 1 (Base 100)", st.session_state.df_arq_sim["Producto"].unique(), key="sb_1")
-        with col_c2:
-            prod_comp = st.selectbox("Producto 2 (Comparativo)", st.session_state.df_arq_sim["Producto"].unique(), key="sb_2")
-        
-        d1 = st.session_state.df_arq_sim[st.session_state.df_arq_sim["Producto"] == prod_base].iloc[0]
-        d2 = st.session_state.df_arq_sim[st.session_state.df_arq_sim["Producto"] == prod_comp].iloc[0]
-        
-        a1, a2 = (d1["Ancho (cm)"] * d1["Alto (cm)"]), (d2["Ancho (cm)"] * d2["Alto (cm)"])
-        index_val = (a2 / a1) * 100
-        
-        with col_c3:
-            st.metric("Index Resultante", f"{index_val:.0f} pts", delta=f"{index_val-100:.1f}% vs base")
-
-    # === 3. FILTROS AVANZADOS (CON FABRICANTE Y CANAL) ===
-    with st.container(border=True):
-        st.markdown("**Filtros Globales de Visualización**")
-        r1_c1, r1_c2, r1_c3 = st.columns(3)
-        sel_fab = r1_c1.multiselect("Fabricante", st.session_state.df_arq_sim["Fabricante"].unique(), default=st.session_state.df_arq_sim["Fabricante"].unique())
-        sel_can = r1_c2.multiselect("Canal", st.session_state.df_arq_sim["Canal"].unique(), default=st.session_state.df_arq_sim["Canal"].unique())
-        sel_marcas = r1_c3.multiselect("Marcas", st.session_state.df_arq_sim["Marca"].unique(), default=st.session_state.df_arq_sim["Marca"].unique())
-        
-        r2_c1, r2_c2 = st.columns(2)
-        sel_ocasiones = r2_c1.multiselect("Ocasiones", st.session_state.df_arq_sim["Ocasión de Consumo"].unique(), default=st.session_state.df_arq_sim["Ocasión de Consumo"].unique())
-        sel_productos = r2_c2.multiselect("Productos específicos", st.session_state.df_arq_sim["Producto"].unique(), default=st.session_state.df_arq_sim["Producto"].unique())
-
-    df_filtered = st.session_state.df_arq_sim[
-        (st.session_state.df_arq_sim["Fabricante"].isin(sel_fab)) & 
-        (st.session_state.df_arq_sim["Canal"].isin(sel_can)) & 
-        (st.session_state.df_arq_sim["Marca"].isin(sel_marcas)) & 
-        (st.session_state.df_arq_sim["Ocasión de Consumo"].isin(sel_ocasiones)) &
-        (st.session_state.df_arq_sim["Producto"].isin(sel_productos))
-    ].copy()
-
-    # Editor Dinámico
-    df_editado = st.data_editor(
-        df_filtered,
-        column_order=("Producto", "Marca", "Fabricante", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"),
-        hide_index=True, use_container_width=True, key="editor_v5_1"
-    )
-    # === 4. GRÁFICO TÉCNICO DE ALTO IMPACTO (SOLUCIÓN ESCALA REAL) ===
+# === 4. GRÁFICO TÉCNICO DE ALTO IMPACTO (VERSIÓN CORREGIDA) ===
     if not df_editado.empty:
         df_editado['Area'] = df_editado['Ancho (cm)'] * df_editado['Alto (cm)']
         orden_o = ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"]
@@ -1446,10 +1364,8 @@ if modo == "Price Ladder":
         fig = go.Figure()
         colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
         
-        # --- PARÁMETROS DE ESCALA FORZADA ---
-        PX_PER_CM = 35  # <--- AJUSTA ESTO: Más alto = gráfico más grande y con más zoom
         x_ptr = 0
-        gap = 40  # Espacio entre productos
+        gap = 40 
         max_h = df_viz['Alto (cm)'].max()
         
         last_ocasion = None
@@ -1459,64 +1375,62 @@ if modo == "Price Ladder":
             w, h = r['Ancho (cm)'], r['Alto (cm)']
             c = colors.get(str(r['Fabricante']).upper(), "#7F8C8D")
             
-            # 1. Dibujo del Empaque
+            # 1. Dibujo del Rectángulo (Más sólido)
             fig.add_shape(type="rect", x0=x_ptr, y0=0, x1=x_ptr+w, y1=h, 
-                          line=dict(color=c, width=3), fillcolor=c, opacity=0.15)
+                          line=dict(color=c, width=4), fillcolor=c, opacity=0.2)
             
-            # 2. Cotas con Flechas (Estilo blueprint mejorado)
-            # Ancho (Abajo)
-            fig.add_annotation(x=x_ptr, y=-3, ax=x_ptr+w, ay=-3, xref="x", yref="y", axref="x", ayref="y",
-                               showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="#666")
-            fig.add_annotation(x=x_ptr+w/2, y=-10, text=f"<b>{w} cm</b>", showarrow=False, font=dict(size=12))
+            # 2. Cotas de Medida (Ubicación optimizada)
+            # Ancho
+            fig.add_annotation(x=x_ptr+w/2, y=-max_h*0.05, text=f"<b>{w} cm</b>", 
+                               showarrow=False, font=dict(size=14, color="#333"))
+            # Alto
+            fig.add_annotation(x=x_ptr-max_h*0.05, y=h/2, text=f"<b>{h} cm</b>", 
+                               textangle=-90, showarrow=False, font=dict(size=14, color="#333"))
             
-            # Alto (Izquierda)
-            fig.add_annotation(x=x_ptr-3, y=0, ax=x_ptr-3, ay=h, xref="x", yref="y", axref="x", ayref="y",
-                               showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor="#666")
-            fig.add_annotation(x=x_ptr-15, y=h/2, text=f"<b>{h} cm</b>", textangle=-90, showarrow=False, font=dict(size=12))
+            # 3. Info del Producto (Arriba)
+            fig.add_annotation(x=x_ptr+w/2, y=h + (max_h*0.1), 
+                               text=f"<b>{r['Producto']}</b><br><span style='color:green'>{r['Ocasión de Consumo']}</span>", 
+                               showarrow=False, font=dict(size=13))
             
-            # 3. Etiquetas Superiores
-            fig.add_annotation(x=x_ptr+w/2, y=h+12, text=f"<b style='color:green'>{r['Ocasión de Consumo']}</b>", showarrow=False, font=dict(size=11))
-            fig.add_annotation(x=x_ptr+w/2, y=h+6, text=f"<b>{r['Producto']}</b>", showarrow=False, font=dict(size=11))
-            
-            # 4. Área Central
-            fig.add_annotation(x=x_ptr+w/2, y=h/2, text=f"<b>{r['Area']:.0f}</b><br><span style='font-size:10px'>cm²</span>", 
-                               showarrow=False, font=dict(size=22, color=c))
+            # 4. Área (Centro del empaque)
+            fig.add_annotation(x=x_ptr+w/2, y=h/2, text=f"<b>{r['Area']:.0f}</b><br><small>cm²</small>", 
+                               showarrow=False, font=dict(size=24, color=c))
 
-            # 5. Agrupadores de Ocasión (Líneas de techo)
-            if r['Ocasión de Consumo'] != last_ocasion:
-                if last_ocasion is not None:
-                    fig.add_shape(type="line", x0=group_start_x, y0=max_h + 25, x1=x_ptr-gap+5, y1=max_h + 25, 
-                                  line=dict(color="#444", width=2, dash="dot"))
-                    fig.add_annotation(x=(group_start_x + x_ptr - gap)/2, y=max_h + 35, 
-                                       text=f"📂 <b>{last_ocasion.upper()}</b>", showarrow=False, font=dict(size=14))
-                last_ocasion = r['Ocasión de Consumo']
-                group_start_x = x_ptr
+            # 5. Separadores de Categoría (Líneas verticales discretas)
+            if r['Ocasión de Consumo'] != last_ocasion and i > 0:
+                fig.add_shape(type="line", x0=x_ptr-(gap/2), y0=0, x1=x_ptr-(gap/2), y1=max_h*1.2,
+                              line=dict(color="#DDD", width=2, dash="dash"))
             
-            if i == len(df_viz) - 1: # Cierre último grupo
-                fig.add_shape(type="line", x0=group_start_x, y0=max_h + 25, x1=x_ptr+w, y1=max_h + 25, 
-                              line=dict(color="#444", width=2, dash="dot"))
-                fig.add_annotation(x=(group_start_x + x_ptr + w)/2, y=max_h + 35, 
-                                   text=f"📂 <b>{last_ocasion.upper()}</b>", showarrow=False, font=dict(size=14))
-
+            last_ocasion = r['Ocasión de Consumo']
             x_ptr += w + gap
 
-        # === EL AJUSTE FINAL DE TAMAÑO ===
-        # Multiplicamos los cm totales por nuestros píxeles por cm
-        total_width_px = (x_ptr + 80) * PX_PER_CM
-        total_height_px = (max_h + 80) * PX_PER_CM
-
+        # === CONFIGURACIÓN DE ESCALADO AUTOMÁTICO INTELIGENTE ===
         fig.update_layout(
-            width=total_width_px, 
-            height=total_height_px, 
+            # Altura fija para que el eje Y no se vea pequeño
+            height=650, 
+            # El ancho se adapta al contenedor de Streamlit
+            autosize=True,
             template="plotly_white",
-            xaxis=dict(range=[-40, x_ptr + 20], showgrid=True, gridcolor='#f2f2f2', zeroline=False, showticklabels=False),
-            yaxis=dict(range=[-30, max_h + 60], showgrid=True, gridcolor='#f2f2f2', zeroline=False, showticklabels=False,
-                       scaleanchor="x", scaleratio=1),
-            margin=dict(l=0, r=0, t=0, b=0),
-            showlegend=False
+            showlegend=False,
+            xaxis=dict(
+                # Ajustamos el rango exactamente a lo que miden los productos
+                range=[-20, x_ptr],
+                showgrid=False,
+                zeroline=False,
+                showticklabels=False
+            ),
+            yaxis=dict(
+                # Forzamos a que el eje Y sea dinámico según el producto más alto
+                range=[-max_h*0.15, max_h * 1.3], 
+                showgrid=True,
+                gridcolor="#F0F0F0",
+                zeroline=False,
+                showticklabels=False,
+                # IMPORTANTE: Eliminamos scaleanchor temporalmente para maximizar el área
+                fixedrange=False 
+            ),
+            margin=dict(l=10, r=10, t=10, b=10)
         )
         
-        # Centramos el gráfico usando un contenedor de Streamlit con CSS para el scroll
-        st.markdown('<div style="overflow-x: auto;">', unsafe_allow_html=True)
-        st.plotly_chart(fig, use_container_width=False)
-        st.markdown('</div>', unsafe_allow_html=True)
+        # Renderizamos ocupando todo el ancho disponible
+        st.plotly_chart(fig, use_container_width=True)
