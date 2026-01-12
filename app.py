@@ -1358,7 +1358,7 @@ if modo == "Price Ladder":
         st.divider()
         st.subheader("📐 Laboratorio de Arquitectura y Simulación de Empaque")
 
-        # === 1. PANEL DE FILTROS ===
+        # === 1. PANEL DE FILTROS EN CASCADA ===
         with st.container(border=True):
             f1, f2, f3 = st.columns(3)
             with f1:
@@ -1367,110 +1367,121 @@ if modo == "Price Ladder":
                 df_f = df_arq[df_arq["Canal"].isin(canal_sel)]
                 fab_sel = st.multiselect("Fabricante", df_f["Fabricante"].unique(), default=df_f["Fabricante"].unique())
             with f3:
+                # Ahora incluimos Ocasión de Consumo como filtro principal
                 df_m = df_f[df_f["Fabricante"].isin(fab_sel)]
                 ocasion_sel = st.multiselect("Ocasión de Consumo", df_arq["Ocasión de Consumo"].unique(), default=df_arq["Ocasión de Consumo"].unique())
 
-        # === 2. TABLA EDITABLE PRO (PERMITE AGREGAR FILAS) ===
+        # === 2. TABLA EDITABLE DINÁMICA (PERMITE AGREGAR FILAS) ===
         st.markdown("#### 📝 Editor de SKUs y Dimensiones")
-        st.caption("Usa la última fila vacía para agregar un nuevo SKU. Puedes editar cualquier valor.")
+        st.caption("Escribe en la última fila para agregar un nuevo SKU. Puedes modificar Ocasiones, Dimensiones y Nombres.")
         
+        # Filtramos el DataFrame para la edición inicial
         df_para_editar = df_m[df_m["Ocasión de Consumo"].isin(ocasion_sel)].copy()
         
-        # Habilitamos num_rows="dynamic" para permitir agregar nuevos SKUs
+        # Configuración del Editor Profesional
         df_editado = st.data_editor(
             df_para_editar,
             column_order=("Producto", "Fabricante", "Marca", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"),
             hide_index=True,
             use_container_width=True,
-            num_rows="dynamic",
-            key="editor_pro_arq"
+            num_rows="dynamic", # Permite añadir nuevos productos
+            key="editor_arquitectura_v3"
         )
 
-        # Recalcular y Limpiar datos vacíos (por si agregan filas sin datos)
+        # Limpieza y cálculos (eliminamos filas vacías que el usuario pueda crear por error)
         df_editado = df_editado.dropna(subset=['Ancho (cm)', 'Alto (cm)', 'Producto'])
         df_editado['Area (cm²)'] = df_editado['Ancho (cm)'] * df_editado['Alto (cm)']
 
-        # === 3. ORDENAMIENTO LÓGICO POR OCASIÓN ===
+        # === 3. ORDENAMIENTO LÓGICO ESTRATÉGICO ===
         orden_ocasion = ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"]
-        # Convertimos la columna a categoría con el orden específico
-        df_editado['Ocasión de Consumo'] = pd.Categorical(df_editado['Ocasión de Consumo'], categories=orden_ocasion, ordered=True)
+        df_editado['Ocasión de Consumo'] = pd.Categorical(
+            df_editado['Ocasión de Consumo'], 
+            categories=orden_ocasion, 
+            ordered=True
+        )
+        # Ordenamos por Ocasión y luego por tamaño de área
         df_viz = df_editado.sort_values(['Ocasión de Consumo', 'Area (cm²)'])
 
         if not df_viz.empty:
-            # === 4. SELECCIÓN DE BASE 100 ===
+            # === 4. SELECTOR DE BASE 100 DINÁMICO ===
             st.markdown("---")
             c_ref, _ = st.columns([2, 2])
             with c_ref:
-                prod_ref = st.selectbox("🎯 Definir Base 100 para comparación", df_viz["Producto"].unique())
+                prod_ref = st.selectbox("🎯 Definir Base 100 para comparación", df_viz["Producto"].unique(), key="base_100_sel")
             
+            # Obtener área de referencia
             area_base = df_viz[df_viz["Producto"] == prod_ref]['Area (cm²)'].values[0]
 
-            # === 5. GRÁFICO TÉCNICO AVANZADO ===
+            # === 5. GRÁFICO TÉCNICO DE ALTO IMPACTO ===
             fig_arq = go.Figure()
             colors_fab = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
             
             x_pos = 0
-            gap = 25 
+            gap = 35 # Espacio extra para que no se encimen las etiquetas grandes
             max_h = df_viz['Alto (cm)'].max()
 
             for _, row in df_viz.iterrows():
                 w, h = row['Ancho (cm)'], row['Alto (cm)']
                 color = colors_fab.get(str(row['Fabricante']).upper(), "#7F8C8D")
                 
-                # Rectángulo con contorno negro suave
+                # RECTÁNGULO (Empaque con contorno negro suave)
                 fig_arq.add_shape(
                     type="rect", x0=x_pos, y0=0, x1=x_pos + w, y1=h,
-                    line=dict(color="rgba(0,0,0,0.3)", width=2), # Contorno suave
-                    fillcolor=color, opacity=0.15
+                    line=dict(color="rgba(0,0,0,0.5)", width=2.5), # Contorno Pro
+                    fillcolor=color, opacity=0.18
                 )
 
-                # REGLAS (Cotas) con fuentes más grandes
-                fig_arq.add_shape(type="line", x0=x_pos, y0=-2, x1=x_pos + w, y1=-2, line=dict(color="gray", width=1))
-                fig_arq.add_annotation(x=x_pos + w/2, y=-6, text=f"<b>{w} cm</b>", showarrow=False, font=dict(size=14))
+                # REGLA DE ANCHO (Abajo) - Fuentes más grandes
+                fig_arq.add_shape(type="line", x0=x_pos, y0=-2, x1=x_pos + w, y1=-2, line=dict(color="#444", width=1.5))
+                fig_arq.add_annotation(x=x_pos + w/2, y=-7, text=f"<b>{w} cm</b>", showarrow=False, font=dict(size=15, color="#222"))
 
-                fig_arq.add_shape(type="line", x0=x_pos - 3, y0=0, x1=x_pos - 3, y1=h, line=dict(color="gray", width=1))
-                fig_arq.add_annotation(x=x_pos - 8, y=h/2, text=f"<b>{h} cm</b>", textangle=-90, showarrow=False, font=dict(size=14))
+                # REGLA DE ALTO (Izquierda) - Fuentes más grandes
+                fig_arq.add_shape(type="line", x0=x_pos - 4, y0=0, x1=x_pos - 4, y1=h, line=dict(color="#444", width=1.5))
+                fig_arq.add_annotation(x=x_pos - 10, y=h/2, text=f"<b>{h} cm</b>", textangle=-90, showarrow=False, font=dict(size=15, color="#222"))
 
-                # ÁREA CENTRAL
+                # ÁREA CENTRAL (Impacto visual)
                 fig_arq.add_annotation(
                     x=x_pos + w/2, y=h/2,
                     text=f"<b>{row['Area (cm²)']:.0f}</b><br><span style='font-size:12px'>cm²</span>",
-                    showarrow=False, font=dict(color=color, size=18)
+                    showarrow=False, font=dict(color=color, size=22) # Área más grande
                 )
 
-                # ETIQUETAS SUPERIORES (Producto y Ocasión)
-                # Ocasión (Etiqueta superior)
+                # ETIQUETAS DE TEXTO SUPERIOR
+                # 1. Ocasión de Consumo (Arriba del todo)
                 fig_arq.add_annotation(
-                    x=x_pos + w/2, y=h + (max_h * 0.18),
-                    text=f"🏢 <span style='color:gray'>{row['Ocasión de Consumo']}</span>",
-                    showarrow=False, font=dict(size=12, italic=True)
+                    x=x_pos + w/2, y=h + (max_h * 0.22),
+                    text=f"🍱 <i>{row['Ocasión de Consumo']}</i>",
+                    showarrow=False, font=dict(size=13, color="#666")
                 )
-                # Nombre del Producto (Justo arriba del empaque)
+                # 2. Nombre del Producto (Justo arriba del empaque)
                 fig_arq.add_annotation(
                     x=x_pos + w/2, y=h + (max_h * 0.08),
                     text=f"<b>{row['Producto']}</b>",
-                    showarrow=False, font=dict(size=13, color="#1f1f1f")
+                    showarrow=False, font=dict(size=14, color="#000")
                 )
 
-                # CÁLCULO DE INDEX PARA VISUALIZACIÓN RÁPIDA
+                # INDEX DE COMPARACIÓN (En la base)
                 idx_val = (row['Area (cm²)'] / area_base) * 100
                 fig_arq.add_annotation(
-                    x=x_pos + w/2, y=-14,
+                    x=x_pos + w/2, y=-16,
                     text=f"Index: <b>{idx_val:.0f}</b>",
-                    showarrow=False, font=dict(size=12, color="#555")
+                    showarrow=False, font=dict(size=14, color="#333")
                 )
                 
                 x_pos += w + gap
 
+            # Configuración de Layout Pro
             fig_arq.update_layout(
-                height=600, template="plotly_white",
-                xaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-20, x_pos + 5]),
-                yaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-20, max_h + 30]),
-                yaxis_scaleanchor="x", yaxis_scaleratio=1,
-                margin=dict(l=0, r=0, t=20, b=0)
+                height=650, # Más altura para acomodar las etiquetas nuevas
+                template="plotly_white",
+                xaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-25, x_pos + 10]),
+                yaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-25, max_h + 40]),
+                yaxis_scaleanchor="x", # Mantiene proporción real
+                yaxis_scaleratio=1,
+                margin=dict(l=0, r=0, t=10, b=0)
             )
             
             st.plotly_chart(fig_arq, use_container_width=True)
             
     else:
-        st.warning("⚠️ No se detectó la base de datos de arquitectura.")
+        st.warning("⚠️ No se encontró la fuente de datos `df_arq`. Por favor carga la plantilla de arquitectura.")
