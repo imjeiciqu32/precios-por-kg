@@ -1533,3 +1533,4 @@ if modo == "Price Ladder":
         st.write('<div class="scroll-container">', unsafe_allow_html=True)
         st.plotly_chart(fig, use_container_width=False) # False para respetar el width calculado en PX
         st.write('</div>', unsafe_allow_html=True)
+    
