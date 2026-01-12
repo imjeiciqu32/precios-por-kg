@@ -1354,10 +1354,10 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
 # SIZE IMPRESSION
 
+
 if modo == "Price Ladder":
-    # === 0. INICIALIZACIÓN DE ESTADO (Corrección de AttributeError) ===
+    # === 0. INICIALIZACIÓN DE ESTADO ===
     if 'df_arq_sim' not in st.session_state:
-        # Cargamos los datos iniciales de la plantilla
         if 'df_arq' in locals() and not df_arq.empty:
             st.session_state.df_arq_sim = df_arq.copy()
         else:
@@ -1366,7 +1366,7 @@ if modo == "Price Ladder":
             ])
 
     st.divider()
-    st.subheader("📐 Laboratorio de Arquitectura de Empaque v5.0")
+    st.subheader("📐 Laboratorio de Arquitectura de Empaque v5.1")
 
     # === 1. FORMULARIO DE ALTA (NUEVO SKU) ===
     with st.expander("➕ Instalar Nuevo SKU en la Simulación", expanded=False):
@@ -1390,7 +1390,7 @@ if modo == "Price Ladder":
                     "Ancho (cm)": nuevo_ancho, "Alto (cm)": nuevo_alto
                 }
                 st.session_state.df_arq_sim = pd.concat([st.session_state.df_arq_sim, pd.DataFrame([nueva_fila])], ignore_index=True)
-                st.success(f"Producto {nuevo_p} añadido.")
+                st.success(f"Producto {nuevo_p} añadido correctamente.")
                 st.rerun()
 
     # === 2. COMPARADOR TÉCNICO 1 VS 1 ===
@@ -1411,27 +1411,34 @@ if modo == "Price Ladder":
         with col_c3:
             st.metric("Index Resultante", f"{index_val:.0f} pts", delta=f"{index_val-100:.1f}% vs base")
 
-    # === 3. FILTROS AVANZADOS Y EDITOR ===
+    # === 3. FILTROS AVANZADOS (CON FABRICANTE Y CANAL) ===
     with st.container(border=True):
-        f1, f2, f3 = st.columns(3)
-        sel_marcas = f1.multiselect("Marcas", st.session_state.df_arq_sim["Marca"].unique(), default=st.session_state.df_arq_sim["Marca"].unique())
-        sel_ocasiones = f2.multiselect("Ocasiones", st.session_state.df_arq_sim["Ocasión de Consumo"].unique(), default=st.session_state.df_arq_sim["Ocasión de Consumo"].unique())
-        sel_productos = f3.multiselect("Productos específicos", st.session_state.df_arq_sim["Producto"].unique(), default=st.session_state.df_arq_sim["Producto"].unique())
+        st.markdown("**Filtros Globales de Visualización**")
+        r1_c1, r1_c2, r1_c3 = st.columns(3)
+        sel_fab = r1_c1.multiselect("Fabricante", st.session_state.df_arq_sim["Fabricante"].unique(), default=st.session_state.df_arq_sim["Fabricante"].unique())
+        sel_can = r1_c2.multiselect("Canal", st.session_state.df_arq_sim["Canal"].unique(), default=st.session_state.df_arq_sim["Canal"].unique())
+        sel_marcas = r1_c3.multiselect("Marcas", st.session_state.df_arq_sim["Marca"].unique(), default=st.session_state.df_arq_sim["Marca"].unique())
+        
+        r2_c1, r2_c2 = st.columns(2)
+        sel_ocasiones = r2_c1.multiselect("Ocasiones", st.session_state.df_arq_sim["Ocasión de Consumo"].unique(), default=st.session_state.df_arq_sim["Ocasión de Consumo"].unique())
+        sel_productos = r2_c2.multiselect("Productos específicos", st.session_state.df_arq_sim["Producto"].unique(), default=st.session_state.df_arq_sim["Producto"].unique())
 
     df_filtered = st.session_state.df_arq_sim[
+        (st.session_state.df_arq_sim["Fabricante"].isin(sel_fab)) & 
+        (st.session_state.df_arq_sim["Canal"].isin(sel_can)) & 
         (st.session_state.df_arq_sim["Marca"].isin(sel_marcas)) & 
         (st.session_state.df_arq_sim["Ocasión de Consumo"].isin(sel_ocasiones)) &
         (st.session_state.df_arq_sim["Producto"].isin(sel_productos))
     ].copy()
 
-    # Editor con todas las columnas solicitadas
+    # Editor Dinámico
     df_editado = st.data_editor(
         df_filtered,
         column_order=("Producto", "Marca", "Fabricante", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"),
-        hide_index=True, use_container_width=True, key="editor_v5"
+        hide_index=True, use_container_width=True, key="editor_v5_1"
     )
 
-    # === 4. GRÁFICO DINÁMICO (BLUEPRINT) ===
+    # === 4. GRÁFICO TÉCNICO DE ALTO IMPACTO ===
     if not df_editado.empty:
         df_editado['Area'] = df_editado['Ancho (cm)'] * df_editado['Alto (cm)']
         orden_o = ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"]
@@ -1442,10 +1449,9 @@ if modo == "Price Ladder":
         colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D"}
         
         x_ptr = 0
-        gap = 40
+        gap = 45 # Espacio entre empaques
         max_h = df_viz['Alto (cm)'].max()
         
-        # Agrupación de Ocasión (Etiqueta Unificada)
         last_ocasion = None
         group_start_x = 0
 
@@ -1453,43 +1459,50 @@ if modo == "Price Ladder":
             w, h = r['Ancho (cm)'], r['Alto (cm)']
             c = colors.get(str(r['Fabricante']).upper(), "#7F8C8D")
             
-            # Dibujo del Empaque (Contorno negro suave)
+            # 1. Dibujo del Rectángulo (Empaque)
             fig.add_shape(type="rect", x0=x_ptr, y0=0, x1=x_ptr+w, y1=h, 
-                          line=dict(color="black", width=1.5), fillcolor=c, opacity=0.2)
+                          line=dict(color="black", width=2), fillcolor=c, opacity=0.25)
             
-            # Cotas de tamaño (Fuentes grandes)
-            fig.add_annotation(x=x_ptr+w/2, y=-8, text=f"<b>{w} cm</b>", showarrow=False, font=dict(size=14))
-            fig_arq.add_annotation(x=x_ptr-10, y=h/2, text=f"<b>{h} cm</b>", textangle=-90, showarrow=False, font=dict(size=14))
+            # 2. Cotas de Medida (Fuentes Negritas y Grandes)
+            # Ancho (Abajo)
+            fig.add_annotation(x=x_ptr+w/2, y=-10, text=f"<b>{w} cm</b>", showarrow=False, font=dict(size=14, color="#333"))
+            # Alto (Izquierda) - CORRECCIÓN DE NameError AQUÍ
+            fig.add_annotation(x=x_ptr-12, y=h/2, text=f"<b>{h} cm</b>", textangle=-90, showarrow=False, font=dict(size=14, color="#333"))
             
-            # Nombre del Producto (Arriba del empaque)
+            # 3. Etiquetas de Producto (Arriba del empaque)
             fig.add_annotation(x=x_ptr+w/2, y=h+6, text=f"<b>{r['Producto']}</b>", showarrow=False, font=dict(size=13))
             
-            # Área central
-            fig.add_annotation(x=x_ptr+w/2, y=h/2, text=f"<b>{r['Area']:.0f}</b><br>cm²", showarrow=False, font=dict(size=20, color=c))
+            # 4. Valor del Área (Central)
+            fig.add_annotation(x=x_ptr+w/2, y=h/2, text=f"<b>{r['Area']:.0f}</b><br><span style='font-size:12px'>cm²</span>", 
+                               showarrow=False, font=dict(size=22, color=c))
 
-            # Gestión de Ocasiones Agrupadas
+            # 5. Lógica de Agrupación Visual por Ocasión
             if r['Ocasión de Consumo'] != last_ocasion:
                 if last_ocasion is not None:
-                    # Dibujar línea y etiqueta del grupo que acaba de terminar
-                    fig.add_shape(type="line", x0=group_start_x, y0=max_h + 20, x1=x_ptr-gap+5, y1=max_h + 20, line=dict(color="gray", width=2, dash="dot"))
-                    fig.add_annotation(x=(group_start_x + x_ptr - gap)/2, y=max_h + 28, text=f"📂 <b>{last_ocasion}</b>", showarrow=False, font=dict(size=15))
+                    # Cerrar grupo anterior con línea y etiqueta
+                    fig.add_shape(type="line", x0=group_start_x, y0=max_h + 25, x1=x_ptr-gap+5, y1=max_h + 25, 
+                                  line=dict(color="black", width=2))
+                    fig.add_annotation(x=(group_start_x + x_ptr - gap)/2, y=max_h + 35, 
+                                       text=f"📦 <b>{last_ocasion.upper()}</b>", showarrow=False, font=dict(size=16, color="#444"))
                 
                 last_ocasion = r['Ocasión de Consumo']
                 group_start_x = x_ptr
             
-            if i == len(df_viz) - 1: # Cierre del último grupo
-                fig.add_shape(type="line", x0=group_start_x, y0=max_h + 20, x1=x_ptr+w, y1=max_h + 20, line=dict(color="gray", width=2, dash="dot"))
-                fig.add_annotation(x=(group_start_x + x_ptr + w)/2, y=max_h + 28, text=f"📂 <b>{last_ocasion}</b>", showarrow=False, font=dict(size=15))
+            if i == len(df_viz) - 1: # Cerrar último grupo
+                fig.add_shape(type="line", x0=group_start_x, y0=max_h + 25, x1=x_ptr+w, y1=max_h + 25, 
+                              line=dict(color="black", width=2))
+                fig.add_annotation(x=(group_start_x + x_ptr + w)/2, y=max_h + 35, 
+                                   text=f"📦 <b>{last_ocasion.upper()}</b>", showarrow=False, font=dict(size=16, color="#444"))
 
             x_ptr += w + gap
 
-        # Ajuste dinámico de escala y cuadrícula técnica
+        # Configuración del Layout (Canvas Técnico)
         fig.update_layout(
-            height=800, # Gráfico grande
+            height=850, 
             template="plotly_white",
-            xaxis=dict(showgrid=True, gridcolor='rgba(200,200,200,0.3)', range=[-30, x_ptr]),
-            yaxis=dict(showgrid=True, gridcolor='rgba(200,200,200,0.3)', range=[-20, max_h + 45]),
-            yaxis_scaleanchor="x", yaxis_scaleratio=1, # Mantiene proporción real de los cm
-            margin=dict(l=0, r=0, t=10, b=0)
+            xaxis=dict(showgrid=True, gridcolor='rgba(200,200,200,0.4)', range=[-40, x_ptr], zeroline=False),
+            yaxis=dict(showgrid=True, gridcolor='rgba(200,200,200,0.4)', range=[-30, max_h + 60], zeroline=False),
+            yaxis_scaleanchor="x", yaxis_scaleratio=1, # Escala 1:1 real
+            margin=dict(l=20, r=20, t=20, b=20)
         )
         st.plotly_chart(fig, use_container_width=True)
