@@ -1637,55 +1637,7 @@ if not df_editado.empty:
         hovermode='closest'
     )
     
-    # === HEADER CON ESTADÍSTICAS ===
-    st.markdown(
-        f"""
-        <div style="background: linear-gradient(90deg, #0B3C8C 0%, #1976D2 100%); color: white; padding: 14px 20px; border-radius: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-            <div style="font-size: 13px; font-weight: 600;">
-                📦 <b>{num_productos}</b> Productos | 
-                📏 Escala: <b>{PX_UNIT:.0f}px/cm</b> | 
-                🖼️ Canvas: <b>{canvas_width_px}×{canvas_height_px}px</b>
-            </div>
-            <div style="font-size: 12px; opacity: 0.95;">
-                Zoom: <b>{zoom_nivel}</b>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-    
-    # === HINT BOX ===
-    st.markdown(
-        """
-        <div style="background: linear-gradient(135deg, #FFF3CD 0%, #FFF9E6 100%); border-left: 5px solid #FFC107; border-radius: 8px; padding: 14px 18px; margin: 15px 0; font-size: 13px; color: #856404; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
-            <span style="font-size: 28px; margin-right: 12px; vertical-align: middle;">🖱️</span>
-            <b>Navegación:</b> Arrastra con el mouse para mover • Rueda para zoom
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-    
-    # === BADGE FLOTANTE ===
-    st.markdown(
-        """
-        <div style="
-            background: linear-gradient(90deg, #0B3C8C 0%, #1976D2 100%);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-size: 13px;
-            font-weight: bold;
-            display: inline-block;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 10px rgba(11, 60, 140, 0.3);
-            border: 2px solid #1976D2;
-        ">
-            🎯 ÁREA INTERACTIVA - Puedes hacer zoom y navegar libremente
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-    
+     
     # === CONTENEDOR DEL GRÁFICO ===
     st.markdown(
         """
