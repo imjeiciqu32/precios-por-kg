@@ -1472,34 +1472,70 @@ if modo == "Price Ladder":
             st.markdown("#### ⚖️ Comparativa de Size Impression Index")
             with st.container(border=True):
                 col_sel1, col_sel2 = st.columns(2)
-                lista_prods = st.session_state.df_arq_sim["Producto"].unique()
                 with col_sel1:
-                    p1 = st.selectbox("Producto 1 (Base)", lista_prods, key="sb_1")
+                    prod_base = st.selectbox("Producto 1 (Base 100)", st.session_state.df_arq_sim["Producto"].unique(), key="sb_1")
                 with col_sel2:
-                    p2 = st.selectbox("Producto 2 (Comp)", lista_prods, key="sb_2")
+                    prod_comp = st.selectbox("Producto 2 (Comparativo)", st.session_state.df_arq_sim["Producto"].unique(), key="sb_2")
                 
-                d1 = st.session_state.df_arq_sim[st.session_state.df_arq_sim["Producto"] == p1].iloc[0]
-                d2 = st.session_state.df_arq_sim[st.session_state.df_arq_sim["Producto"] == p2].iloc[0]
-                a1, a2 = d1["Ancho (cm)"]*d1["Alto (cm)"], d2["Ancho (cm)"]*d2["Alto (cm)"]
-                idx = (a2/a1)*100
-                delta = idx - 100
-                col_res = "#28a745" if idx >= 100 else "#d32f2f"
+                # Obtención de datos
+                d1 = st.session_state.df_arq_sim[st.session_state.df_arq_sim["Producto"] == prod_base].iloc[0]
+                d2 = st.session_state.df_arq_sim[st.session_state.df_arq_sim["Producto"] == prod_comp].iloc[0]
                 
+                # Cálculo de áreas e Index
+                a1 = d1["Ancho (cm)"] * d1["Alto (cm)"]
+                a2 = d2["Ancho (cm)"] * d2["Alto (cm)"]
+                index_val = (a2 / a1) * 100
+                delta = index_val - 100
+            
+                # === LÓGICA DE COLOR: POSITIVO SI SOBRE-INDEXA ===
+                # Verde si el comparativo es más grande (>100), Rojo si es más pequeño (<100)
+                color_exito = "#28a745" if index_val >= 100 else "#d32f2f"
+                bg_exito = "#f0fff4" if index_val >= 100 else "#fff5f5"
+            
                 _, col_card, _ = st.columns([1, 2, 1])
+                
                 with col_card:
                     st.markdown(f"""
-                        <div style="background: white; padding: 15px; border-radius: 12px; border-top: 5px solid {col_res}; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #666;">
-                                <span>{p1}<br><b>{a1:,.0f} cm²</b></span>
-                                <span style="margin-top: 10px;">vs</span>
-                                <span>{p2}<br><b>{a2:,.0f} cm²</b></span>
+                        <div style="
+                            background-color: white;
+                            padding: 15px 25px;
+                            border-radius: 12px;
+                            border-top: 5px solid {color_exito};
+                            box-shadow: 0px 2px 10px rgba(0,0,0,0.08);
+                            text-align: center;
+                            margin: 10px auto;
+                            max-width: 400px;
+                        ">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
+                                <div style="text-align: left; width: 42%;">
+                                    <p style="margin: 0; color: #777; font-size: 0.75rem; line-height: 1.1;">{prod_base}</p>
+                                    <h4 style="margin: 2px 0; color: #333; font-weight: bold; font-size: 1.1rem;">{a1:,.0f} <span style="font-size: 0.7rem;">cm²</span></h4>
+                                </div>
+                                <div style="color: #bbb; font-size: 0.8rem; margin-top: 15px; font-weight: bold;">vs</div>
+                                <div style="text-align: right; width: 42%;">
+                                    <p style="margin: 0; color: #777; font-size: 0.75rem; line-height: 1.1;">{prod_comp}</p>
+                                    <h4 style="margin: 2px 0; color: #333; font-weight: bold; font-size: 1.1rem;">{a2:,.0f} <span style="font-size: 0.7rem;">cm²</span></h4>
+                                </div>
                             </div>
-                            <h1 style="color: {col_res}; margin: 10px 0; font-size: 3rem;">{idx:.0f}</h1>
-                            <div style="background: {col_res}22; color: {col_res}; padding: 5px; border-radius: 10px; font-weight: bold;">
-                                {'▲' if delta >= 0 else '▼'} {abs(delta):.1f}% vs base
+                            <div style="margin-top: 10px;">
+                                <h1 style="margin: 0; color: {color_exito}; font-size: 3rem; font-weight: 800; line-height: 1;">{index_val:.0f}</h1>
+                                <p style="margin: 2px 0; color: #666; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Index Size Impression</p>
+                                <div style="
+                                    display: inline-block;
+                                    margin-top: 8px;
+                                    padding: 4px 12px;
+                                    border-radius: 15px;
+                                    background-color: {bg_exito};
+                                    color: {color_exito};
+                                    font-size: 0.9rem;
+                                    font-weight: bold;
+                                ">
+                                    {'▲' if delta >= 0 else '▼'} {abs(delta):.1f}% <span style="font-weight: normal; font-size: 0.8rem;">vs base</span>
+                                </div>
                             </div>
                         </div>
                     """, unsafe_allow_html=True)
+
 
             # === 4. GRÁFICO TÉCNICO COMPLETO ===
             df_editado['Area'] = df_editado['Ancho (cm)'] * df_editado['Alto (cm)']
