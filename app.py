@@ -1536,72 +1536,246 @@ if modo == "Price Ladder":
                         </div>
                     """, unsafe_allow_html=True)
 
-
-            # === 4. GRÁFICO TÉCNICO COMPLETO ===
-            df_editado['Area'] = df_editado['Ancho (cm)'] * df_editado['Alto (cm)']
-            df_editado['Producto'] = df_editado['Producto'].str.upper()
-            orden_o = ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"]
-            df_editado['Ocasión de Consumo'] = pd.Categorical(df_editado['Ocasión de Consumo'], categories=orden_o, ordered=True)
-            df_viz = df_editado.sort_values(['Ocasión de Consumo', 'Area'])
-
-            st.markdown("#### ⚙️ Controles de Visualización")
-            c_c1, c_c2, c_c3, c_c4 = st.columns(4)
-            escala_base = c_c1.slider("📏 Escala Base", 20, 80, 45)
-            gap_prod = c_c2.slider("↔️ Separación", 5, 30, 12)
-            modo_v = c_c3.selectbox("👁️ Vista", ["Automático", "Compacto", "Expandido", "Ultra Grande"])
-            zoom_v = c_c4.selectbox("🔍 Zoom", ["100%", "125%", "150%", "175%", "200%"])
-
-            # Lógica de escala
-            num_p = len(df_viz)
-            if modo_v == "Automático": PX = escala_base * (1.5 if num_p <=3 else 1.2 if num_p <=6 else 1.0)
-            elif modo_v == "Compacto": PX = escala_base * 0.6
-            elif modo_v == "Expandido": PX = escala_base * 1.3
-            else: PX = escala_base * 2
-            PX *= float(zoom_v.replace("%",""))/100
-
-            fig = go.Figure()
-            colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"}
-            x_ptr, max_h = 0, df_viz['Alto (cm)'].max()
-            last_oc, oc_pos = None, {}
-
-            for i, (_, r) in enumerate(df_viz.iterrows()):
-                w, h, c = r['Ancho (cm)'], r['Alto (cm)'], colors.get(str(r['Fabricante']).upper(), "#7F8C8D")
-                if r['Ocasión de Consumo'] not in oc_pos: oc_pos[r['Ocasión de Consumo']] = {'start': x_ptr}
-                oc_pos[r['Ocasión de Consumo']]['end'] = x_ptr + w
-
-                # Empaque y Sombras 3D (Lógica Original Completa)
-                fig.add_shape(type="rect", x0=x_ptr, y0=0, x1=x_ptr+w, y1=h, line=dict(color=c, width=3), fillcolor=c, opacity=0.15)
-                for off in [0.15, 0.25, 0.35]:
-                    fig.add_shape(type="rect", x0=x_ptr+off, y0=-off, x1=x_ptr+w+off, y1=h-off, fillcolor="black", opacity=0.03, layer="below", line=dict(width=0))
+            # === GRÁFICO TÉCNICO ADAPTATIVO CON NAVEGACIÓN MEJORADA ===
+            if not df_editado.empty:
+                df_editado['Area'] = df_editado['Ancho (cm)'] * df_editado['Alto (cm)']
+                # Aseguramos la G mayúscula en el nombre de los productos
+                df_editado['Producto'] = df_editado['Producto'].str.upper()
                 
-                # Anotaciones (Nombre, Área, Medidas)
-                fig.add_annotation(x=x_ptr+w/2, y=h+1.5, text=f"<b>{r['Producto']}</b>", showarrow=False, font=dict(size=PX*0.3), bgcolor="white", bordercolor="#DDD", borderpad=4)
-                fig.add_annotation(x=x_ptr+w/2, y=h/2, text=f"<b>{r['Area']:.0f}</b><br><small>cm²</small>", showarrow=False, font=dict(size=PX*0.4, color=c))
-                
-                # Medidores Técnicos (Líneas y Texto)
-                fig.add_shape(type="line", x0=x_ptr, y0=-0.8, x1=x_ptr+w, y1=-0.8, line=dict(color="#333", width=2))
-                fig.add_annotation(x=x_ptr+w/2, y=-2.2, text=f"<b>{w}cm</b>", showarrow=False, font=dict(size=PX*0.25))
-                fig.add_shape(type="line", x0=x_ptr-0.8, y0=0, x1=x_ptr-0.8, y1=h, line=dict(color="#333", width=2))
-                fig.add_annotation(x=x_ptr-2, y=h/2, text=f"<b>{h}cm</b>", textangle=-90, showarrow=False, font=dict(size=PX*0.25))
-
-                if r['Ocasión de Consumo'] != last_oc and i > 0:
-                    fig.add_shape(type="line", x0=x_ptr-(gap_prod/2), y0=-3, x1=x_ptr-(gap_prod/2), y1=max_h+4, line=dict(color="#0B3C8C", width=2, dash="dot"))
-                last_oc, x_ptr = r['Ocasión de Consumo'], x_ptr + w + gap_prod
-
-            for oc, pos in oc_pos.items():
-                fig.add_annotation(x=(pos['start']+pos['end'])/2, y=-4.5, text=f"<b>{oc}</b>", showarrow=False, font=dict(color="white"), bgcolor="#0B3C8C", borderpad=6)
-
-            fig.update_layout(
-                width=max(600, int((x_ptr+10)*PX)), height=max(400, int((max_h+20)*PX)),
-                template="plotly_white", showlegend=False, margin=dict(l=20,r=20,t=40,b=20),
-                xaxis=dict(range=[-10, x_ptr+5], showgrid=False, zeroline=False, showticklabels=False),
-                yaxis=dict(range=[-15, max_h+15], showgrid=False, zeroline=False, showticklabels=False, scaleanchor="x", scaleratio=1),
-                dragmode='pan'
-            )
+                orden_o = ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"]
+                df_editado['Ocasión de Consumo'] = pd.Categorical(df_editado['Ocasión de Consumo'], categories=orden_o, ordered=True)
+                df_viz = df_editado.sort_values(['Ocasión de Consumo', 'Area'])
             
-            st.markdown('<div style="background:white; border:2px solid #EEE; border-radius:12px; overflow-x:auto;">', unsafe_allow_html=True)
-            st.plotly_chart(fig, use_container_width=False, config={'scrollZoom': True, 'displaylogo': False, 'toImageButtonOptions': {'format': 'png', 'scale': 3}})
-            st.markdown('</div>', unsafe_allow_html=True)
+                # === CONTROLES DE VISUALIZACIÓN MEJORADOS ===
+                st.markdown("#### ⚙️ Controles de Visualización")
+                
+                col_ctrl1, col_ctrl2, col_ctrl3, col_ctrl4 = st.columns(4)
+                
+                with col_ctrl1:
+                    escala_base = st.slider("📏 Escala Base", 20, 80, 45, step=5, 
+                                           help="Aumenta para hacer los empaques más grandes")
+                with col_ctrl2:
+                    gap_productos = st.slider("↔️ Separación", 5, 30, 12, 
+                                             help="Espacio entre productos")
+                with col_ctrl3:
+                    modo_vista = st.selectbox("👁️ Modo Vista", 
+                                              ["Automático", "Compacto", "Expandido", "Ultra Grande"])
+                with col_ctrl4:
+                    zoom_nivel = st.selectbox("🔍 Zoom Inicial",
+                                              ["100%", "125%", "150%", "175%", "200%"],
+                                              index=0)
+            
+                # === CÁLCULO DE ESCALA INTELIGENTE ===
+                num_productos = len(df_viz)
+                
+                if modo_vista == "Automático":
+                    if num_productos <= 3:
+                        PX_UNIT = escala_base * 1.5
+                    elif num_productos <= 6:
+                        PX_UNIT = escala_base * 1.2
+                    elif num_productos <= 10:
+                        PX_UNIT = escala_base
+                    else:
+                        PX_UNIT = escala_base * 0.8
+                elif modo_vista == "Compacto":
+                    PX_UNIT = escala_base * 0.6
+                elif modo_vista == "Expandido":
+                    PX_UNIT = escala_base * 1.3
+                else:
+                    PX_UNIT = escala_base * 2
+                
+                # Aplicar zoom inicial
+                zoom_multiplier = float(zoom_nivel.replace("%", "")) / 100
+                PX_UNIT = PX_UNIT * zoom_multiplier
+            
+                # === CONSTRUCCIÓN DEL GRÁFICO ===
+                fig = go.Figure()
+                colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"}
+                
+                x_ptr = 0
+                max_h = df_viz['Alto (cm)'].max()
+                
+                font_size_producto = max(12, int(PX_UNIT * 0.3))
+                font_size_medidas = max(10, int(PX_UNIT * 0.25))
+                font_size_area = max(16, int(PX_UNIT * 0.4))
+                
+                last_ocasion = None
+                ocasion_positions = {}
+            
+                for i, (_, r) in enumerate(df_viz.iterrows()):
+                    w, h = r['Ancho (cm)'], r['Alto (cm)']
+                    area = r['Area']
+                    c = colors.get(str(r['Fabricante']).upper(), "#7F8C8D")
+                    
+                    if r['Ocasión de Consumo'] not in ocasion_positions:
+                        ocasion_positions[r['Ocasión de Consumo']] = {'start': x_ptr, 'end': x_ptr + w}
+                    else:
+                        ocasion_positions[r['Ocasión de Consumo']]['end'] = x_ptr + w
+                    
+                    # === EMPAQUE CON EFECTO 3D ===
+                    fig.add_shape(
+                        type="rect", 
+                        x0=x_ptr, y0=0, x1=x_ptr+w, y1=h, 
+                        line=dict(color=c, width=3), 
+                        fillcolor=c, 
+                        opacity=0.15
+                    )
+                    
+                    # === SOMBRA MEJORADA ===
+                    for offset in [0.15, 0.25, 0.35]:
+                        fig.add_shape(
+                            type="rect", 
+                            x0=x_ptr+offset, y0=-offset, x1=x_ptr+w+offset, y1=h-offset,
+                            line=dict(width=0), 
+                            fillcolor="black", 
+                            opacity=0.03, 
+                            layer="below"
+                        )
+                    
+                    # === NOMBRE DEL PRODUCTO CON FONDO ===
+                    fig.add_annotation(
+                        x=x_ptr+w/2, 
+                        y=h+1.5, 
+                        text=f"<b>{r['Producto']}</b>", 
+                        showarrow=False, 
+                        font=dict(size=font_size_producto, color="#222", family="Arial Black"), 
+                        bgcolor="rgba(255,255,255,0.9)",
+                        bordercolor="#DDD",
+                        borderwidth=1,
+                        borderpad=4,
+                        yanchor="bottom"
+                    )
+                    
+                    # === LÍNEAS MEDIDORAS ANCHO ===
+                    fig.add_shape(type="line", x0=x_ptr, y0=-0.8, x1=x_ptr+w, y1=-0.8, line=dict(color="#333", width=2))
+                    fig.add_shape(type="line", x0=x_ptr, y0=-1.2, x1=x_ptr, y1=-0.4, line=dict(color="#333", width=2))
+                    fig.add_shape(type="line", x0=x_ptr+w, y0=-1.2, x1=x_ptr+w, y1=-0.4, line=dict(color="#333", width=2))
+                    fig.add_annotation(
+                        x=x_ptr+w/2, y=-2.2, text=f"<b>{w}cm</b>", 
+                        showarrow=False, font=dict(size=font_size_medidas, color="#333"), yanchor="top"
+                    )
+                    
+                    # === LÍNEAS MEDIDORAS ALTO ===
+                    fig.add_shape(type="line", x0=x_ptr-0.8, y0=0, x1=x_ptr-0.8, y1=h, line=dict(color="#333", width=2))
+                    fig.add_shape(type="line", x0=x_ptr-1.2, y0=0, x1=x_ptr-0.4, y1=0, line=dict(color="#333", width=2))
+                    fig.add_shape(type="line", x0=x_ptr-1.2, y0=h, x1=x_ptr-0.4, y1=h, line=dict(color="#333", width=2))
+                    fig.add_annotation(
+                        x=x_ptr-2, y=h/2, text=f"<b>{h}cm</b>", textangle=-90, 
+                        showarrow=False, font=dict(size=font_size_medidas, color="#333"), xanchor="right"
+                    )
+                    
+                    # === ÁREA EN EL CENTRO (SOLO TEXTO REFORZADO) ===
+                    fig.add_annotation(
+                        x=x_ptr+w/2, y=h/2, 
+                        text=f"<b>{area:.0f}</b><br><span style='font-size:{int(font_size_area*0.6)}px;'>cm²</span>", 
+                        showarrow=False, 
+                        font=dict(size=font_size_area, color=c, family="Arial Black"), 
+                        align="center"
+                    )
+                    
+                    # === SEPARADOR DE OCASIÓN ===
+                    if r['Ocasión de Consumo'] != last_ocasion and i > 0:
+                        fig.add_shape(
+                            type="line", x0=x_ptr-(gap_productos/2), y0=-3, x1=x_ptr-(gap_productos/2), y1=max_h+4,
+                            line=dict(color="#0B3C8C", width=2, dash="dot")
+                        )
+                    
+                    last_ocasion = r['Ocasión de Consumo']
+                    x_ptr += w + gap_productos
+            
+                # === ETIQUETAS DE OCASIÓN CON BADGE STYLE ===
+                for ocasion, pos in ocasion_positions.items():
+                    center_x = (pos['start'] + pos['end']) / 2
+                    fig.add_annotation(
+                        x=center_x, y=-4.5, text=f"<b>{ocasion}</b>", showarrow=False,
+                        font=dict(size=max(14, int(PX_UNIT * 0.32)), color="white", family="Arial Black"),
+                        bgcolor="#0B3C8C",
+                        bordercolor="#1976D2",
+                        borderwidth=2,
+                        borderpad=6,
+                        yanchor="top"
+                    )
+            
+                # === CANVAS DIMENSIONES ===
+                ancho_contenido = x_ptr
+                margen_lateral = 5
+                alto_canvas = max_h + 10
+                
+                canvas_width_px = int((ancho_contenido + margen_lateral * 2) * PX_UNIT)
+                canvas_height_px = int(alto_canvas * PX_UNIT)
+                canvas_width_px = max(600, min(canvas_width_px, 4000))
+                canvas_height_px = max(350, min(canvas_height_px, 1200))
+            
+                # === LAYOUT ===
+                fig.update_layout(
+                    width=canvas_width_px,
+                    height=canvas_height_px,
+                    template="plotly_white",
+                    showlegend=False,
+                    margin=dict(l=20, r=20, t=20, b=20),
+                    xaxis=dict(
+                        range=[-margen_lateral-3, ancho_contenido + 2],
+                        showgrid=False,
+                        zeroline=False,
+                        showticklabels=False,
+                        fixedrange=False
+                    ),
+                    yaxis=dict(
+                        range=[-12, max_h + 10],
+                        showgrid=False,
+                        zeroline=False,
+                        showticklabels=False,
+                        scaleanchor="x", 
+                        scaleratio=1,
+                        fixedrange=False
+                    ),
+                    dragmode='pan',
+                    hovermode='closest'
+                )
+                
+                # === CONTENEDOR DEL GRÁFICO (CON BORDE Y SOMBRA) ===
+                st.markdown(
+                    """
+                    <div style="
+                        background: #ffffff;
+                        padding: 15px;
+                        border-radius: 12px;
+                        border: 2px solid #e0e4e9;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                        margin: 10px 0;
+                        overflow-x: auto;
+                    ">
+                    """,
+                    unsafe_allow_html=True
+                )
+                
+                st.plotly_chart(
+                    fig, 
+                    use_container_width=False,
+                    config={
+                        'displayModeBar': True,
+                        'modeBarButtonsToAdd': ['pan2d', 'zoomIn2d', 'zoomOut2d', 'resetScale2d', 'toImage'],
+                        'scrollZoom': True,
+                        'displaylogo': False,
+                        'toImageButtonOptions': {
+                            'format': 'png',
+                            'filename': 'arquitectura_empaque_barcel',
+                            'height': canvas_height_px,
+                            'width': canvas_width_px,
+                            'scale': 3
+                        }
+                    }
+                )
+                
+                # Cerrar el div del contenedor
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+                # === LÍNEA VERDE DIVISORIA ===
+                st.markdown('<hr style="border: 2px solid #28a745; border-radius: 5px; margin: 30px 0;">', unsafe_allow_html=True)
+
+
+            
+            
 
             # Guía Final
             with st.expander("🎮 Guía de Controles"):
