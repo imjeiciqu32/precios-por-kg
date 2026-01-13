@@ -1463,13 +1463,13 @@ if not df_editado.empty:
     # Ajuste automático según cantidad de productos
     if modo_vista == "Automático":
         if num_productos <= 3:
-            PX_UNIT = escala_base * 1.5  # Muy pocos productos = más grandes
+            PX_UNIT = escala_base * 1.5
         elif num_productos <= 6:
             PX_UNIT = escala_base * 1.2
         elif num_productos <= 10:
             PX_UNIT = escala_base
         else:
-            PX_UNIT = escala_base * 0.8  # Muchos productos = más compactos
+            PX_UNIT = escala_base * 0.8
     elif modo_vista == "Compacto":
         PX_UNIT = escala_base * 0.6
     elif modo_vista == "Expandido":
@@ -1484,15 +1484,14 @@ if not df_editado.empty:
     x_ptr = 0
     max_h = df_viz['Alto (cm)'].max()
     min_area = df_viz['Area'].min()
-    max_area = df_viz['Area'].max()
     
     # Tamaño de texto adaptativo según escala
-    font_size_producto = max(10, int(PX_UNIT * 0.28))
-    font_size_medidas = max(10, int(PX_UNIT * 0.26))
-    font_size_area = max(18, int(PX_UNIT * 0.5))
+    font_size_producto = max(12, int(PX_UNIT * 0.3))
+    font_size_medidas = max(10, int(PX_UNIT * 0.25))
+    font_size_area = max(16, int(PX_UNIT * 0.4))
     
     last_ocasion = None
-    ocasion_positions = {}  # Para etiquetas de ocasión al final
+    ocasion_positions = {}
 
     for i, (_, r) in enumerate(df_viz.iterrows()):
         w, h = r['Ancho (cm)'], r['Alto (cm)']
@@ -1525,120 +1524,149 @@ if not df_editado.empty:
         )
         
         # === 3. INFORMACIÓN SUPERIOR (Producto) ===
-        # Ajustamos la posición según el alto del producto
-        offset_top = 2 if h > 20 else 1.5
         fig.add_annotation(
             x=x_ptr+w/2, 
-            y=h+offset_top, 
+            y=h+1.5, 
             text=f"<b>{r['Producto']}</b>", 
             showarrow=False, 
             font=dict(size=font_size_producto, color="#222"), 
             yanchor="bottom"
         )
         
-        # === 4. MEDIDAS DEL EMPAQUE ===
-        # Ancho (abajo, solo si hay espacio)
-        if w > 5:  # Solo mostrar si el empaque es suficientemente ancho
-            fig.add_annotation(
-                x=x_ptr+w/2, 
-                y=-1.8, 
-                text=f"<b>{w}cm</b>", 
-                showarrow=False, 
-                font=dict(size=font_size_medidas, color="#666"), 
-                yanchor="top"
-            )
-        
-        # Alto (lado izquierdo)
+        # === 4. LÍNEAS MEDIDORAS TIPO REGLA (ANCHO - ABAJO) ===
+        # Línea principal horizontal
+        fig.add_shape(
+            type="line",
+            x0=x_ptr, y0=-0.8, x1=x_ptr+w, y1=-0.8,
+            line=dict(color="#333", width=2)
+        )
+        # Ticks de inicio y fin (verticales)
+        fig.add_shape(
+            type="line",
+            x0=x_ptr, y0=-1.2, x1=x_ptr, y1=-0.4,
+            line=dict(color="#333", width=2)
+        )
+        fig.add_shape(
+            type="line",
+            x0=x_ptr+w, y0=-1.2, x1=x_ptr+w, y1=-0.4,
+            line=dict(color="#333", width=2)
+        )
+        # Etiqueta de medida
         fig.add_annotation(
-            x=x_ptr-1, 
+            x=x_ptr+w/2, 
+            y=-2.2, 
+            text=f"<b>{w}cm</b>", 
+            showarrow=False, 
+            font=dict(size=font_size_medidas, color="#333"), 
+            yanchor="top"
+        )
+        
+        # === 5. LÍNEAS MEDIDORAS TIPO REGLA (ALTO - IZQUIERDA) ===
+        # Línea principal vertical
+        fig.add_shape(
+            type="line",
+            x0=x_ptr-0.8, y0=0, x1=x_ptr-0.8, y1=h,
+            line=dict(color="#333", width=2)
+        )
+        # Ticks de inicio y fin (horizontales)
+        fig.add_shape(
+            type="line",
+            x0=x_ptr-1.2, y0=0, x1=x_ptr-0.4, y1=0,
+            line=dict(color="#333", width=2)
+        )
+        fig.add_shape(
+            type="line",
+            x0=x_ptr-1.2, y0=h, x1=x_ptr-0.4, y1=h,
+            line=dict(color="#333", width=2)
+        )
+        # Etiqueta de medida
+        fig.add_annotation(
+            x=x_ptr-2, 
             y=h/2, 
             text=f"<b>{h}cm</b>", 
             textangle=-90, 
             showarrow=False, 
-            font=dict(size=font_size_medidas, color="#666"), 
+            font=dict(size=font_size_medidas, color="#333"), 
             xanchor="right"
         )
         
-        # === 5. ÁREA CENTRAL (CON FONDO) ===
-        # Solo mostrar área si el empaque es suficientemente grande
-        if area > min_area * 1.2:  # Si no es el más pequeño
-            # Fondo semi-transparente para mejor legibilidad
-            fig.add_shape(
-                type="rect",
-                x0=x_ptr+w*0.25, y0=h*0.4, x1=x_ptr+w*0.75, y1=h*0.6,
-                fillcolor="white",
-                opacity=0.7,
-                line=dict(width=0),
-                layer="below"
-            )
-            
-            fig.add_annotation(
-                x=x_ptr+w/2, 
-                y=h/2, 
-                text=f"<b>{area:.0f}</b><br><span style='font-size:{int(font_size_area*0.5)}px'>cm²</span>", 
-                showarrow=False, 
-                font=dict(size=font_size_area, color=c),
-                align="center"
-            )
+        # === 6. ÁREA EN EL CENTRO DEL EMPAQUE ===
+        # Fondo blanco semi-transparente para legibilidad
+        fig.add_shape(
+            type="rect",
+            x0=x_ptr+w*0.2, y0=h*0.35, x1=x_ptr+w*0.8, y1=h*0.65,
+            fillcolor="white",
+            opacity=0.85,
+            line=dict(color="#DDD", width=1),
+            layer="above"
+        )
         
-        # === 6. SEPARADOR DE OCASIÓN ===
+        fig.add_annotation(
+            x=x_ptr+w/2, 
+            y=h/2, 
+            text=f"<b>{area:.0f}</b><br><span style='font-size:{int(font_size_area*0.6)}px;color:#666;'>cm²</span>", 
+            showarrow=False, 
+            font=dict(size=font_size_area, color=c, family="Arial Black"),
+            align="center"
+        )
+        
+        # === 7. SEPARADOR DE OCASIÓN ===
         if r['Ocasión de Consumo'] != last_ocasion and i > 0:
             fig.add_shape(
                 type="line", 
                 x0=x_ptr-(gap_productos/2), 
-                y0=-4, 
+                y0=-3, 
                 x1=x_ptr-(gap_productos/2), 
-                y1=max_h+8,
+                y1=max_h+4,
                 line=dict(color="#D0D0D0", width=2, dash="dot")
             )
         
         last_ocasion = r['Ocasión de Consumo']
         x_ptr += w + gap_productos
 
-    # === 7. ETIQUETAS DE OCASIÓN (AL FONDO) ===
+    # === 8. ETIQUETAS DE OCASIÓN (AL FONDO) ===
     for ocasion, pos in ocasion_positions.items():
         center_x = (pos['start'] + pos['end']) / 2
         fig.add_annotation(
             x=center_x,
-            y=-5,
+            y=-4,
             text=f"<b>{ocasion}</b>",
             showarrow=False,
-            font=dict(size=max(12, int(PX_UNIT * 0.3)), color="#0B3C8C"),
+            font=dict(size=max(14, int(PX_UNIT * 0.32)), color="#0B3C8C", family="Arial"),
             yanchor="top"
         )
 
-    # === CÁLCULO DINÁMICO DEL CANVAS ===
-    # El ancho total depende del contenido real
+    # === CÁLCULO DINÁMICO DEL CANVAS (MÁS COMPACTO) ===
     ancho_contenido = x_ptr
-    margen_lateral = 10
+    margen_lateral = 5  # Reducido de 10 a 5
     
-    # Alto: basado en el producto más alto + márgenes
-    alto_canvas = max_h + 18
+    # Alto: más ajustado al contenido
+    alto_canvas = max_h + 10  # Reducido de 18 a 10
     
     # Convertimos a pixeles
     canvas_width_px = int((ancho_contenido + margen_lateral * 2) * PX_UNIT)
     canvas_height_px = int(alto_canvas * PX_UNIT)
     
-    # Límites de seguridad
-    canvas_width_px = max(800, min(canvas_width_px, 5000))
-    canvas_height_px = max(400, min(canvas_height_px, 2000))
+    # Límites ajustados para canvas más compacto
+    canvas_width_px = max(600, min(canvas_width_px, 4000))  # Min reducido de 800 a 600
+    canvas_height_px = max(350, min(canvas_height_px, 1200))  # Max reducido de 2000 a 1200
 
-    # === CONFIGURACIÓN DEL LAYOUT ===
+    # === CONFIGURACIÓN DEL LAYOUT (MÁS AJUSTADO) ===
     fig.update_layout(
         width=canvas_width_px,
         height=canvas_height_px,
         template="plotly_white",
         showlegend=False,
-        margin=dict(l=80, r=80, t=60, b=80),
+        margin=dict(l=60, r=40, t=40, b=60),  # Márgenes más compactos
         xaxis=dict(
-            range=[-margen_lateral, ancho_contenido + margen_lateral],
+            range=[-margen_lateral-2, ancho_contenido + margen_lateral],
             showgrid=False,
             zeroline=False,
             showticklabels=False,
-            fixedrange=False  # Permite zoom
+            fixedrange=False
         ),
         yaxis=dict(
-            range=[-7, max_h + 11], 
+            range=[-5, max_h + 5],  # Rango más ajustado (antes era -7 a max_h+11)
             showgrid=False,
             zeroline=False,
             showticklabels=False,
@@ -1646,7 +1674,7 @@ if not df_editado.empty:
             scaleratio=1,
             fixedrange=False
         ),
-        dragmode='pan'  # Permite arrastrar para navegar
+        dragmode='pan'
     )
     
     # === RENDERIZADO CON SCROLL HORIZONTAL ===
@@ -1659,17 +1687,17 @@ if not df_editado.empty:
             width: 100%;
             border: 2px solid #E0E0E0;
             border-radius: 10px;
-            padding: 10px;
+            padding: 15px;
             background: linear-gradient(to bottom, #FAFAFA, #FFFFFF);
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }}
         .chart-info {{
             background: #F0F2F6;
-            padding: 10px;
+            padding: 8px;
             border-radius: 8px;
             margin-bottom: 10px;
             text-align: center;
-            font-size: 14px;
+            font-size: 13px;
             color: #333;
         }}
         </style>
@@ -1693,11 +1721,12 @@ if not df_editado.empty:
     st.write('<div class="scrollable-chart">', unsafe_allow_html=True)
     st.plotly_chart(
         fig, 
-        use_container_width=False,  # CRÍTICO: Mantiene el tamaño real
+        use_container_width=False,
         config={
             'displayModeBar': True,
             'modeBarButtonsToAdd': ['pan2d', 'zoomIn2d', 'zoomOut2d', 'resetScale2d'],
-            'scrollZoom': True
+            'scrollZoom': True,
+            'displaylogo': False
         }
     )
     st.write('</div>', unsafe_allow_html=True)
@@ -1711,5 +1740,10 @@ if not df_editado.empty:
         - **Reset**: Botón 🏠 para volver a la vista inicial
         - **Escala Base**: Aumenta si los productos se ven muy pequeños
         - **Modo Vista**: Prueba "Ultra Grande" para presentaciones
+        
+        **Elementos del gráfico:**
+        - 📏 Líneas medidoras tipo regla en ancho y alto
+        - 📊 Área en cm² en el centro de cada empaque
+        - 🎨 Colores por fabricante
+        - 📍 Ocasiones de consumo al fondo
         """)
-    
