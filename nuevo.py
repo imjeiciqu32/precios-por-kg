@@ -22,7 +22,7 @@ try:
     # Importamos la nueva plantilla que acabas de subir a GitHub
     from data_price_vol import PLANTILLA_PV
 except ImportError:
-    PLANTILLA_PV = []
+    PLANTILLA_PV = {}
     
     
 # --- CARGA DE ARQUITECTURA DESDE TU ARCHIVO EN GITHUB/LOCAL ---
@@ -179,9 +179,14 @@ elif modo == "Price Pack":
 else: # MODO: Price and Volumen
     DB_FILE = "historico_ventas_semanales.csv"
     label_agru = "Semana"
-    opciones_agru = [str(i) for i in range(1, 53)]
-    # Asignamos la plantilla importada
+    
+    # AJUSTE: Quitamos el str(i) para que coincida con los números de tu plantilla
+    opciones_agru = list(range(1, 53)) 
+    
+    # Asignamos la plantilla importada (que ahora es un diccionario)
     fuente_plantillas = PLANTILLA_PV 
+    
+    # Columnas necesarias para el análisis de tendencia
     columnas_tabla = ["Semana", "Producto", "Fabricante", "Precio ($)", "Venta Valor ($)", "Venta Volumen (Pzas)"]
 
 # --- 2. FUNCIONES CORE (Mantenidas intactas) ---
