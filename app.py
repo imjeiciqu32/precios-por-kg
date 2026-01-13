@@ -1774,9 +1774,39 @@ if modo == "Price Ladder":
                 st.markdown('<hr style="border: 2px solid #28a745; border-radius: 5px; margin: 30px 0;">', unsafe_allow_html=True)
 
 
-            
-            
+            # === GUÍA COMPLETA ===
+            with st.expander("🎮 Guía Completa de Controles y Elementos"):
+                col_g1, col_g2, col_g3 = st.columns(3)
+                
+                with col_g1:
+                    st.markdown("""
+                    **🖱️ Controles del Mouse:**
+                    - Arrastrar: Mover vista
+                    - Rueda: Zoom in/out
+                    - Doble Click: Reset
+                    
+                    **⚙️ Barra Superior:**
+                    - 🏠 Vista inicial
+                    - 🔍 Zoom +/-
+                    - 📸 Exportar PNG
+                    """)
+                
+                with col_g2:
+                    st.markdown("""
+                    **🎨 Elementos Visuales:**
+                    - Líneas Negras: Medidores
+                    - Texto Central: Área cm²
+                    - Badges Azules: Ocasiones
+                    - Sombras: Profundidad 3D
+                    """)
+                
+                with col_g3:
+                    st.markdown("""
+                    **💡 Tips Pro:**
+                    - Aumenta "Escala Base" para agrandar
+                    - "Zoom Inicial" 150% para presentar
+                    - "Ultra Grande" para proyector
+                    """)
 
-            # Guía Final
             with st.expander("🎮 Guía de Controles"):
                 st.write("Usa la rueda del mouse para Zoom y arrastra para mover la vista. El botón de la cámara descarga la imagen en alta resolución.")
