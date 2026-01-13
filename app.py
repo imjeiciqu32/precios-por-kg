@@ -1394,9 +1394,14 @@ if modo == "Price Ladder":
     
     # === 2. FILTROS AVANZADOS DINÁMICOS ===
     with st.container(border=True):
-        st.markdown("**Filtros Globales de Visualización**")
+        col_t1, col_t2 = st.columns([4, 1])
+        col_t1.markdown("**Filtros Globales de Visualización**")
         
-        # Referencia base: Usamos el dataframe completo que puede tener SKUs nuevos
+        # Botón de Reset
+        if col_t2.button("🔄 Reset Filtros", use_container_width=True):
+            st.rerun()
+        
+        # Referencia base
         df_base = st.session_state.df_arq_sim
         
         r1_c1, r1_c2, r1_c3 = st.columns(3)
@@ -1436,20 +1441,23 @@ if modo == "Price Ladder":
         (df_base["Producto"].isin(sel_productos))
     ].copy()
     
-    # Editor Dinámico - Mantenemos la actualización
+    # Editor Dinámico - AHORA PERMITE ELIMINAR (num_rows="dynamic")
+    st.info("💡 Para eliminar un SKU: Selecciónalo en la tabla y presiona la tecla 'Delete' o usa el icono de basura.")
     df_editado = st.data_editor(
         df_filtered,
         column_order=("Producto", "Marca", "Fabricante", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"),
-        hide_index=True, 
+        hide_index=False, # Activamos el índice para facilitar la selección y borrado
         use_container_width=True, 
-        key="editor_v5_1"
+        key="editor_v5_1",
+        num_rows="dynamic" # ESTO PERMITE AGREGAR Y ELIMINAR FILAS
     )
     
-    # Sincronización: Si editas la tabla, se guardan los cambios en la base global
+    # Sincronización: Si editas o eliminas, actualizamos la base global
     if st.button("Guardar Cambios en Simulación"):
-        for index, row in df_editado.iterrows():
-            st.session_state.df_arq_sim.loc[st.session_state.df_arq_sim["Producto"] == row["Producto"], ["Ancho (cm)", "Alto (cm)"]] = [row["Ancho (cm)"], row["Alto (cm)"]]
-        st.success("¡Base actualizada! Los filtros ahora reconocerán los nuevos valores.")
+        # Reemplazamos la base por el contenido actual del editor (considerando eliminados)
+        # Nota: Aquí comparamos contra los que quedaron en df_editado
+        st.session_state.df_arq_sim = df_editado.copy()
+        st.success("¡Base actualizada correctamente!")
         st.rerun()
     
 
