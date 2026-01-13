@@ -1600,20 +1600,6 @@ if not df_editado.empty:
             yanchor="top"
         )
 
-    # === MARCO AZUL INTEGRADO (ÁREA INTERACTIVA CORREGIDA) ===
-    # Definimos los límites del marco para que rodee todo el espacio del gráfico
-    margen_marco = 5
-    fig.add_shape(
-        type="rect",
-        x0=-margen_marco, 
-        y0=-10, 
-        x1=x_ptr, 
-        y1=max_h + 8,
-        line=dict(color="#0B3C8C", width=8), 
-        fillcolor="rgba(0,0,0,0)",
-        layer="below"
-    )
-
     # === CANVAS DIMENSIONES ===
     ancho_contenido = x_ptr
     margen_lateral = 5
@@ -1673,7 +1659,7 @@ if not df_editado.empty:
         """
         <div style="background: linear-gradient(135deg, #FFF3CD 0%, #FFF9E6 100%); border-left: 5px solid #FFC107; border-radius: 8px; padding: 14px 18px; margin: 15px 0; font-size: 13px; color: #856404; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
             <span style="font-size: 28px; margin-right: 12px; vertical-align: middle;">🖱️</span>
-            <b>Navegación:</b> Arrastra con el mouse para mover • Rueda para zoom • El marco azul delimita el área interactiva
+            <b>Navegación:</b> Arrastra con el mouse para mover • Rueda para zoom
         </div>
         """,
         unsafe_allow_html=True
@@ -1694,13 +1680,13 @@ if not df_editado.empty:
             box-shadow: 0 4px 10px rgba(11, 60, 140, 0.3);
             border: 2px solid #1976D2;
         ">
-            🎯 ÁREA INTERACTIVA - Puedes hacer zoom y navegar dentro del marco azul
+            🎯 ÁREA INTERACTIVA - Puedes hacer zoom y navegar libremente
         </div>
         """,
         unsafe_allow_html=True
     )
     
-    # === CONTENEDOR SIN MARCO HTML (AHORA ES PARTE DEL GRÁFICO) ===
+    # === CONTENEDOR DEL GRÁFICO ===
     st.markdown(
         """
         <div style="
@@ -1734,6 +1720,9 @@ if not df_editado.empty:
     
     # Cerrar el div del contenedor
     st.markdown('</div>', unsafe_allow_html=True)
+
+    # === LÍNEA VERDE DIVISORIA ===
+    st.markdown('<hr style="border: 2px solid #28a745; border-radius: 5px; margin: 30px 0;">', unsafe_allow_html=True)
     
     # === GUÍA COMPLETA ===
     with st.expander("🎮 Guía Completa de Controles y Elementos"):
@@ -1742,9 +1731,9 @@ if not df_editado.empty:
         with col_g1:
             st.markdown("""
             **🖱️ Controles del Mouse:**
-            - **Arrastrar**: Mover vista
-            - **Rueda**: Zoom in/out
-            - **Doble Click**: Reset
+            - Arrastrar: Mover vista
+            - Rueda: Zoom in/out
+            - Doble Click: Reset
             
             **⚙️ Barra Superior:**
             - 🏠 Vista inicial
@@ -1755,17 +1744,15 @@ if not df_editado.empty:
         with col_g2:
             st.markdown("""
             **🎨 Elementos Visuales:**
-            - **Marco Azul**: Área interactiva
-            - **Líneas Negras**: Medidores
-            - **Cajas Blancas**: Área cm²
-            - **Badges Azules**: Ocasiones
-            - **Sombras**: Profundidad 3D
+            - Líneas Negras: Medidores
+            - Cajas Blancas: Área cm²
+            - Badges Azules: Ocasiones
+            - Sombras: Profundidad 3D
             """)
         
         with col_g3:
             st.markdown("""
             **💡 Tips Pro:**
-            - El marco azul marca claramente el área
             - Aumenta "Escala Base" para agrandar
             - "Zoom Inicial" 150% para presentar
             - "Ultra Grande" para proyector
