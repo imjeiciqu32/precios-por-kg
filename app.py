@@ -1436,31 +1436,35 @@ if modo == "Price Ladder":
         hide_index=True, use_container_width=True, key="editor_v5_1"
     )    
 
-# === GRÁFICO TÉCNICO ADAPTATIVO CON ESCALADO INTELIGENTE ===
+# === GRÁFICO TÉCNICO ADAPTATIVO CON NAVEGACIÓN MEJORADA ===
 if not df_editado.empty:
     df_editado['Area'] = df_editado['Ancho (cm)'] * df_editado['Alto (cm)']
     orden_o = ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"]
     df_editado['Ocasión de Consumo'] = pd.Categorical(df_editado['Ocasión de Consumo'], categories=orden_o, ordered=True)
     df_viz = df_editado.sort_values(['Ocasión de Consumo', 'Area'])
 
-    # === CONTROLES DE VISUALIZACIÓN ===
+    # === CONTROLES DE VISUALIZACIÓN MEJORADOS ===
     st.markdown("#### ⚙️ Controles de Visualización")
-    col_ctrl1, col_ctrl2, col_ctrl3 = st.columns(3)
+    
+    col_ctrl1, col_ctrl2, col_ctrl3, col_ctrl4 = st.columns(4)
     
     with col_ctrl1:
-        escala_base = st.slider("Escala Base", 20, 80, 45, step=5, 
+        escala_base = st.slider("📏 Escala Base", 20, 80, 45, step=5, 
                                help="Aumenta para hacer los empaques más grandes")
     with col_ctrl2:
-        gap_productos = st.slider("Separación", 5, 30, 12, 
+        gap_productos = st.slider("↔️ Separación", 5, 30, 12, 
                                  help="Espacio entre productos")
     with col_ctrl3:
-        modo_vista = st.selectbox("Modo de Vista", 
+        modo_vista = st.selectbox("👁️ Modo Vista", 
                                   ["Automático", "Compacto", "Expandido", "Ultra Grande"])
+    with col_ctrl4:
+        zoom_nivel = st.selectbox("🔍 Zoom Inicial",
+                                 ["100%", "125%", "150%", "175%", "200%"],
+                                 index=0)
 
     # === CÁLCULO DE ESCALA INTELIGENTE ===
     num_productos = len(df_viz)
     
-    # Ajuste automático según cantidad de productos
     if modo_vista == "Automático":
         if num_productos <= 3:
             PX_UNIT = escala_base * 1.5
@@ -1474,8 +1478,12 @@ if not df_editado.empty:
         PX_UNIT = escala_base * 0.6
     elif modo_vista == "Expandido":
         PX_UNIT = escala_base * 1.3
-    else:  # Ultra Grande
+    else:
         PX_UNIT = escala_base * 2
+    
+    # Aplicar zoom inicial
+    zoom_multiplier = float(zoom_nivel.replace("%", "")) / 100
+    PX_UNIT = PX_UNIT * zoom_multiplier
 
     # === CONSTRUCCIÓN DEL GRÁFICO ===
     fig = go.Figure()
@@ -1483,9 +1491,7 @@ if not df_editado.empty:
     
     x_ptr = 0
     max_h = df_viz['Alto (cm)'].max()
-    min_area = df_viz['Area'].min()
     
-    # Tamaño de texto adaptativo según escala
     font_size_producto = max(12, int(PX_UNIT * 0.3))
     font_size_medidas = max(10, int(PX_UNIT * 0.25))
     font_size_area = max(16, int(PX_UNIT * 0.4))
@@ -1498,13 +1504,12 @@ if not df_editado.empty:
         area = r['Area']
         c = colors.get(str(r['Fabricante']).upper(), "#7F8C8D")
         
-        # Registrar posición de ocasión
         if r['Ocasión de Consumo'] not in ocasion_positions:
             ocasion_positions[r['Ocasión de Consumo']] = {'start': x_ptr, 'end': x_ptr + w}
         else:
             ocasion_positions[r['Ocasión de Consumo']]['end'] = x_ptr + w
         
-        # === 1. EMPAQUE (RECTÁNGULO) ===
+        # === EMPAQUE ===
         fig.add_shape(
             type="rect", 
             x0=x_ptr, y0=0, x1=x_ptr+w, y1=h, 
@@ -1513,7 +1518,7 @@ if not df_editado.empty:
             opacity=0.15
         )
         
-        # === 2. SOMBRA DE PROFUNDIDAD ===
+        # === SOMBRA ===
         fig.add_shape(
             type="rect", 
             x0=x_ptr+0.3, y0=-0.3, x1=x_ptr+w+0.3, y1=h-0.3,
@@ -1523,7 +1528,7 @@ if not df_editado.empty:
             layer="below"
         )
         
-        # === 3. INFORMACIÓN SUPERIOR (Producto) ===
+        # === NOMBRE DEL PRODUCTO ===
         fig.add_annotation(
             x=x_ptr+w/2, 
             y=h+1.5, 
@@ -1533,131 +1538,84 @@ if not df_editado.empty:
             yanchor="bottom"
         )
         
-        # === 4. LÍNEAS MEDIDORAS TIPO REGLA (ANCHO - ABAJO) ===
-        # Línea principal horizontal
-        fig.add_shape(
-            type="line",
-            x0=x_ptr, y0=-0.8, x1=x_ptr+w, y1=-0.8,
-            line=dict(color="#333", width=2)
-        )
-        # Ticks de inicio y fin (verticales)
-        fig.add_shape(
-            type="line",
-            x0=x_ptr, y0=-1.2, x1=x_ptr, y1=-0.4,
-            line=dict(color="#333", width=2)
-        )
-        fig.add_shape(
-            type="line",
-            x0=x_ptr+w, y0=-1.2, x1=x_ptr+w, y1=-0.4,
-            line=dict(color="#333", width=2)
-        )
-        # Etiqueta de medida
+        # === LÍNEAS MEDIDORAS ANCHO ===
+        fig.add_shape(type="line", x0=x_ptr, y0=-0.8, x1=x_ptr+w, y1=-0.8, line=dict(color="#333", width=2))
+        fig.add_shape(type="line", x0=x_ptr, y0=-1.2, x1=x_ptr, y1=-0.4, line=dict(color="#333", width=2))
+        fig.add_shape(type="line", x0=x_ptr+w, y0=-1.2, x1=x_ptr+w, y1=-0.4, line=dict(color="#333", width=2))
         fig.add_annotation(
-            x=x_ptr+w/2, 
-            y=-2.2, 
-            text=f"<b>{w}cm</b>", 
-            showarrow=False, 
-            font=dict(size=font_size_medidas, color="#333"), 
-            yanchor="top"
+            x=x_ptr+w/2, y=-2.2, text=f"<b>{w}cm</b>", 
+            showarrow=False, font=dict(size=font_size_medidas, color="#333"), yanchor="top"
         )
         
-        # === 5. LÍNEAS MEDIDORAS TIPO REGLA (ALTO - IZQUIERDA) ===
-        # Línea principal vertical
-        fig.add_shape(
-            type="line",
-            x0=x_ptr-0.8, y0=0, x1=x_ptr-0.8, y1=h,
-            line=dict(color="#333", width=2)
-        )
-        # Ticks de inicio y fin (horizontales)
-        fig.add_shape(
-            type="line",
-            x0=x_ptr-1.2, y0=0, x1=x_ptr-0.4, y1=0,
-            line=dict(color="#333", width=2)
-        )
-        fig.add_shape(
-            type="line",
-            x0=x_ptr-1.2, y0=h, x1=x_ptr-0.4, y1=h,
-            line=dict(color="#333", width=2)
-        )
-        # Etiqueta de medida
+        # === LÍNEAS MEDIDORAS ALTO ===
+        fig.add_shape(type="line", x0=x_ptr-0.8, y0=0, x1=x_ptr-0.8, y1=h, line=dict(color="#333", width=2))
+        fig.add_shape(type="line", x0=x_ptr-1.2, y0=0, x1=x_ptr-0.4, y1=0, line=dict(color="#333", width=2))
+        fig.add_shape(type="line", x0=x_ptr-1.2, y0=h, x1=x_ptr-0.4, y1=h, line=dict(color="#333", width=2))
         fig.add_annotation(
-            x=x_ptr-2, 
-            y=h/2, 
-            text=f"<b>{h}cm</b>", 
-            textangle=-90, 
-            showarrow=False, 
-            font=dict(size=font_size_medidas, color="#333"), 
-            xanchor="right"
+            x=x_ptr-2, y=h/2, text=f"<b>{h}cm</b>", textangle=-90, 
+            showarrow=False, font=dict(size=font_size_medidas, color="#333"), xanchor="right"
         )
         
-        # === 6. ÁREA EN EL CENTRO DEL EMPAQUE ===
-        # Fondo blanco semi-transparente para legibilidad
+        # === ÁREA EN EL CENTRO ===
         fig.add_shape(
             type="rect",
             x0=x_ptr+w*0.2, y0=h*0.35, x1=x_ptr+w*0.8, y1=h*0.65,
-            fillcolor="white",
-            opacity=0.85,
-            line=dict(color="#DDD", width=1),
-            layer="above"
+            fillcolor="white", opacity=0.85, line=dict(color="#DDD", width=1), layer="above"
         )
-        
         fig.add_annotation(
-            x=x_ptr+w/2, 
-            y=h/2, 
+            x=x_ptr+w/2, y=h/2, 
             text=f"<b>{area:.0f}</b><br><span style='font-size:{int(font_size_area*0.6)}px;color:#666;'>cm²</span>", 
-            showarrow=False, 
-            font=dict(size=font_size_area, color=c, family="Arial Black"),
-            align="center"
+            showarrow=False, font=dict(size=font_size_area, color=c, family="Arial Black"), align="center"
         )
         
-        # === 7. SEPARADOR DE OCASIÓN ===
+        # === SEPARADOR DE OCASIÓN ===
         if r['Ocasión de Consumo'] != last_ocasion and i > 0:
             fig.add_shape(
-                type="line", 
-                x0=x_ptr-(gap_productos/2), 
-                y0=-3, 
-                x1=x_ptr-(gap_productos/2), 
-                y1=max_h+4,
+                type="line", x0=x_ptr-(gap_productos/2), y0=-3, x1=x_ptr-(gap_productos/2), y1=max_h+4,
                 line=dict(color="#D0D0D0", width=2, dash="dot")
             )
         
         last_ocasion = r['Ocasión de Consumo']
         x_ptr += w + gap_productos
 
-    # === 8. ETIQUETAS DE OCASIÓN (AL FONDO) ===
+    # === ETIQUETAS DE OCASIÓN ===
     for ocasion, pos in ocasion_positions.items():
         center_x = (pos['start'] + pos['end']) / 2
         fig.add_annotation(
-            x=center_x,
-            y=-4,
-            text=f"<b>{ocasion}</b>",
-            showarrow=False,
-            font=dict(size=max(14, int(PX_UNIT * 0.32)), color="#0B3C8C", family="Arial"),
-            yanchor="top"
+            x=center_x, y=-4, text=f"<b>{ocasion}</b>", showarrow=False,
+            font=dict(size=max(14, int(PX_UNIT * 0.32)), color="#0B3C8C", family="Arial"), yanchor="top"
         )
 
-    # === CÁLCULO DINÁMICO DEL CANVAS (MÁS COMPACTO) ===
+    # === MARCO/CONTORNO DEL ÁREA DEL GRÁFICO ===
+    # Este es el rectángulo visible que delimita el área de trabajo
     ancho_contenido = x_ptr
-    margen_lateral = 5  # Reducido de 10 a 5
+    margen_lateral = 5
+    alto_canvas = max_h + 10
     
-    # Alto: más ajustado al contenido
-    alto_canvas = max_h + 10  # Reducido de 18 a 10
-    
-    # Convertimos a pixeles
+    fig.add_shape(
+        type="rect",
+        x0=-margen_lateral-2,
+        y0=-5,
+        x1=ancho_contenido + margen_lateral,
+        y1=max_h + 5,
+        line=dict(color="#0B3C8C", width=3, dash="solid"),
+        fillcolor="rgba(0,0,0,0)",
+        layer="below"
+    )
+
+    # === CANVAS DIMENSIONES ===
     canvas_width_px = int((ancho_contenido + margen_lateral * 2) * PX_UNIT)
     canvas_height_px = int(alto_canvas * PX_UNIT)
-    
-    # Límites ajustados para canvas más compacto
-    canvas_width_px = max(600, min(canvas_width_px, 4000))  # Min reducido de 800 a 600
-    canvas_height_px = max(350, min(canvas_height_px, 1200))  # Max reducido de 2000 a 1200
+    canvas_width_px = max(600, min(canvas_width_px, 4000))
+    canvas_height_px = max(350, min(canvas_height_px, 1200))
 
-    # === CONFIGURACIÓN DEL LAYOUT (MÁS AJUSTADO) ===
+    # === LAYOUT CON CONFIGURACIÓN DE INTERACCIÓN ===
     fig.update_layout(
         width=canvas_width_px,
         height=canvas_height_px,
         template="plotly_white",
         showlegend=False,
-        margin=dict(l=60, r=40, t=40, b=60),  # Márgenes más compactos
+        margin=dict(l=60, r=40, t=40, b=60),
         xaxis=dict(
             range=[-margen_lateral-2, ancho_contenido + margen_lateral],
             showgrid=False,
@@ -1666,7 +1624,7 @@ if not df_editado.empty:
             fixedrange=False
         ),
         yaxis=dict(
-            range=[-5, max_h + 5],  # Rango más ajustado (antes era -7 a max_h+11)
+            range=[-5, max_h + 5],
             showgrid=False,
             zeroline=False,
             showticklabels=False,
@@ -1674,76 +1632,162 @@ if not df_editado.empty:
             scaleratio=1,
             fixedrange=False
         ),
-        dragmode='pan'
+        dragmode='pan',
+        hovermode='closest'
     )
     
-    # === RENDERIZADO CON SCROLL HORIZONTAL ===
+    # === ESTILOS CSS MEJORADOS ===
     st.markdown(
         f"""
         <style>
-        .scrollable-chart {{
+        .interactive-chart-container {{
+            position: relative;
             overflow-x: auto;
             overflow-y: hidden;
             width: 100%;
-            border: 2px solid #E0E0E0;
-            border-radius: 10px;
+            border: 3px solid #0B3C8C;
+            border-radius: 12px;
             padding: 15px;
-            background: linear-gradient(to bottom, #FAFAFA, #FFFFFF);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, #F8F9FA 0%, #FFFFFF 100%);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+            margin: 10px 0;
         }}
-        .chart-info {{
-            background: #F0F2F6;
-            padding: 8px;
+        .chart-header {{
+            background: linear-gradient(90deg, #0B3C8C 0%, #1976D2 100%);
+            color: white;
+            padding: 12px 20px;
             border-radius: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+        }}
+        .chart-stats {{
+            font-size: 13px;
+            font-weight: 600;
+        }}
+        .zoom-hint {{
+            background: #FFF3CD;
+            border: 2px solid #FFC107;
+            border-radius: 8px;
+            padding: 10px 15px;
+            margin: 10px 0;
+            font-size: 14px;
+            color: #856404;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        .zoom-controls {{
+            background: #E3F2FD;
+            border: 2px solid #2196F3;
+            border-radius: 8px;
+            padding: 12px;
             margin-bottom: 10px;
             text-align: center;
-            font-size: 13px;
-            color: #333;
+        }}
+        .zoom-btn {{
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin: 0 5px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }}
+        .zoom-btn:hover {{
+            background: #1976D2;
+            transform: scale(1.05);
         }}
         </style>
         """, 
         unsafe_allow_html=True
     )
     
-    # Información del gráfico
+    # === HEADER DEL GRÁFICO ===
     st.markdown(
         f"""
-        <div class="chart-info">
-            📐 <b>{num_productos} productos</b> | 
-            Escala: {PX_UNIT:.0f}px/cm | 
-            Canvas: {canvas_width_px}×{canvas_height_px}px | 
-            💡 Usa el scroll horizontal o arrastra para navegar
+        <div class="chart-header">
+            <div class="chart-stats">
+                📦 <b>{num_productos}</b> Productos | 
+                📏 Escala: <b>{PX_UNIT:.0f}px/cm</b> | 
+                🖼️ Canvas: <b>{canvas_width_px}×{canvas_height_px}px</b>
+            </div>
+            <div style="font-size: 12px; opacity: 0.9;">
+                Zoom: <b>{zoom_nivel}</b>
+            </div>
         </div>
         """,
         unsafe_allow_html=True
     )
     
-    st.write('<div class="scrollable-chart">', unsafe_allow_html=True)
+    # === INSTRUCCIONES VISUALES ===
+    st.markdown(
+        """
+        <div class="zoom-hint">
+            <span style="font-size: 24px;">🖱️</span>
+            <div>
+                <b>Cómo navegar:</b><br>
+                • <b>Arrastra</b> con el mouse para mover la vista<br>
+                • <b>Rueda del mouse</b> sobre el gráfico para zoom<br>
+                • <b>Botones de la barra</b> superior derecha para zoom preciso<br>
+                • El <b>marco azul</b> delimita el área interactiva
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    # === RENDERIZADO DEL GRÁFICO ===
+    st.write('<div class="interactive-chart-container">', unsafe_allow_html=True)
     st.plotly_chart(
         fig, 
         use_container_width=False,
         config={
             'displayModeBar': True,
-            'modeBarButtonsToAdd': ['pan2d', 'zoomIn2d', 'zoomOut2d', 'resetScale2d'],
+            'modeBarButtonsToAdd': ['pan2d', 'zoomIn2d', 'zoomOut2d', 'resetScale2d', 'toImage'],
             'scrollZoom': True,
-            'displaylogo': False
+            'displaylogo': False,
+            'toImageButtonOptions': {
+                'format': 'png',
+                'filename': 'arquitectura_empaque',
+                'height': canvas_height_px,
+                'width': canvas_width_px,
+                'scale': 2
+            }
         }
     )
     st.write('</div>', unsafe_allow_html=True)
     
-    # === TIPS DE USO ===
-    with st.expander("💡 Tips de Navegación"):
-        st.markdown("""
-        - **Scroll Horizontal**: Desliza para ver todos los productos
-        - **Zoom**: Usa los botones de + / - o la rueda del mouse
-        - **Pan**: Arrastra con el mouse para mover la vista
-        - **Reset**: Botón 🏠 para volver a la vista inicial
-        - **Escala Base**: Aumenta si los productos se ven muy pequeños
-        - **Modo Vista**: Prueba "Ultra Grande" para presentaciones
+    # === LEYENDA DE CONTROLES EXPANDIBLE ===
+    with st.expander("🎮 Guía Completa de Controles"):
+        col_g1, col_g2 = st.columns(2)
         
-        **Elementos del gráfico:**
-        - 📏 Líneas medidoras tipo regla en ancho y alto
-        - 📊 Área en cm² en el centro de cada empaque
-        - 🎨 Colores por fabricante
-        - 📍 Ocasiones de consumo al fondo
-        """)
+        with col_g1:
+            st.markdown("""
+            **🖱️ Controles del Mouse:**
+            - **Click + Arrastrar**: Mover la vista (Pan)
+            - **Rueda**: Zoom in/out
+            - **Doble Click**: Reset zoom
+            
+            **⚙️ Controles Superiores:**
+            - 🏠 **Home**: Vista inicial
+            - 🔍 **+/-**: Zoom incremental
+            - 📸 **Camera**: Exportar imagen
+            """)
+        
+        with col_g2:
+            st.markdown("""
+            **🎨 Elementos Visuales:**
+            - **Marco Azul**: Límite del área de trabajo
+            - **Líneas Negras**: Medidores tipo regla
+            - **Cajas Blancas**: Área en cm²
+            - **Líneas Punteadas**: Separadores de ocasión
+            
+            **💡 Tips:**
+            - Aumenta "Escala Base" si se ve pequeño
+            - Usa "Zoom Inicial" para ajuste rápido
+            """)
