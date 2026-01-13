@@ -1509,7 +1509,7 @@ if not df_editado.empty:
         else:
             ocasion_positions[r['Ocasión de Consumo']]['end'] = x_ptr + w
         
-        # === EMPAQUE ===
+        # === EMPAQUE CON EFECTO 3D ===
         fig.add_shape(
             type="rect", 
             x0=x_ptr, y0=0, x1=x_ptr+w, y1=h, 
@@ -1518,23 +1518,28 @@ if not df_editado.empty:
             opacity=0.15
         )
         
-        # === SOMBRA ===
-        fig.add_shape(
-            type="rect", 
-            x0=x_ptr+0.3, y0=-0.3, x1=x_ptr+w+0.3, y1=h-0.3,
-            line=dict(width=0), 
-            fillcolor="black", 
-            opacity=0.08, 
-            layer="below"
-        )
+        # === SOMBRA MEJORADA (MÁS REALISTA) ===
+        for offset in [0.15, 0.25, 0.35]:
+            fig.add_shape(
+                type="rect", 
+                x0=x_ptr+offset, y0=-offset, x1=x_ptr+w+offset, y1=h-offset,
+                line=dict(width=0), 
+                fillcolor="black", 
+                opacity=0.03, 
+                layer="below"
+            )
         
-        # === NOMBRE DEL PRODUCTO ===
+        # === NOMBRE DEL PRODUCTO CON FONDO ===
         fig.add_annotation(
             x=x_ptr+w/2, 
             y=h+1.5, 
             text=f"<b>{r['Producto']}</b>", 
             showarrow=False, 
-            font=dict(size=font_size_producto, color="#222"), 
+            font=dict(size=font_size_producto, color="#222", family="Arial Black"), 
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor="#DDD",
+            borderwidth=1,
+            borderpad=4,
             yanchor="bottom"
         )
         
@@ -1556,11 +1561,11 @@ if not df_editado.empty:
             showarrow=False, font=dict(size=font_size_medidas, color="#333"), xanchor="right"
         )
         
-        # === ÁREA EN EL CENTRO ===
+        # === ÁREA EN EL CENTRO CON GRADIENTE ===
         fig.add_shape(
             type="rect",
             x0=x_ptr+w*0.2, y0=h*0.35, x1=x_ptr+w*0.8, y1=h*0.65,
-            fillcolor="white", opacity=0.85, line=dict(color="#DDD", width=1), layer="above"
+            fillcolor="white", opacity=0.92, line=dict(color=c, width=2), layer="above"
         )
         fig.add_annotation(
             x=x_ptr+w/2, y=h/2, 
@@ -1568,22 +1573,27 @@ if not df_editado.empty:
             showarrow=False, font=dict(size=font_size_area, color=c, family="Arial Black"), align="center"
         )
         
-        # === SEPARADOR DE OCASIÓN ===
+        # === SEPARADOR DE OCASIÓN CON ESTILO ===
         if r['Ocasión de Consumo'] != last_ocasion and i > 0:
             fig.add_shape(
                 type="line", x0=x_ptr-(gap_productos/2), y0=-3, x1=x_ptr-(gap_productos/2), y1=max_h+4,
-                line=dict(color="#D0D0D0", width=2, dash="dot")
+                line=dict(color="#0B3C8C", width=2, dash="dot")
             )
         
         last_ocasion = r['Ocasión de Consumo']
         x_ptr += w + gap_productos
 
-    # === ETIQUETAS DE OCASIÓN ===
+    # === ETIQUETAS DE OCASIÓN CON BADGE STYLE ===
     for ocasion, pos in ocasion_positions.items():
         center_x = (pos['start'] + pos['end']) / 2
         fig.add_annotation(
-            x=center_x, y=-4, text=f"<b>{ocasion}</b>", showarrow=False,
-            font=dict(size=max(14, int(PX_UNIT * 0.32)), color="#0B3C8C", family="Arial"), yanchor="top"
+            x=center_x, y=-4.5, text=f"<b>{ocasion}</b>", showarrow=False,
+            font=dict(size=max(14, int(PX_UNIT * 0.32)), color="white", family="Arial Black"),
+            bgcolor="#0B3C8C",
+            bordercolor="#1976D2",
+            borderwidth=2,
+            borderpad=6,
+            yanchor="top"
         )
 
     # === CANVAS DIMENSIONES ===
@@ -1611,7 +1621,7 @@ if not df_editado.empty:
             fixedrange=False
         ),
         yaxis=dict(
-            range=[-5, max_h + 5],
+            range=[-6, max_h + 5],
             showgrid=False,
             zeroline=False,
             showticklabels=False,
@@ -1623,90 +1633,96 @@ if not df_editado.empty:
         hovermode='closest'
     )
     
-    # === ESTILOS CSS CON MARCO VISIBLE DEL CONTENEDOR ===
+    # === ESTILOS CSS MEJORADOS ===
     st.markdown(
-        f"""
+        """
         <style>
-        /* MARCO DEL CONTENEDOR DEL GRÁFICO - ESTE ES EL IMPORTANTE */
-        .chart-container-with-border {{
-            border: 4px solid #0B3C8C;
-            border-radius: 12px;
-            padding: 20px;
-            background: #FFFFFF;
-            box-shadow: 0 6px 16px rgba(11, 60, 140, 0.2);
-            margin: 15px 0;
+        /* CONTENEDOR PRINCIPAL CON MARCO */
+        .chart-main-container {
+            border: 5px solid #0B3C8C;
+            border-radius: 15px;
+            padding: 25px;
+            background: linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%);
+            box-shadow: 0 8px 20px rgba(11, 60, 140, 0.25);
+            margin: 20px 0;
             position: relative;
-        }}
+        }
         
-        /* Badge de "Área Interactiva" */
-        .chart-container-with-border::before {{
-            content: "🖱️ ÁREA INTERACTIVA - Arrastra y usa la rueda para navegar";
-            position: absolute;
-            top: -12px;
-            left: 20px;
-            background: #0B3C8C;
+        /* BADGE FLOTANTE ARRIBA */
+        .interactive-badge {
+            background: linear-gradient(90deg, #0B3C8C 0%, #1976D2 100%);
             color: white;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 12px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 13px;
             font-weight: bold;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            z-index: 10;
-        }}
+            display: inline-block;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 10px rgba(11, 60, 140, 0.3);
+            border: 2px solid #1976D2;
+        }
         
-        /* Contenedor interno con scroll */
-        .scrollable-chart {{
+        /* ÁREA DE SCROLL */
+        .scrollable-area {
             overflow-x: auto;
             overflow-y: hidden;
             width: 100%;
-            border-radius: 8px;
-            background: linear-gradient(135deg, #F8F9FA 0%, #FFFFFF 100%);
-        }}
+            border-radius: 10px;
+            background: white;
+            padding: 15px;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.05);
+        }
         
-        .chart-header {{
+        /* HEADER CON STATS */
+        .stats-header {
             background: linear-gradient(90deg, #0B3C8C 0%, #1976D2 100%);
             color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
+            padding: 14px 20px;
+            border-radius: 10px;
             margin-bottom: 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
-        }}
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
         
-        .chart-stats {{
+        .stat-item {
             font-size: 13px;
             font-weight: 600;
-        }}
+        }
         
-        .zoom-hint {{
-            background: #FFF3CD;
-            border-left: 4px solid #FFC107;
-            border-radius: 6px;
-            padding: 12px 15px;
-            margin: 12px 0;
+        /* HINT BOX */
+        .hint-box {
+            background: linear-gradient(135deg, #FFF3CD 0%, #FFF9E6 100%);
+            border-left: 5px solid #FFC107;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin: 15px 0;
             font-size: 13px;
             color: #856404;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }}
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        
+        .hint-icon {
+            font-size: 28px;
+            margin-right: 12px;
+            vertical-align: middle;
+        }
         </style>
         """, 
         unsafe_allow_html=True
     )
     
-    # === HEADER DEL GRÁFICO ===
+    # === HEADER CON ESTADÍSTICAS ===
     st.markdown(
         f"""
-        <div class="chart-header">
-            <div class="chart-stats">
+        <div class="stats-header">
+            <div class="stat-item">
                 📦 <b>{num_productos}</b> Productos | 
                 📏 Escala: <b>{PX_UNIT:.0f}px/cm</b> | 
                 🖼️ Canvas: <b>{canvas_width_px}×{canvas_height_px}px</b>
             </div>
-            <div style="font-size: 12px; opacity: 0.9;">
+            <div style="font-size: 12px; opacity: 0.95;">
                 Zoom: <b>{zoom_nivel}</b>
             </div>
         </div>
@@ -1714,25 +1730,28 @@ if not df_editado.empty:
         unsafe_allow_html=True
     )
     
-    # === INSTRUCCIONES VISUALES ===
+    # === HINT BOX ===
     st.markdown(
         """
-        <div class="zoom-hint">
-            <span style="font-size: 24px;">💡</span>
-            <div>
-                <b>El marco azul delimita el área donde puedes interactuar:</b><br>
-                • <b>Arrastra</b> con el mouse para mover la vista<br>
-                • <b>Rueda del mouse</b> para hacer zoom in/out<br>
-                • <b>Botones superiores</b> del gráfico para controles precisos
-            </div>
+        <div class="hint-box">
+            <span class="hint-icon">🖱️</span>
+            <b>Navegación:</b> Arrastra con el mouse para mover • Rueda para zoom • Botones superiores para controles precisos
         </div>
         """,
         unsafe_allow_html=True
     )
     
-    # === CONTENEDOR CON MARCO VISIBLE ===
-    st.markdown('<div class="chart-container-with-border">', unsafe_allow_html=True)
-    st.write('<div class="scrollable-chart">', unsafe_allow_html=True)
+    # === CONTENEDOR PRINCIPAL CON MARCO ===
+    st.markdown('<div class="chart-main-container">', unsafe_allow_html=True)
+    
+    # Badge flotante
+    st.markdown(
+        '<div class="interactive-badge">🎯 ÁREA INTERACTIVA - Puedes hacer zoom y navegar aquí</div>',
+        unsafe_allow_html=True
+    )
+    
+    # Área de scroll con gráfico
+    st.markdown('<div class="scrollable-area">', unsafe_allow_html=True)
     
     st.plotly_chart(
         fig, 
@@ -1744,44 +1763,50 @@ if not df_editado.empty:
             'displaylogo': False,
             'toImageButtonOptions': {
                 'format': 'png',
-                'filename': 'arquitectura_empaque',
+                'filename': 'arquitectura_empaque_barcel',
                 'height': canvas_height_px,
                 'width': canvas_width_px,
-                'scale': 2
+                'scale': 3
             }
         }
     )
     
-    st.write('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # === GUÍA COMPLETA DE CONTROLES ===
-    with st.expander("🎮 Guía Completa de Controles"):
-        col_g1, col_g2 = st.columns(2)
+    # === GUÍA COMPLETA ===
+    with st.expander("🎮 Guía Completa de Controles y Elementos"):
+        col_g1, col_g2, col_g3 = st.columns(3)
         
         with col_g1:
             st.markdown("""
             **🖱️ Controles del Mouse:**
-            - **Click + Arrastrar**: Mover la vista (Pan)
+            - **Arrastrar**: Mover vista
             - **Rueda**: Zoom in/out
-            - **Doble Click**: Reset zoom
+            - **Doble Click**: Reset
             
-            **⚙️ Controles Superiores:**
-            - 🏠 **Home**: Vista inicial
-            - 🔍 **+/-**: Zoom incremental
-            - 📸 **Camera**: Exportar imagen
+            **⚙️ Barra Superior:**
+            - 🏠 Vista inicial
+            - 🔍 Zoom +/-
+            - 📸 Exportar PNG
             """)
         
         with col_g2:
             st.markdown("""
             **🎨 Elementos Visuales:**
-            - **Marco Azul**: Delimitación del área interactiva
-            - **Líneas Negras**: Medidores tipo regla
-            - **Cajas Blancas**: Área en cm²
-            - **Líneas Punteadas**: Separadores de ocasión
-            
-            **💡 Tips:**
-            - El marco azul te indica dónde puedes hacer zoom
-            - Aumenta "Escala Base" si se ve pequeño
-            - Usa "Zoom Inicial" para ajuste rápido
+            - **Marco Azul**: Área interactiva
+            - **Líneas Negras**: Medidores
+            - **Cajas Blancas**: Área cm²
+            - **Badges Azules**: Ocasiones
+            - **Sombras**: Profundidad 3D
+            """)
+        
+        with col_g3:
+            st.markdown("""
+            **💡 Tips Pro:**
+            - Aumenta "Escala Base" para agrandar
+            - "Zoom Inicial" 150% para presentar
+            - "Ultra Grande" para proyector
+            - Exporta en alta resolución (3x)
+            - Scroll horizontal si excede ancho
             """)
