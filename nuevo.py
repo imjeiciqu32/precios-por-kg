@@ -17,6 +17,13 @@ try:
     from price_pack import PLANTILLAS_PP
 except ImportError:
     PLANTILLAS_PP = {}
+
+try:
+    # Importamos la nueva plantilla que acabas de subir a GitHub
+    from data_price_vol import PLANTILLA_PV
+except ImportError:
+    PLANTILLA_PV = {}
+    
     
 # --- CARGA DE ARQUITECTURA DESDE TU ARCHIVO EN GITHUB/LOCAL ---
 try:
@@ -172,10 +179,9 @@ elif modo == "Price Pack":
 else: # MODO: Price and Volumen
     DB_FILE = "historico_ventas_semanales.csv"
     label_agru = "Semana"
-    # Opciones dinámicas para semanas (ejemplo del 1 al 52)
     opciones_agru = [str(i) for i in range(1, 53)]
-    fuente_plantillas = {} # Generalmente este modo no usa plantillas de carga estática
-    # Columnas necesarias para el análisis de tendencia
+    # Asignamos la plantilla importada
+    fuente_plantillas = PLANTILLA_PV 
     columnas_tabla = ["Semana", "Producto", "Fabricante", "Precio ($)", "Venta Valor ($)", "Venta Volumen (Pzas)"]
 
 # --- 2. FUNCIONES CORE (Mantenidas intactas) ---
