@@ -789,61 +789,72 @@ if not st.session_state.data.empty:
         else:
             st.warning("No hay datos en el canal DETALLE para realizar comparaciones.")
         
+
 # --- 10. PIRÁMIDE DE POSICIONAMIENTO (SOLO LADDER) ---
 # Movimos el título y la lógica dentro del condicional para que no aparezca en Price Pack
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
-    st.subheader("🏔️ Pirámide de Posicionamiento por Tier de $ x KG")
     
-    # Usamos la función procesar_datos_piramide que fija el Index 100 en el mayor SOM
-    df_pyramid = procesar_datos_piramide(st.session_state.data)
-    
-    # Selector de ocasión
-    sel_ocasion = st.selectbox("Seleccionar Segmento para Pirámide:", df_pyramid["Ocasión"].unique())
-    
-    # Filtrar por ocasión y ordenar por Index de mayor a menor
-    df_f = df_pyramid[df_pyramid["Ocasión"] == sel_ocasion].sort_values("Idx_P", ascending=False)
-    
-    tier_colors = {
-        "PREMIUM": "#1A237E", 
-        "UPPER MAINSTREAM": "#0D47A1", 
-        "MAINSTREAM": "#0B3C8C", 
-        "MAINSTREAM LOW": "#1976D2", 
-        "VALUE": "#42A5F5"
-    }
+    # === CONTROL DE DESPLEGADO Y OPTIMIZACIÓN ===
+    col_header_pyr, col_toggle_pyr = st.columns([3, 1])
+    with col_header_pyr:
+        st.subheader("🏔️ Pirámide de Posicionamiento por Tier de $ x KG")
+    with col_toggle_pyr:
+        activar_piramide = st.toggle("Activar Pirámide", value=False, help="Despliega el análisis de posicionamiento por Tiers.")
 
-    for tier in ["PREMIUM", "UPPER MAINSTREAM", "MAINSTREAM", "MAINSTREAM LOW", "VALUE"]:
-        productos_tier = df_f[df_f["Tier"] == tier]
-        if not productos_tier.empty:
-            c1, c2 = st.columns([1, 4])
-            
-            # Etiqueta visual del Tier
-            c1.markdown(f"""
-                <div style="background-color:{tier_colors[tier]}; color:white; padding:15px; 
-                border-radius:10px; text-align:center; font-weight:bold; height:100%; 
-                display:flex; align-items:center; justify-content:center; min-height:80px;">
-                    {tier}
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # Construcción de tarjetas horizontales
-            cards_html = ""
-            for _, r in productos_tier.iterrows():
-                # Borde morado para destacar Barcel/Propuesta
-                b_color = "#4B207E" if r["Fabricante"] in ["BARCEL", "PROPUESTA"] else "#CCCCCC"
+    if not activar_piramide:
+        st.info("💡 La sección está contraída para mejorar el rendimiento. Activa el interruptor para ver los datos.")
+    else:
+        # Usamos la función procesar_datos_piramide que fija el Index 100 en el mayor SOM
+        df_pyramid = procesar_datos_piramide(st.session_state.data)
+        
+        # Selector de ocasión
+        sel_ocasion = st.selectbox("Seleccionar Segmento para Pirámide:", df_pyramid["Ocasión"].unique())
+        
+        # Filtrar por ocasión y ordenar por Index de mayor a menor
+        df_f = df_pyramid[df_pyramid["Ocasión"] == sel_ocasion].sort_values("Idx_P", ascending=False)
+        
+        tier_colors = {
+            "PREMIUM": "#1A237E", 
+            "UPPER MAINSTREAM": "#0D47A1", 
+            "MAINSTREAM": "#0B3C8C", 
+            "MAINSTREAM LOW": "#1976D2", 
+            "VALUE": "#42A5F5"
+        }
+
+        # Renderizado de la Pirámide
+        for tier in ["PREMIUM", "UPPER MAINSTREAM", "MAINSTREAM", "MAINSTREAM LOW", "VALUE"]:
+            productos_tier = df_f[df_f["Tier"] == tier]
+            if not productos_tier.empty:
+                c1, c2 = st.columns([1, 4])
                 
-                cards_html += f"""
-                <div style="display:inline-block; border: 2px solid {b_color}; border-radius: 10px; 
-                padding: 10px; background: white; min-width: 160px; margin: 5px; 
-                vertical-align: top; box-shadow: 1px 1px 3px rgba(0,0,0,0.1);">
-                    <div style="font-weight:bold; font-size:0.9rem; color:#333; margin-bottom:4px;">{r['Producto']}</div>
-                    <div style="color:#666; font-size:0.8rem;">Index: {int(r['Idx_P'])}</div>
-                    <div style="font-weight:bold; font-size:1rem; color:#111; margin-top:4px;">${r['Precio ($)']:,.1f} ({int(r['Gramaje (g)'])}g)</div>
-                </div>"""
-            
-            with c2:
-                st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
-            st.write("")
+                # Etiqueta visual del Tier
+                c1.markdown(f"""
+                    <div style="background-color:{tier_colors[tier]}; color:white; padding:15px; 
+                    border-radius:10px; text-align:center; font-weight:bold; height:100%; 
+                    display:flex; align-items:center; justify-content:center; min-height:80px;">
+                        {tier}
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                # Construcción de tarjetas horizontales
+                cards_html = ""
+                for _, r in productos_tier.iterrows():
+                    # Borde morado para destacar Barcel/Propuesta (Respetando G en nombres si aplica)
+                    b_color = "#4B207E" if r["Fabricante"] in ["BARCEL", "PROPUESTA"] else "#CCCCCC"
+                    
+                    cards_html += f"""
+                    <div style="display:inline-block; border: 2px solid {b_color}; border-radius: 10px; 
+                    padding: 10px; background: white; min-width: 160px; margin: 5px; 
+                    vertical-align: top; box-shadow: 1px 1px 3px rgba(0,0,0,0.1);">
+                        <div style="font-weight:bold; font-size:0.9rem; color:#333; margin-bottom:4px;">{r['Producto']}</div>
+                        <div style="color:#666; font-size:0.8rem;">Index: {int(r['Idx_P'])}</div>
+                        <div style="font-weight:bold; font-size:1rem; color:#111; margin-top:4px;">${r['Precio ($)']:,.1f} ({int(r['Gramaje (g)'])}g)</div>
+                    </div>"""
+                
+                with c2:
+                    st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
+                st.write("")
 
 # --- 11. MAPA DE VALOR ESTRATÉGICO (DISEÑO CLEAN) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
