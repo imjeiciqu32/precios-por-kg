@@ -1391,7 +1391,35 @@ if modo == "Price Ladder":
                 st.success(f"Producto {nuevo_p} añadido correctamente.")
                 st.rerun()
     
-    # === 2. COMPARADOR TÉCNICO 1 VS 1 ===
+    
+    # === 2. FILTROS AVANZADOS (CON FABRICANTE Y CANAL) ===
+    with st.container(border=True):
+        st.markdown("**Filtros Globales de Visualización**")
+        r1_c1, r1_c2, r1_c3 = st.columns(3)
+        sel_fab = r1_c1.multiselect("Fabricante", st.session_state.df_arq_sim["Fabricante"].unique(), default=st.session_state.df_arq_sim["Fabricante"].unique())
+        sel_can = r1_c2.multiselect("Canal", st.session_state.df_arq_sim["Canal"].unique(), default=st.session_state.df_arq_sim["Canal"].unique())
+        sel_marcas = r1_c3.multiselect("Marcas", st.session_state.df_arq_sim["Marca"].unique(), default=st.session_state.df_arq_sim["Marca"].unique())
+        
+        r2_c1, r2_c2 = st.columns(2)
+        sel_ocasiones = r2_c1.multiselect("Ocasiones", st.session_state.df_arq_sim["Ocasión de Consumo"].unique(), default=st.session_state.df_arq_sim["Ocasión de Consumo"].unique())
+        sel_productos = r2_c2.multiselect("Productos específicos", st.session_state.df_arq_sim["Producto"].unique(), default=st.session_state.df_arq_sim["Producto"].unique())
+
+    df_filtered = st.session_state.df_arq_sim[
+        (st.session_state.df_arq_sim["Fabricante"].isin(sel_fab)) & 
+        (st.session_state.df_arq_sim["Canal"].isin(sel_can)) & 
+        (st.session_state.df_arq_sim["Marca"].isin(sel_marcas)) & 
+        (st.session_state.df_arq_sim["Ocasión de Consumo"].isin(sel_ocasiones)) &
+        (st.session_state.df_arq_sim["Producto"].isin(sel_productos))
+    ].copy()
+
+    # Editor Dinámico
+    df_editado = st.data_editor(
+        df_filtered,
+        column_order=("Producto", "Marca", "Fabricante", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"),
+        hide_index=True, use_container_width=True, key="editor_v5_1"
+    )
+
+    # === 3. COMPARADOR TÉCNICO 1 VS 1 ===
     st.markdown("#### ⚖️ Comparativa de Size Impression Index")
     
     with st.container(border=True):
@@ -1460,32 +1488,6 @@ if modo == "Price Ladder":
                 </div>
             """, unsafe_allow_html=True)
 
-    # === 3. FILTROS AVANZADOS (CON FABRICANTE Y CANAL) ===
-    with st.container(border=True):
-        st.markdown("**Filtros Globales de Visualización**")
-        r1_c1, r1_c2, r1_c3 = st.columns(3)
-        sel_fab = r1_c1.multiselect("Fabricante", st.session_state.df_arq_sim["Fabricante"].unique(), default=st.session_state.df_arq_sim["Fabricante"].unique())
-        sel_can = r1_c2.multiselect("Canal", st.session_state.df_arq_sim["Canal"].unique(), default=st.session_state.df_arq_sim["Canal"].unique())
-        sel_marcas = r1_c3.multiselect("Marcas", st.session_state.df_arq_sim["Marca"].unique(), default=st.session_state.df_arq_sim["Marca"].unique())
-        
-        r2_c1, r2_c2 = st.columns(2)
-        sel_ocasiones = r2_c1.multiselect("Ocasiones", st.session_state.df_arq_sim["Ocasión de Consumo"].unique(), default=st.session_state.df_arq_sim["Ocasión de Consumo"].unique())
-        sel_productos = r2_c2.multiselect("Productos específicos", st.session_state.df_arq_sim["Producto"].unique(), default=st.session_state.df_arq_sim["Producto"].unique())
-
-    df_filtered = st.session_state.df_arq_sim[
-        (st.session_state.df_arq_sim["Fabricante"].isin(sel_fab)) & 
-        (st.session_state.df_arq_sim["Canal"].isin(sel_can)) & 
-        (st.session_state.df_arq_sim["Marca"].isin(sel_marcas)) & 
-        (st.session_state.df_arq_sim["Ocasión de Consumo"].isin(sel_ocasiones)) &
-        (st.session_state.df_arq_sim["Producto"].isin(sel_productos))
-    ].copy()
-
-    # Editor Dinámico
-    df_editado = st.data_editor(
-        df_filtered,
-        column_order=("Producto", "Marca", "Fabricante", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"),
-        hide_index=True, use_container_width=True, key="editor_v5_1"
-    )    
 
 
 # === GRÁFICO TÉCNICO ADAPTATIVO CON NAVEGACIÓN MEJORADA ===
