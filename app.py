@@ -1808,5 +1808,3 @@ if modo == "Price Ladder":
                     - "Ultra Grande" para proyector
                     """)
 
-            with st.expander("🎮 Guía de Controles"):
-                st.write("Usa la rueda del mouse para Zoom y arrastra para mover la vista. El botón de la cámara descarga la imagen en alta resolución.")
