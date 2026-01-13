@@ -1393,64 +1393,65 @@ if modo == "Price Ladder":
     
     
     # === 2. FILTROS AVANZADOS DINÁMICOS ===
-with st.container(border=True):
-    st.markdown("**Filtros Globales de Visualización**")
+    with st.container(border=True):
+        st.markdown("**Filtros Globales de Visualización**")
+        
+        # Referencia base: Usamos el dataframe completo que puede tener SKUs nuevos
+        df_base = st.session_state.df_arq_sim
+        
+        r1_c1, r1_c2, r1_c3 = st.columns(3)
+        
+        # 1. Filtro Fabricante
+        sel_fab = r1_c1.multiselect("Fabricante", df_base["Fabricante"].unique(), 
+                                     default=df_base["Fabricante"].unique())
+        
+        # 2. Filtro Canal (depende de Fabricante)
+        df_can = df_base[df_base["Fabricante"].isin(sel_fab)]
+        sel_can = r1_c2.multiselect("Canal", df_can["Canal"].unique(), 
+                                     default=df_can["Canal"].unique())
+        
+        # 3. Filtro Marcas (depende de Fabricante y Canal)
+        df_mar = df_can[df_can["Canal"].isin(sel_can)]
+        sel_marcas = r1_c3.multiselect("Marcas", df_mar["Marca"].unique(), 
+                                        default=df_mar["Marca"].unique())
+        
+        r2_c1, r2_c2 = st.columns(2)
+        
+        # 4. Filtro Ocasiones (depende de los anteriores)
+        df_oca = df_mar[df_mar["Marca"].isin(sel_marcas)]
+        sel_ocasiones = r2_c1.multiselect("Ocasiones", df_oca["Ocasión de Consumo"].unique(), 
+                                           default=df_oca["Ocasión de Consumo"].unique())
+        
+        # 5. Filtro Productos (Solo muestra lo filtrado arriba)
+        df_prod = df_oca[df_oca["Ocasión de Consumo"].isin(sel_ocasiones)]
+        sel_productos = r2_c2.multiselect("Productos específicos", df_prod["Producto"].unique(), 
+                                           default=df_prod["Producto"].unique())
     
-    # Referencia base: Usamos el dataframe completo que puede tener SKUs nuevos
-    df_base = st.session_state.df_arq_sim
+    # Aplicación final del filtrado
+    df_filtered = df_base[
+        (df_base["Fabricante"].isin(sel_fab)) & 
+        (df_base["Canal"].isin(sel_can)) & 
+        (df_base["Marca"].isin(sel_marcas)) & 
+        (df_base["Ocasión de Consumo"].isin(sel_ocasiones)) &
+        (df_base["Producto"].isin(sel_productos))
+    ].copy()
     
-    r1_c1, r1_c2, r1_c3 = st.columns(3)
+    # Editor Dinámico - Mantenemos la actualización
+    df_editado = st.data_editor(
+        df_filtered,
+        column_order=("Producto", "Marca", "Fabricante", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"),
+        hide_index=True, 
+        use_container_width=True, 
+        key="editor_v5_1"
+    )
     
-    # 1. Filtro Fabricante
-    sel_fab = r1_c1.multiselect("Fabricante", df_base["Fabricante"].unique(), 
-                                 default=df_base["Fabricante"].unique())
+    # Sincronización: Si editas la tabla, se guardan los cambios en la base global
+    if st.button("Guardar Cambios en Simulación"):
+        for index, row in df_editado.iterrows():
+            st.session_state.df_arq_sim.loc[st.session_state.df_arq_sim["Producto"] == row["Producto"], ["Ancho (cm)", "Alto (cm)"]] = [row["Ancho (cm)"], row["Alto (cm)"]]
+        st.success("¡Base actualizada! Los filtros ahora reconocerán los nuevos valores.")
+        st.rerun()
     
-    # 2. Filtro Canal (depende de Fabricante)
-    df_can = df_base[df_base["Fabricante"].isin(sel_fab)]
-    sel_can = r1_c2.multiselect("Canal", df_can["Canal"].unique(), 
-                                 default=df_can["Canal"].unique())
-    
-    # 3. Filtro Marcas (depende de Fabricante y Canal)
-    df_mar = df_can[df_can["Canal"].isin(sel_can)]
-    sel_marcas = r1_c3.multiselect("Marcas", df_mar["Marca"].unique(), 
-                                    default=df_mar["Marca"].unique())
-    
-    r2_c1, r2_c2 = st.columns(2)
-    
-    # 4. Filtro Ocasiones (depende de los anteriores)
-    df_oca = df_mar[df_mar["Marca"].isin(sel_marcas)]
-    sel_ocasiones = r2_c1.multiselect("Ocasiones", df_oca["Ocasión de Consumo"].unique(), 
-                                       default=df_oca["Ocasión de Consumo"].unique())
-    
-    # 5. Filtro Productos (Solo muestra lo filtrado arriba)
-    df_prod = df_oca[df_oca["Ocasión de Consumo"].isin(sel_ocasiones)]
-    sel_productos = r2_c2.multiselect("Productos específicos", df_prod["Producto"].unique(), 
-                                       default=df_prod["Producto"].unique())
-
-# Aplicación final del filtrado
-df_filtered = df_base[
-    (df_base["Fabricante"].isin(sel_fab)) & 
-    (df_base["Canal"].isin(sel_can)) & 
-    (df_base["Marca"].isin(sel_marcas)) & 
-    (df_base["Ocasión de Consumo"].isin(sel_ocasiones)) &
-    (df_base["Producto"].isin(sel_productos))
-].copy()
-
-# Editor Dinámico - Mantenemos la actualización
-df_editado = st.data_editor(
-    df_filtered,
-    column_order=("Producto", "Marca", "Fabricante", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"),
-    hide_index=True, 
-    use_container_width=True, 
-    key="editor_v5_1"
-)
-
-# Sincronización: Si editas la tabla, se guardan los cambios en la base global
-if st.button("Guardar Cambios en Simulación"):
-    for index, row in df_editado.iterrows():
-        st.session_state.df_arq_sim.loc[st.session_state.df_arq_sim["Producto"] == row["Producto"], ["Ancho (cm)", "Alto (cm)"]] = [row["Ancho (cm)"], row["Alto (cm)"]]
-    st.success("¡Base actualizada! Los filtros ahora reconocerán los nuevos valores.")
-    st.rerun()
 
     # === 3. COMPARADOR TÉCNICO 1 VS 1 ===
     st.markdown("#### ⚖️ Comparativa de Size Impression Index")
