@@ -1586,30 +1586,17 @@ if not df_editado.empty:
             font=dict(size=max(14, int(PX_UNIT * 0.32)), color="#0B3C8C", family="Arial"), yanchor="top"
         )
 
-    # === MARCO/CONTORNO DEL ÁREA DEL GRÁFICO ===
-    # Este es el rectángulo visible que delimita el área de trabajo
+    # === CANVAS DIMENSIONES ===
     ancho_contenido = x_ptr
     margen_lateral = 5
     alto_canvas = max_h + 10
     
-    fig.add_shape(
-        type="rect",
-        x0=-margen_lateral-2,
-        y0=-5,
-        x1=ancho_contenido + margen_lateral,
-        y1=max_h + 5,
-        line=dict(color="#0B3C8C", width=3, dash="solid"),
-        fillcolor="rgba(0,0,0,0)",
-        layer="below"
-    )
-
-    # === CANVAS DIMENSIONES ===
     canvas_width_px = int((ancho_contenido + margen_lateral * 2) * PX_UNIT)
     canvas_height_px = int(alto_canvas * PX_UNIT)
     canvas_width_px = max(600, min(canvas_width_px, 4000))
     canvas_height_px = max(350, min(canvas_height_px, 1200))
 
-    # === LAYOUT CON CONFIGURACIÓN DE INTERACCIÓN ===
+    # === LAYOUT ===
     fig.update_layout(
         width=canvas_width_px,
         height=canvas_height_px,
@@ -1636,71 +1623,74 @@ if not df_editado.empty:
         hovermode='closest'
     )
     
-    # === ESTILOS CSS MEJORADOS ===
+    # === ESTILOS CSS CON MARCO VISIBLE DEL CONTENEDOR ===
     st.markdown(
         f"""
         <style>
-        .interactive-chart-container {{
+        /* MARCO DEL CONTENEDOR DEL GRÁFICO - ESTE ES EL IMPORTANTE */
+        .chart-container-with-border {{
+            border: 4px solid #0B3C8C;
+            border-radius: 12px;
+            padding: 20px;
+            background: #FFFFFF;
+            box-shadow: 0 6px 16px rgba(11, 60, 140, 0.2);
+            margin: 15px 0;
             position: relative;
+        }}
+        
+        /* Badge de "Área Interactiva" */
+        .chart-container-with-border::before {{
+            content: "🖱️ ÁREA INTERACTIVA - Arrastra y usa la rueda para navegar";
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background: #0B3C8C;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 10;
+        }}
+        
+        /* Contenedor interno con scroll */
+        .scrollable-chart {{
             overflow-x: auto;
             overflow-y: hidden;
             width: 100%;
-            border: 3px solid #0B3C8C;
-            border-radius: 12px;
-            padding: 15px;
+            border-radius: 8px;
             background: linear-gradient(135deg, #F8F9FA 0%, #FFFFFF 100%);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-            margin: 10px 0;
         }}
+        
         .chart-header {{
             background: linear-gradient(90deg, #0B3C8C 0%, #1976D2 100%);
             color: white;
             padding: 12px 20px;
             border-radius: 8px;
-            margin-bottom: 12px;
+            margin-bottom: 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             box-shadow: 0 3px 6px rgba(0,0,0,0.2);
         }}
+        
         .chart-stats {{
             font-size: 13px;
             font-weight: 600;
         }}
+        
         .zoom-hint {{
             background: #FFF3CD;
-            border: 2px solid #FFC107;
-            border-radius: 8px;
-            padding: 10px 15px;
-            margin: 10px 0;
-            font-size: 14px;
+            border-left: 4px solid #FFC107;
+            border-radius: 6px;
+            padding: 12px 15px;
+            margin: 12px 0;
+            font-size: 13px;
             color: #856404;
             display: flex;
             align-items: center;
-            gap: 10px;
-        }}
-        .zoom-controls {{
-            background: #E3F2FD;
-            border: 2px solid #2196F3;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 10px;
-            text-align: center;
-        }}
-        .zoom-btn {{
-            background: #2196F3;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            margin: 0 5px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 14px;
-        }}
-        .zoom-btn:hover {{
-            background: #1976D2;
-            transform: scale(1.05);
+            gap: 12px;
         }}
         </style>
         """, 
@@ -1728,21 +1718,22 @@ if not df_editado.empty:
     st.markdown(
         """
         <div class="zoom-hint">
-            <span style="font-size: 24px;">🖱️</span>
+            <span style="font-size: 24px;">💡</span>
             <div>
-                <b>Cómo navegar:</b><br>
+                <b>El marco azul delimita el área donde puedes interactuar:</b><br>
                 • <b>Arrastra</b> con el mouse para mover la vista<br>
-                • <b>Rueda del mouse</b> sobre el gráfico para zoom<br>
-                • <b>Botones de la barra</b> superior derecha para zoom preciso<br>
-                • El <b>marco azul</b> delimita el área interactiva
+                • <b>Rueda del mouse</b> para hacer zoom in/out<br>
+                • <b>Botones superiores</b> del gráfico para controles precisos
             </div>
         </div>
         """,
         unsafe_allow_html=True
     )
     
-    # === RENDERIZADO DEL GRÁFICO ===
-    st.write('<div class="interactive-chart-container">', unsafe_allow_html=True)
+    # === CONTENEDOR CON MARCO VISIBLE ===
+    st.markdown('<div class="chart-container-with-border">', unsafe_allow_html=True)
+    st.write('<div class="scrollable-chart">', unsafe_allow_html=True)
+    
     st.plotly_chart(
         fig, 
         use_container_width=False,
@@ -1760,9 +1751,11 @@ if not df_editado.empty:
             }
         }
     )
-    st.write('</div>', unsafe_allow_html=True)
     
-    # === LEYENDA DE CONTROLES EXPANDIBLE ===
+    st.write('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # === GUÍA COMPLETA DE CONTROLES ===
     with st.expander("🎮 Guía Completa de Controles"):
         col_g1, col_g2 = st.columns(2)
         
@@ -1782,12 +1775,13 @@ if not df_editado.empty:
         with col_g2:
             st.markdown("""
             **🎨 Elementos Visuales:**
-            - **Marco Azul**: Límite del área de trabajo
+            - **Marco Azul**: Delimitación del área interactiva
             - **Líneas Negras**: Medidores tipo regla
             - **Cajas Blancas**: Área en cm²
             - **Líneas Punteadas**: Separadores de ocasión
             
             **💡 Tips:**
+            - El marco azul te indica dónde puedes hacer zoom
             - Aumenta "Escala Base" si se ve pequeño
             - Usa "Zoom Inicial" para ajuste rápido
             """)
