@@ -1637,14 +1637,16 @@ if not df_editado.empty:
         hovermode='closest'
     )
     
-     
-    # === CONTENEDOR DEL GRÁFICO ===
+    
+    # === CONTENEDOR DEL GRÁFICO (CON BORDE Y SOMBRA) ===
     st.markdown(
         """
         <div style="
-            background: #f0f2f6;
-            padding: 10px;
+            background: #ffffff;
+            padding: 15px;
             border-radius: 12px;
+            border: 2px solid #e0e4e9;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
             margin: 10px 0;
             overflow-x: auto;
         ">
