@@ -1565,16 +1565,13 @@ if not df_editado.empty:
             showarrow=False, font=dict(size=font_size_medidas, color="#333"), xanchor="right"
         )
         
-        # === ÁREA EN EL CENTRO ===
-        fig.add_shape(
-            type="rect",
-            x0=x_ptr+w*0.2, y0=h*0.35, x1=x_ptr+w*0.8, y1=h*0.65,
-            fillcolor="white", opacity=0.92, line=dict(color=c, width=2), layer="above"
-        )
+        # === ÁREA EN EL CENTRO (SOLO TEXTO REFORZADO) ===
         fig.add_annotation(
             x=x_ptr+w/2, y=h/2, 
-            text=f"<b>{area:.0f}</b><br><span style='font-size:{int(font_size_area*0.6)}px;color:#666;'>cm²</span>", 
-            showarrow=False, font=dict(size=font_size_area, color=c, family="Arial Black"), align="center"
+            text=f"<b>{area:.0f}</b><br><span style='font-size:{int(font_size_area*0.6)}px;'>cm²</span>", 
+            showarrow=False, 
+            font=dict(size=font_size_area, color=c, family="Arial Black"), 
+            align="center"
         )
         
         # === SEPARADOR DE OCASIÓN ===
@@ -1637,7 +1634,6 @@ if not df_editado.empty:
         hovermode='closest'
     )
     
-    
     # === CONTENEDOR DEL GRÁFICO (CON BORDE Y SOMBRA) ===
     st.markdown(
         """
@@ -1699,7 +1695,7 @@ if not df_editado.empty:
             st.markdown("""
             **🎨 Elementos Visuales:**
             - Líneas Negras: Medidores
-            - Cajas Blancas: Área cm²
+            - Texto Central: Área cm²
             - Badges Azules: Ocasiones
             - Sombras: Profundidad 3D
             """)
