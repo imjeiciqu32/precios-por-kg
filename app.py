@@ -1397,42 +1397,28 @@ if modo == "Price Ladder":
         col_t1, col_t2 = st.columns([4, 1])
         col_t1.markdown("**Filtros Globales de Visualización**")
         
-        # Botón de Reset
         if col_t2.button("🔄 Reset Filtros", use_container_width=True):
             st.rerun()
         
-        # Referencia base
         df_base = st.session_state.df_arq_sim
         
         r1_c1, r1_c2, r1_c3 = st.columns(3)
+        sel_fab = r1_c1.multiselect("Fabricante", df_base["Fabricante"].unique(), default=df_base["Fabricante"].unique())
         
-        # 1. Filtro Fabricante
-        sel_fab = r1_c1.multiselect("Fabricante", df_base["Fabricante"].unique(), 
-                                     default=df_base["Fabricante"].unique())
-        
-        # 2. Filtro Canal (depende de Fabricante)
         df_can = df_base[df_base["Fabricante"].isin(sel_fab)]
-        sel_can = r1_c2.multiselect("Canal", df_can["Canal"].unique(), 
-                                     default=df_can["Canal"].unique())
+        sel_can = r1_c2.multiselect("Canal", df_can["Canal"].unique(), default=df_can["Canal"].unique())
         
-        # 3. Filtro Marcas (depende de Fabricante y Canal)
         df_mar = df_can[df_can["Canal"].isin(sel_can)]
-        sel_marcas = r1_c3.multiselect("Marcas", df_mar["Marca"].unique(), 
-                                        default=df_mar["Marca"].unique())
+        sel_marcas = r1_c3.multiselect("Marcas", df_mar["Marca"].unique(), default=df_mar["Marca"].unique())
         
         r2_c1, r2_c2 = st.columns(2)
-        
-        # 4. Filtro Ocasiones (depende de los anteriores)
         df_oca = df_mar[df_mar["Marca"].isin(sel_marcas)]
-        sel_ocasiones = r2_c1.multiselect("Ocasiones", df_oca["Ocasión de Consumo"].unique(), 
-                                           default=df_oca["Ocasión de Consumo"].unique())
+        sel_ocasiones = r2_c1.multiselect("Ocasiones", df_oca["Ocasión de Consumo"].unique(), default=df_oca["Ocasión de Consumo"].unique())
         
-        # 5. Filtro Productos (Solo muestra lo filtrado arriba)
         df_prod = df_oca[df_oca["Ocasión de Consumo"].isin(sel_ocasiones)]
-        sel_productos = r2_c2.multiselect("Productos específicos", df_prod["Producto"].unique(), 
-                                           default=df_prod["Producto"].unique())
+        sel_productos = r2_c2.multiselect("Productos específicos", df_prod["Producto"].unique(), default=df_prod["Producto"].unique())
     
-    # Aplicación final del filtrado
+    # --- LÓGICA DE FILTRADO Y SELECCIÓN ---
     df_filtered = df_base[
         (df_base["Fabricante"].isin(sel_fab)) & 
         (df_base["Canal"].isin(sel_can)) & 
@@ -1441,25 +1427,41 @@ if modo == "Price Ladder":
         (df_base["Producto"].isin(sel_productos))
     ].copy()
     
-    # Editor Dinámico - AHORA PERMITE ELIMINAR (num_rows="dynamic")
-    st.info("💡 Para eliminar un SKU: Selecciónalo en la tabla y presiona la tecla 'Delete' o usa el icono de basura.")
+    # Agregamos columna de selección al inicio (como en tu ss)
+    df_filtered.insert(0, "Seleccionar", False)
+    
+    st.info("💡 Marca los productos que quieras eliminar y presiona el botón 'Eliminar Productos Seleccionados'.")
+    
+    # Editor Dinámico
     df_editado = st.data_editor(
         df_filtered,
-        column_order=("Producto", "Marca", "Fabricante", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"),
-        hide_index=False, # Activamos el índice para facilitar la selección y borrado
+        column_order=("Seleccionar", "Producto", "Marca", "Fabricante", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"),
+        hide_index=True, 
         use_container_width=True, 
-        key="editor_v5_1",
-        num_rows="dynamic" # ESTO PERMITE AGREGAR Y ELIMINAR FILAS
+        key="editor_v5_1"
     )
     
-    # Sincronización: Si editas o eliminas, actualizamos la base global
-    if st.button("Guardar Cambios en Simulación"):
-        # Reemplazamos la base por el contenido actual del editor (considerando eliminados)
-        # Nota: Aquí comparamos contra los que quedaron en df_editado
-        st.session_state.df_arq_sim = df_editado.copy()
-        st.success("¡Base actualizada correctamente!")
+    # --- ACCIONES DE LA TABLA ---
+    c_save, c_del = st.columns(2)
+    
+    if c_save.button("💾 Guardar Cambios en Dimensiones", use_container_width=True, type="primary"):
+        # Actualizamos solo las dimensiones en la base original
+        for _, row in df_editado.iterrows():
+            st.session_state.df_arq_sim.loc[st.session_state.df_arq_sim["Producto"] == row["Producto"], ["Ancho (cm)", "Alto (cm)"]] = [row["Ancho (cm)"], row["Alto (cm)"]]
+        st.success("¡Dimensiones actualizadas!")
         st.rerun()
     
+    if c_del.button("🗑️ Eliminar Productos Seleccionados", use_container_width=True):
+        # Identificamos productos marcados para morir
+        productos_a_eliminar = df_editado[df_editado["Seleccionar"] == True]["Producto"].tolist()
+        
+        if productos_a_eliminar:
+            # Filtramos la base original quitando esos productos
+            st.session_state.df_arq_sim = st.session_state.df_arq_sim[~st.session_state.df_arq_sim["Producto"].isin(productos_a_eliminar)].copy()
+            st.warning(f"Se eliminaron {len(productos_a_eliminar)} productos.")
+            st.rerun()
+        else:
+            st.error("No has seleccionado ningún producto para eliminar.")
 
     # === 3. COMPARADOR TÉCNICO 1 VS 1 ===
     st.markdown("#### ⚖️ Comparativa de Size Impression Index")
