@@ -1390,24 +1390,59 @@ if modo == "Price Ladder":
                 st.session_state.df_arq_sim = pd.concat([st.session_state.df_arq_sim, pd.DataFrame([nueva_fila])], ignore_index=True)
                 st.success(f"Producto {nuevo_p} añadido correctamente.")
                 st.rerun()
-
+    
     # === 2. COMPARADOR TÉCNICO 1 VS 1 ===
     st.markdown("#### ⚖️ Comparativa de Size Impression Index")
+    
     with st.container(border=True):
-        col_c1, col_c2, col_c3 = st.columns([2, 2, 1])
+        col_c1, col_c2 = st.columns([1, 1])
         with col_c1:
             prod_base = st.selectbox("Producto 1 (Base 100)", st.session_state.df_arq_sim["Producto"].unique(), key="sb_1")
         with col_c2:
             prod_comp = st.selectbox("Producto 2 (Comparativo)", st.session_state.df_arq_sim["Producto"].unique(), key="sb_2")
         
+        # Obtención de datos
         d1 = st.session_state.df_arq_sim[st.session_state.df_arq_sim["Producto"] == prod_base].iloc[0]
         d2 = st.session_state.df_arq_sim[st.session_state.df_arq_sim["Producto"] == prod_comp].iloc[0]
         
-        a1, a2 = (d1["Ancho (cm)"] * d1["Alto (cm)"]), (d2["Ancho (cm)"] * d2["Alto (cm)"])
+        # Cálculo de áreas e Index
+        a1 = d1["Ancho (cm)"] * d1["Alto (cm)"]
+        a2 = d2["Ancho (cm)"] * d2["Alto (cm)"]
         index_val = (a2 / a1) * 100
-        
-        with col_c3:
-            st.metric("Index Resultante", f"{index_val:.0f} pts", delta=f"{index_val-100:.1f}% vs base")
+        delta = index_val - 100
+        color_index = "#d32f2f" if delta > 0 else "#1976d2"  # Rojo si es mayor, azul si es menor
+    
+        # --- DISEÑO TIPO TARJETA (CSS) ---
+        st.markdown(f"""
+            <div style="
+                background-color: white;
+                padding: 20px;
+                border-radius: 10px;
+                border-top: 4px solid {color_index};
+                box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+                text-align: center;
+                font-family: sans-serif;
+            ">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div style="text-align: left;">
+                        <p style="margin: 0; color: #666; font-size: 0.8rem;">{prod_base}</p>
+                        <h3 style="margin: 0; color: #333;">{a1:,.0f} <span style="font-size: 0.9rem;">cm²</span></h3>
+                    </div>
+                    <div style="color: #ccc; font-weight: bold;">vs</div>
+                    <div style="text-align: right;">
+                        <p style="margin: 0; color: #666; font-size: 0.8rem;">{prod_comp}</p>
+                        <h3 style="margin: 0; color: #333;">{a2:,.0f} <span style="font-size: 0.9rem;">cm²</span></h3>
+                    </div>
+                </div>
+                <div style="margin-top: 20px;">
+                    <h1 style="margin: 0; color: {color_index}; font-size: 3rem; font-weight: bold;">{index_val:.0f}</h1>
+                    <p style="margin: 0; color: #666; font-size: 0.8rem; font-weight: bold;">Index Size Impression</p>
+                    <p style="margin: 5px 0 0 0; color: {'red' if delta > 0 else 'green'}; font-size: 0.9rem;">
+                        {'▲' if delta > 0 else '▼'} {abs(delta):.1f}% vs base
+                    </p>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
     # === 3. FILTROS AVANZADOS (CON FABRICANTE Y CANAL) ===
     with st.container(border=True):
