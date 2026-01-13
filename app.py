@@ -859,85 +859,95 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 # --- 11. MAPA DE VALOR ESTRATÉGICO (DISEÑO CLEAN) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
     st.divider()
-    st.markdown("<h3 style='text-align: center; color: #0B3C8C;'>🏔️ Mapa de Posicionamiento: Desembolso vs. Eficiencia</h3>", unsafe_allow_html=True)
     
-    import plotly.express as px
+    # === CONTROL DE DESPLEGADO Y OPTIMIZACIÓN ===
+    col_header_map, col_toggle_map = st.columns([3, 1])
+    with col_header_map:
+        st.markdown("<h3 style='margin:0; color: #0B3C8C;'>🏔️ Mapa de Posicionamiento: Desembolso vs. Eficiencia</h3>", unsafe_allow_html=True)
+    with col_toggle_map:
+        activar_mapa = st.toggle("Activar Mapa", value=False, help="Despliega el gráfico interactivo de dispersión.")
 
-    df_plot = st.session_state.data.copy()
-    
-    # 1. Asegurar formato numérico
-    for c in ["Precio ($)", "Precio por Kg ($)", "SOM (%)"]:
-        df_plot[c] = pd.to_numeric(df_plot[c], errors='coerce').fillna(0)
-
-    # 2. Mapa de Colores
-    color_map = {
-        "BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", 
-        "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"
-    }
-
-    def asignar_color(row):
-        fab = str(row["Fabricante"]).upper()
-        prod = str(row["Producto"]).upper()
-        if "PROPUESTA" in prod or "SUGERIDO" in prod: return "PROPUESTA"
-        if "BARCEL" in fab: return "BARCEL"
-        if "SABRITAS" in fab or "PEPSICO" in fab: return "SABRITAS"
-        return "OTROS"
-
-    df_plot["Categoria_Color"] = df_plot.apply(asignar_color, axis=1)
-
-    # 3. Filtro por Ocasión
-    ocasiones = ["TODAS"] + sorted(df_plot["Ocasión"].unique().tolist())
-    oca_selected = st.selectbox("🎯 Filtrar Ocasión:", ocasiones, key="filtro_oca_final_clean")
-    
-    if oca_selected != "TODAS":
-        df_plot = df_plot[df_plot["Ocasión"] == oca_selected]
-
-    if not df_plot.empty:
-        # Ajuste de rangos para que no haya espacios vacíos
-        y_min, y_max = df_plot["Precio ($)"].min() * 0.9, df_plot["Precio ($)"].max() * 1.1
-        x_min, x_max = df_plot["Precio por Kg ($)"].min() * 0.9, df_plot["Precio por Kg ($)"].max() * 1.1
-
-        fig = px.scatter(
-            df_plot, x="Precio por Kg ($)", y="Precio ($)",
-            size="SOM (%)", color="Categoria_Color",
-            text="Producto", hover_name="Producto",
-            color_discrete_map=color_map, size_max=40,
-            custom_data=["SOM (%)", "Ocasión"]
-        )
-
-        # Estilo de etiquetas y burbujas
-        fig.update_traces(
-            textposition='top center',
-            textfont=dict(family="Arial", size=10, color="#333"),
-            marker=dict(line=dict(width=1.5, color='white'), opacity=0.9),
-            hovertemplate="<b>%{hovertext}</b><br>Desembolso: $%{y:.1f}<br>Precio/Kg: $%{x:,.0f}<br>SOM: %{customdata[0]:.1f}%<extra></extra>"
-        )
-
-        # Configuración de Ejes (Sin etiquetas de cuadrante)
-        fig.update_layout(
-            template="plotly_white",
-            height=700,
-            xaxis=dict(
-                title="<b>EFICIENCIA ($/KG)</b>", tickprefix="$", 
-                range=[x_min, x_max], gridcolor="#F2F2F2"
-            ),
-            yaxis=dict(
-                title="<b>DESEMBOLSO (PRECIO $)</b>", tickprefix="$", 
-                range=[y_min, y_max], gridcolor="#F2F2F2"
-            ),
-            legend=dict(
-                title="", orientation="h", yanchor="bottom", 
-                y=1.02, xanchor="center", x=0.5
-            )
-        )
-
-        # Líneas de referencia sutiles (Promedios)
-        fig.add_vline(x=df_plot["Precio por Kg ($)"].mean(), line_dash="dot", line_color="#D1D1D1")
-        fig.add_hline(y=df_plot["Precio ($)"].mean(), line_dash="dot", line_color="#D1D1D1")
-
-        st.plotly_chart(fig, use_container_width=True)
+    if not activar_mapa:
+        st.info("💡 La sección está contraída para mejorar el rendimiento. Activa el interruptor para ver los datos.")
     else:
-        st.warning("No hay datos disponibles.")
+        import plotly.express as px
+
+        df_plot = st.session_state.data.copy()
+        
+        # 1. Asegurar formato numérico
+        for c in ["Precio ($)", "Precio por Kg ($)", "SOM (%)"]:
+            df_plot[c] = pd.to_numeric(df_plot[c], errors='coerce').fillna(0)
+
+        # 2. Mapa de Colores
+        color_map = {
+            "BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", 
+            "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"
+        }
+
+        def asignar_color(row):
+            fab = str(row["Fabricante"]).upper()
+            prod = str(row["Producto"]).upper()
+            # Respetamos la G en la lógica de búsqueda si fuera necesario, aquí buscamos coincidencia de texto
+            if "PROPUESTA" in prod or "SUGERIDO" in prod: return "PROPUESTA"
+            if "BARCEL" in fab: return "BARCEL"
+            if "SABRITAS" in fab or "PEPSICO" in fab: return "SABRITAS"
+            return "OTROS"
+
+        df_plot["Categoria_Color"] = df_plot.apply(asignar_color, axis=1)
+
+        # 3. Filtro por Ocasión
+        ocasiones = ["TODAS"] + sorted(df_plot["Ocasión"].unique().tolist())
+        oca_selected = st.selectbox("🎯 Filtrar Ocasión:", ocasiones, key="filtro_oca_final_clean")
+        
+        if oca_selected != "TODAS":
+            df_plot = df_plot[df_plot["Ocasión"] == oca_selected]
+
+        if not df_plot.empty:
+            # Ajuste de rangos para que no haya espacios vacíos
+            y_min, y_max = df_plot["Precio ($)"].min() * 0.9, df_plot["Precio ($)"].max() * 1.1
+            x_min, x_max = df_plot["Precio por Kg ($)"].min() * 0.9, df_plot["Precio por Kg ($)"].max() * 1.1
+
+            fig = px.scatter(
+                df_plot, x="Precio por Kg ($)", y="Precio ($)",
+                size="SOM (%)", color="Categoria_Color",
+                text="Producto", hover_name="Producto",
+                color_discrete_map=color_map, size_max=40,
+                custom_data=["SOM (%)", "Ocasión"]
+            )
+
+            # Estilo de etiquetas y burbujas
+            fig.update_traces(
+                textposition='top center',
+                textfont=dict(family="Arial", size=10, color="#333"),
+                marker=dict(line=dict(width=1.5, color='white'), opacity=0.9),
+                hovertemplate="<b>%{hovertext}</b><br>Desembolso: $%{y:.1f}<br>Precio/Kg: $%{x:,.0f}<br>SOM: %{customdata[0]:.1f}%<extra></extra>"
+            )
+
+            # Configuración de Ejes
+            fig.update_layout(
+                template="plotly_white",
+                height=700,
+                xaxis=dict(
+                    title="<b>EFICIENCIA ($/KG)</b>", tickprefix="$", 
+                    range=[x_min, x_max], gridcolor="#F2F2F2"
+                ),
+                yaxis=dict(
+                    title="<b>DESEMBOLSO (PRECIO $)</b>", tickprefix="$", 
+                    range=[y_min, y_max], gridcolor="#F2F2F2"
+                ),
+                legend=dict(
+                    title="", orientation="h", yanchor="bottom", 
+                    y=1.02, xanchor="center", x=0.5
+                )
+            )
+
+            # Líneas de referencia sutiles (Promedios)
+            fig.add_vline(x=df_plot["Precio por Kg ($)"].mean(), line_dash="dot", line_color="#D1D1D1")
+            fig.add_hline(y=df_plot["Precio ($)"].mean(), line_dash="dot", line_color="#D1D1D1")
+
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("No hay datos disponibles para la selección actual.")
 
 
 # --- 12. ANALISTA MAESTRO INTEGRAL: LADDER ULTRA 2.6 + ARQUITECTURA PRO ---
