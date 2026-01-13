@@ -22,7 +22,7 @@ try:
     # Importamos la nueva plantilla que acabas de subir a GitHub
     from data_price_vol import PLANTILLA_PV
 except ImportError:
-    PLANTILLA_PV = {}
+    PLANTILLA_PV = []
     
     
 # --- CARGA DE ARQUITECTURA DESDE TU ARCHIVO EN GITHUB/LOCAL ---
