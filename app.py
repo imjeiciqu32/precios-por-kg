@@ -1440,6 +1440,9 @@ if modo == "Price Ladder":
 # === GRÁFICO TÉCNICO ADAPTATIVO CON NAVEGACIÓN MEJORADA ===
 if not df_editado.empty:
     df_editado['Area'] = df_editado['Ancho (cm)'] * df_editado['Alto (cm)']
+    # Aseguramos la G mayúscula en el nombre de los productos
+    df_editado['Producto'] = df_editado['Producto'].str.upper()
+    
     orden_o = ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"]
     df_editado['Ocasión de Consumo'] = pd.Categorical(df_editado['Ocasión de Consumo'], categories=orden_o, ordered=True)
     df_viz = df_editado.sort_values(['Ocasión de Consumo', 'Area'])
@@ -1460,8 +1463,8 @@ if not df_editado.empty:
                                   ["Automático", "Compacto", "Expandido", "Ultra Grande"])
     with col_ctrl4:
         zoom_nivel = st.selectbox("🔍 Zoom Inicial",
-                                 ["100%", "125%", "150%", "175%", "200%"],
-                                 index=0)
+                                  ["100%", "125%", "150%", "175%", "200%"],
+                                  index=0)
 
     # === CÁLCULO DE ESCALA INTELIGENTE ===
     num_productos = len(df_viz)
@@ -1597,6 +1600,20 @@ if not df_editado.empty:
             yanchor="top"
         )
 
+    # === MARCO AZUL INTEGRADO (ÁREA INTERACTIVA CORREGIDA) ===
+    # Definimos los límites del marco para que rodee todo el espacio del gráfico
+    margen_marco = 5
+    fig.add_shape(
+        type="rect",
+        x0=-margen_marco, 
+        y0=-10, 
+        x1=x_ptr, 
+        y1=max_h + 8,
+        line=dict(color="#0B3C8C", width=8), 
+        fillcolor="rgba(0,0,0,0)",
+        layer="below"
+    )
+
     # === CANVAS DIMENSIONES ===
     ancho_contenido = x_ptr
     margen_lateral = 5
@@ -1613,16 +1630,16 @@ if not df_editado.empty:
         height=canvas_height_px,
         template="plotly_white",
         showlegend=False,
-        margin=dict(l=60, r=40, t=40, b=60),
+        margin=dict(l=20, r=20, t=20, b=20),
         xaxis=dict(
-            range=[-margen_lateral-2, ancho_contenido + margen_lateral],
+            range=[-margen_lateral-3, ancho_contenido + 2],
             showgrid=False,
             zeroline=False,
             showticklabels=False,
             fixedrange=False
         ),
         yaxis=dict(
-            range=[-6, max_h + 5],
+            range=[-12, max_h + 10],
             showgrid=False,
             zeroline=False,
             showticklabels=False,
@@ -1683,18 +1700,15 @@ if not df_editado.empty:
         unsafe_allow_html=True
     )
     
-    # === CONTENEDOR CON MARCO AZUL GRUESO (COMO EN TU IMAGEN) ===
+    # === CONTENEDOR SIN MARCO HTML (AHORA ES PARTE DEL GRÁFICO) ===
     st.markdown(
         """
         <div style="
-            border: 8px solid #0B3C8C;
+            background: #f0f2f6;
+            padding: 10px;
             border-radius: 12px;
-            padding: 20px;
-            background: white;
-            box-shadow: 0 6px 20px rgba(11, 60, 140, 0.25);
             margin: 10px 0;
             overflow-x: auto;
-            overflow-y: hidden;
         ">
         """,
         unsafe_allow_html=True
@@ -1718,7 +1732,7 @@ if not df_editado.empty:
         }
     )
     
-    # Cerrar el div del marco
+    # Cerrar el div del contenedor
     st.markdown('</div>', unsafe_allow_html=True)
     
     # === GUÍA COMPLETA ===
