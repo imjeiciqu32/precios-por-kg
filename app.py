@@ -1395,10 +1395,10 @@ if modo == "Price Ladder":
     st.markdown("#### ⚖️ Comparativa de Size Impression Index")
     
     with st.container(border=True):
-        col_c1, col_c2 = st.columns([1, 1])
-        with col_c1:
+        col_sel1, col_sel2 = st.columns(2)
+        with col_sel1:
             prod_base = st.selectbox("Producto 1 (Base 100)", st.session_state.df_arq_sim["Producto"].unique(), key="sb_1")
-        with col_c2:
+        with col_sel2:
             prod_comp = st.selectbox("Producto 2 (Comparativo)", st.session_state.df_arq_sim["Producto"].unique(), key="sb_2")
         
         # Obtención de datos
@@ -1410,39 +1410,55 @@ if modo == "Price Ladder":
         a2 = d2["Ancho (cm)"] * d2["Alto (cm)"]
         index_val = (a2 / a1) * 100
         delta = index_val - 100
-        color_index = "#d32f2f" if delta > 0 else "#1976d2"  # Rojo si es mayor, azul si es menor
     
-        # --- DISEÑO TIPO TARJETA (CSS) ---
-        st.markdown(f"""
-            <div style="
-                background-color: white;
-                padding: 20px;
-                border-radius: 10px;
-                border-top: 4px solid {color_index};
-                box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
-                text-align: center;
-                font-family: sans-serif;
-            ">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <div style="text-align: left;">
-                        <p style="margin: 0; color: #666; font-size: 0.8rem;">{prod_base}</p>
-                        <h3 style="margin: 0; color: #333;">{a1:,.0f} <span style="font-size: 0.9rem;">cm²</span></h3>
+        # === LÓGICA DE COLOR: POSITIVO SI SOBRE-INDEXA ===
+        # Verde si el comparativo es más grande (>100), Rojo si es más pequeño (<100)
+        color_exito = "#28a745" if index_val >= 100 else "#d32f2f"
+        bg_exito = "#f0fff4" if index_val >= 100 else "#fff5f5"
+    
+        _, col_card, _ = st.columns([1, 2, 1])
+        
+        with col_card:
+            st.markdown(f"""
+                <div style="
+                    background-color: white;
+                    padding: 15px 25px;
+                    border-radius: 12px;
+                    border-top: 5px solid {color_exito};
+                    box-shadow: 0px 2px 10px rgba(0,0,0,0.08);
+                    text-align: center;
+                    margin: 10px auto;
+                    max-width: 400px;
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
+                        <div style="text-align: left; width: 42%;">
+                            <p style="margin: 0; color: #777; font-size: 0.75rem; line-height: 1.1;">{prod_base}</p>
+                            <h4 style="margin: 2px 0; color: #333; font-weight: bold; font-size: 1.1rem;">{a1:,.0f} <span style="font-size: 0.7rem;">cm²</span></h4>
+                        </div>
+                        <div style="color: #bbb; font-size: 0.8rem; margin-top: 15px; font-weight: bold;">vs</div>
+                        <div style="text-align: right; width: 42%;">
+                            <p style="margin: 0; color: #777; font-size: 0.75rem; line-height: 1.1;">{prod_comp}</p>
+                            <h4 style="margin: 2px 0; color: #333; font-weight: bold; font-size: 1.1rem;">{a2:,.0f} <span style="font-size: 0.7rem;">cm²</span></h4>
+                        </div>
                     </div>
-                    <div style="color: #ccc; font-weight: bold;">vs</div>
-                    <div style="text-align: right;">
-                        <p style="margin: 0; color: #666; font-size: 0.8rem;">{prod_comp}</p>
-                        <h3 style="margin: 0; color: #333;">{a2:,.0f} <span style="font-size: 0.9rem;">cm²</span></h3>
+                    <div style="margin-top: 10px;">
+                        <h1 style="margin: 0; color: {color_exito}; font-size: 3rem; font-weight: 800; line-height: 1;">{index_val:.0f}</h1>
+                        <p style="margin: 2px 0; color: #666; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Index Size Impression</p>
+                        <div style="
+                            display: inline-block;
+                            margin-top: 8px;
+                            padding: 4px 12px;
+                            border-radius: 15px;
+                            background-color: {bg_exito};
+                            color: {color_exito};
+                            font-size: 0.9rem;
+                            font-weight: bold;
+                        ">
+                            {'▲' if delta >= 0 else '▼'} {abs(delta):.1f}% <span style="font-weight: normal; font-size: 0.8rem;">vs base</span>
+                        </div>
                     </div>
                 </div>
-                <div style="margin-top: 20px;">
-                    <h1 style="margin: 0; color: {color_index}; font-size: 3rem; font-weight: bold;">{index_val:.0f}</h1>
-                    <p style="margin: 0; color: #666; font-size: 0.8rem; font-weight: bold;">Index Size Impression</p>
-                    <p style="margin: 5px 0 0 0; color: {'red' if delta > 0 else 'green'}; font-size: 0.9rem;">
-                        {'▲' if delta > 0 else '▼'} {abs(delta):.1f}% vs base
-                    </p>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
     # === 3. FILTROS AVANZADOS (CON FABRICANTE Y CANAL) ===
     with st.container(border=True):
