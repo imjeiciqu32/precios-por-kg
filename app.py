@@ -1655,66 +1655,43 @@ if not df_editado.empty:
         """
         <div style="background: linear-gradient(135deg, #FFF3CD 0%, #FFF9E6 100%); border-left: 5px solid #FFC107; border-radius: 8px; padding: 14px 18px; margin: 15px 0; font-size: 13px; color: #856404; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
             <span style="font-size: 28px; margin-right: 12px; vertical-align: middle;">🖱️</span>
-            <b>Navegación:</b> Arrastra con el mouse • Rueda para zoom • El marco azul delimita el área donde puedes interactuar
+            <b>Navegación:</b> Arrastra con el mouse para mover • Rueda para zoom • El marco azul delimita el área interactiva
         </div>
         """,
         unsafe_allow_html=True
     )
     
-    # === CONTENEDOR PRINCIPAL CON MARCO MUY VISIBLE ===
-    st.markdown(
-        """
-        <div style="
-            border: 6px solid #0B3C8C; 
-            border-radius: 15px; 
-            padding: 25px; 
-            background: linear-gradient(135deg, #FFFFFF 0%, #F0F4FF 100%);
-            box-shadow: 0 8px 25px rgba(11, 60, 140, 0.3), inset 0 0 0 3px rgba(25, 118, 210, 0.2);
-            margin: 20px 0;
-            position: relative;
-        ">
-        """,
-        unsafe_allow_html=True
-    )
-    
-    # Badge flotante MUY visible
+    # === BADGE FLOTANTE ===
     st.markdown(
         """
         <div style="
             background: linear-gradient(90deg, #0B3C8C 0%, #1976D2 100%);
             color: white;
-            padding: 12px 24px;
-            border-radius: 30px;
-            font-size: 14px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 13px;
             font-weight: bold;
             display: inline-block;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(11, 60, 140, 0.4);
-            border: 3px solid white;
-            animation: pulse 2s infinite;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 10px rgba(11, 60, 140, 0.3);
+            border: 2px solid #1976D2;
         ">
-            🎯 ÁREA INTERACTIVA - Puedes hacer zoom y navegar aquí dentro del marco azul
+            🎯 ÁREA INTERACTIVA - Puedes hacer zoom y navegar dentro del marco azul
         </div>
-        
-        <style>
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-        }
-        </style>
         """,
         unsafe_allow_html=True
     )
     
-    # Contenedor del gráfico con borde interno adicional
+    # === CONTENEDOR CON MARCO AZUL GRUESO (COMO EN TU IMAGEN) ===
     st.markdown(
         """
         <div style="
-            border: 3px dashed #1976D2;
-            border-radius: 10px;
-            padding: 15px;
+            border: 8px solid #0B3C8C;
+            border-radius: 12px;
+            padding: 20px;
             background: white;
-            box-shadow: inset 0 2px 8px rgba(0,0,0,0.05);
+            box-shadow: 0 6px 20px rgba(11, 60, 140, 0.25);
+            margin: 10px 0;
             overflow-x: auto;
             overflow-y: hidden;
         ">
@@ -1740,9 +1717,8 @@ if not df_editado.empty:
         }
     )
     
-    # Cerrar todos los divs
-    st.markdown('</div>', unsafe_allow_html=True)  # Cierra div del gráfico
-    st.markdown('</div>', unsafe_allow_html=True)  # Cierra div principal
+    # Cerrar el div del marco
+    st.markdown('</div>', unsafe_allow_html=True)
     
     # === GUÍA COMPLETA ===
     with st.expander("🎮 Guía Completa de Controles y Elementos"):
@@ -1764,17 +1740,17 @@ if not df_editado.empty:
         with col_g2:
             st.markdown("""
             **🎨 Elementos Visuales:**
-            - **Marco Azul Sólido**: Límite del área
-            - **Marco Azul Punteado**: Zona de scroll
+            - **Marco Azul**: Área interactiva
             - **Líneas Negras**: Medidores
             - **Cajas Blancas**: Área cm²
             - **Badges Azules**: Ocasiones
+            - **Sombras**: Profundidad 3D
             """)
         
         with col_g3:
             st.markdown("""
             **💡 Tips Pro:**
-            - El doble marco indica claramente el área
+            - El marco azul marca claramente el área
             - Aumenta "Escala Base" para agrandar
             - "Zoom Inicial" 150% para presentar
             - "Ultra Grande" para proyector
