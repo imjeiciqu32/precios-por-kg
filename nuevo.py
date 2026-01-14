@@ -189,13 +189,31 @@ else: # MODO: Price and Volumen
 
 # --- 2. FUNCIONES CORE (Mantenidas intactas) ---
 def calcular_pkg(df, modo_actual):
-    if df.empty: return df
-    df["Precio ($)"] = pd.to_numeric(df["Precio ($)"], errors='coerce').fillna(0)
-    df["Gramaje (g)"] = pd.to_numeric(df["Gramaje (g)"], errors='coerce').fillna(1).replace(0, 1)
-    df["Precio por Kg ($)"] = (df["Precio ($)"] / (df["Gramaje (g)"] / 1000)).round(1)
+    if df.empty: 
+        return df
+    
+    # 1. LÓGICA PARA PRICE LADDER Y PRICE PACK
+    # Solo calculamos $/kg si existen las columnas necesarias
+    if "Precio ($)" in df.columns and "Gramaje (g)" in df.columns:
+        df["Precio ($)"] = pd.to_numeric(df["Precio ($)"], errors='coerce').fillna(0)
+        df["Gramaje (g)"] = pd.to_numeric(df["Gramaje (g)"], errors='coerce').fillna(1).replace(0, 1)
+        # Mantenemos tu fórmula original: (Precio / (Gramos / 1000))
+        df["Precio por Kg ($)"] = (df["Precio ($)"] / (df["Gramaje (g)"] / 1000)).round(1)
+    
+    # 2. LÓGICA ESPECÍFICA POR MODO
     if modo_actual == "Price Ladder":
-        if "SOM (%)" not in df.columns: df["SOM (%)"] = 0.0
-        if "Fabricante" not in df.columns: df["Fabricante"] = "OTROS"
+        if "SOM (%)" not in df.columns: 
+            df["SOM (%)"] = 0.0
+        if "Fabricante" not in df.columns: 
+            df["Fabricante"] = "OTROS"
+            
+    elif modo_actual == "Price and Volumen":
+        # Para este modo, solo aseguramos que las columnas de valor y volumen sean numéricas
+        cols_pv = ["Precio ($)", "Venta Volumen (Pzas)","Venta Valor ($)"]
+        for col in cols_pv:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                
     return df
 
 def procesar_datos_piramide(df):
