@@ -1891,6 +1891,15 @@ if modo == "Price Ladder":
                     - "Ultra Grande" para proyector
                     """)
 
+if modo == "Price and Volumen":
+    if st.session_state.data.empty:
+        st.info("ℹ️ Por favor, selecciona una plantilla en la barra lateral y presiona 'Cargar Datos'.")
+    else:
+        st.success(f"✅ Datos cargados: {len(st.session_state.data)} registros encontrados.")
+        # Opcional: mostrar una vista previa pequeña
+        with st.expander("Ver vista previa de datos"):
+            st.dataframe(st.session_state.data.head())
+            
 # --- 15. ANÁLISIS DE ELASTICIDAD: PRICE & VOLUME ---
 if modo == "Price and Volumen" and not st.session_state.data.empty:
     st.divider()
@@ -1899,98 +1908,100 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
     # --- FILTROS ESPECÍFICOS ---
     df_pv = st.session_state.data.copy()
     
-    c_f1, c_f2 = st.columns(2)
-    with c_f1:
-        # Filtro de Producto
-        lista_prods = df_pv["Producto"].unique()
-        prod_sel = st.selectbox("Seleccionar Producto para Análisis:", lista_prods)
-    
-    with c_f2:
-        # Filtro de Rango de Semanas
-        min_sem = int(df_pv["Semana"].min())
-        max_sem = int(df_pv["Semana"].max())
-        rango_sem = st.slider("Rango de Semanas:", min_sem, max_sem, (min_sem, max_sem))
-
-    # Aplicar Filtros
-    mask = (df_pv["Producto"] == prod_sel) & (df_pv["Semana"].between(rango_sem[0], rango_sem[1]))
-    df_filtrado = df_pv[mask].sort_values("Semana")
-
-    if not df_filtrado.empty:
-        import plotly.graph_objects as go
-        from plotly.subplots import make_subplots
-
-        # Crear figura con ejes secundarios
-        fig = make_subplots(specs=[[{"secondary_y": True}]])
-
-        # 1. Ventas Valor (Gráfico de Área)
-        fig.add_trace(
-            go.Scatter(
-                x=df_filtrado["Semana"],
-                y=df_filtrado["Venta Valor ($)"],
-                name="Venta Valor ($)",
-                fill='tozeroy',
-                line=dict(color='#A6C8FF', width=0.5),
-                fillcolor='rgba(166, 200, 255, 0.3)'
-            ),
-            secondary_y=False,
-        )
-
-        # 2. Ventas Volumen (Gráfico de Barras)
-        fig.add_trace(
-            go.Bar(
-                x=df_filtrado["Semana"],
-                y=df_filtrado["Venta Volumen (Pzas)"],
-                name="Venta Volumen (Pzas)",
-                marker_color='#002366',
-                opacity=0.7
-            ),
-            secondary_y=False,
-        )
-
-        # 3. Evolución de Precio (Línea Punteada)
-        fig.add_trace(
-            go.Scatter(
-                x=df_filtrado["Semana"],
-                y=df_filtrado["Precio ($)"],
-                name="Precio ($)",
-                line=dict(color='#D32F2F', width=3, dash='dot'),
-                mode='lines+markers'
-            ),
-            secondary_y=True,
-        )
-
-        # Configuración de ejes y diseño
-        fig.update_layout(
-            title=f"Desempeño Histórico: {prod_sel}",
-            hovermode="x unified",
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            height=500,
-            margin=dict(l=20, r=20, t=80, b=20),
-            plot_bgcolor='rgba(0,0,0,0)'
-        )
-
-        fig.update_yaxes(title_text="<b>Volumen / Valor</b>", secondary_y=False, gridcolor='#f0f0f0')
-        fig.update_yaxes(title_text="<b>Precio Unitario ($)</b>", secondary_y=True, showgrid=False)
-
-        st.plotly_chart(fig, use_container_width=True)
-
-        # --- MÉTRICAS DE RESUMEN ---
-        st.markdown("##### 💡 Resumen del Periodo Seleccionado")
-        m1, m2, m3, m4 = st.columns(4)
+    # Aseguramos que las columnas necesarias existan antes de seguir
+    columnas_necesarias = ["Producto", "Semana", "Venta Valor ($)", "Venta Volumen (Pzas)", "Precio ($)"]
+    if all(col in df_pv.columns for col in columnas_necesarias):
         
-        # Cálculos rápidos
-        vol_total = df_filtrado["Venta Volumen (Pzas)"].sum()
-        val_total = df_filtrado["Venta Valor ($)"].sum()
-        precio_avg = df_filtrado["Precio ($)"].mean()
+        c_f1, c_f2 = st.columns(2)
+        with c_f1:
+            lista_prods = sorted(df_pv["Producto"].unique())
+            prod_sel = st.selectbox("Seleccionar Producto para Análisis:", lista_prods)
         
-        m1.metric("Volumen Total", f"{vol_total:,} Pzas")
-        m2.metric("Venta Total", f"${val_total:,.0f}")
-        m3.metric("Precio Promedio", f"${precio_avg:.2f}")
-        
-        # Calcular correlación simple si hay suficientes datos
-        if len(df_filtrado) > 1:
-            corr = df_filtrado["Precio ($)"].corr(df_filtrado["Venta Volumen (Pzas)"])
-            m4.metric("Elasticidad (Corr)", f"{corr:.2f}", help="Cercano a -1 indica alta sensibilidad al precio")
+        with c_f2:
+            min_sem = int(df_pv["Semana"].min())
+            max_sem = int(df_pv["Semana"].max())
+            # Slider para el rango de semanas
+            rango_sem = st.slider("Rango de Semanas:", min_sem, max_sem, (min_sem, max_sem))
 
+        # Aplicar Filtros
+        mask = (df_pv["Producto"] == prod_sel) & (df_pv["Semana"].between(rango_sem[0], rango_sem[1]))
+        df_filtrado = df_pv[mask].sort_values("Semana")
+
+        if not df_filtrado.empty:
+            import plotly.graph_objects as go
+            from plotly.subplots import make_subplots
+
+            # Crear figura con ejes secundarios
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+            # 1. Ventas Valor (Gráfico de Área)
+            fig.add_trace(
+                go.Scatter(
+                    x=df_filtrado["Semana"],
+                    y=df_filtrado["Venta Valor ($)"],
+                    name="Venta Valor ($)",
+                    fill='tozeroy',
+                    line=dict(color='#A6C8FF', width=1.5),
+                    fillcolor='rgba(166, 200, 255, 0.3)'
+                ),
+                secondary_y=False,
+            )
+
+            # 2. Ventas Volumen (Gráfico de Barras)
+            fig.add_trace(
+                go.Bar(
+                    x=df_filtrado["Semana"],
+                    y=df_filtrado["Venta Volumen (Pzas)"],
+                    name="Venta Volumen (Pzas)",
+                    marker_color='#002366',
+                    opacity=0.6
+                ),
+                secondary_y=False,
+            )
+
+            # 3. Evolución de Precio (Línea Punteada)
+            fig.add_trace(
+                go.Scatter(
+                    x=df_filtrado["Semana"],
+                    y=df_filtrado["Precio ($)"],
+                    name="Precio ($)",
+                    line=dict(color='#D32F2F', width=3, dash='dot'),
+                    mode='lines+markers'
+                ),
+                secondary_y=True,
+            )
+
+            # Diseño del Gráfico
+            fig.update_layout(
+                title=dict(text=f"<b>Análisis de Elasticidad: {prod_sel}</b>", font=dict(size=20)),
+                hovermode="x unified",
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                height=600,
+                template="plotly_white",
+                margin=dict(l=20, r=20, t=100, b=20)
+            )
+
+            fig.update_yaxes(title_text="Volumen / Valor", secondary_y=False)
+            fig.update_yaxes(title_text="Precio Unitario ($)", secondary_y=True, showgrid=False)
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            # --- MÉTRICAS ---
+            st.markdown("---")
+            m1, m2, m3, m4 = st.columns(4)
+            
+            vol_total = df_filtrado["Venta Volumen (Pzas)"].sum()
+            val_total = df_filtrado["Venta Valor ($)"].sum()
+            precio_avg = df_filtrado["Precio ($)"].mean()
+            
+            m1.metric("Volumen Total", f"{vol_total:,}")
+            m2.metric("Venta Total", f"${val_total:,.0f}")
+            m3.metric("Precio Promedio", f"${precio_avg:.2f}")
+            
+            if len(df_filtrado) > 1:
+                corr = df_filtrado["Precio ($)"].corr(df_filtrado["Venta Volumen (Pzas)"])
+                m4.metric("Corr. Precio/Vol", f"{corr:.2f}", help="Cercano a -1 es alta sensibilidad")
+        else:
+            st.warning("No hay datos para los filtros seleccionados.")
     else:
-        st.warning("No hay datos para los filtros seleccionados.")
+        st.error("⚠️ La plantilla cargada no tiene las columnas necesarias para este análisis.")
