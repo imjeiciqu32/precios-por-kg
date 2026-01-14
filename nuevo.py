@@ -527,7 +527,7 @@ if modo in ["Price Ladder", "Price Pack"]:
                     
 # --- 6. EDITOR DE TABLA CON FUNCIÓN DE ELIMINAR ---
 # Solo mostramos la gestión de portafolio si no estamos en el modo "Price and Volumen"
-if modo in ["Price Ladder", "Price Pack Architecture"]:
+if modo in ["Price Ladder", "Price Pack"]:
     st.markdown("### 📝 Gestión de Portafolio")
 
     # Creamos una columna temporal para selección si queremos borrado masivo
