@@ -394,7 +394,7 @@ with st.sidebar:
                             margin-top: 0.5rem;
                             border-left: 3px solid #10B981;'>
                     <p style='margin: 0; font-size: 0.8rem; color: #065F46;'>
-                        💡 <strong>Tip:</strong> El Excel incluye múltiples hojas con datos completos, resumen y metadata
+                        💡 <strong>Tip:</strong> El Excel incluye múltiples hojas con datos completos y metadata
                     </p>
                 </div>
             """, unsafe_allow_html=True)
@@ -1001,7 +1001,7 @@ if modo != "Price and Volumen" and not st.session_state.data.empty:
         # Encabezado con leyenda a la derecha
         col_tit, col_ley = st.columns([2, 1])
         with col_tit:
-            st.markdown("<h2 style='color: #0B3C8C; margin:0;'>🏛️ Matriz de Arquitectura Multibase</h2>", unsafe_allow_html=True)
+            st.markdown("<h2 style='color: #0B3C8C; margin:0;'>🏛️ Index del Price Pack Multibase</h2>", unsafe_allow_html=True)
         with col_ley:
             st.markdown("""<div style='text-align:right; padding-top:10px;'><span style='background:#f0f2f6; padding:5px 10px; border-radius:5px; font-size:14px; color:#555; border:1px solid #ddd;'><b>Nota:</b> Index Objetivo vs Detalle (Base 100)</span></div>""", unsafe_allow_html=True)
         
@@ -1357,7 +1357,7 @@ if modo != "Price and Volumen" and not st.session_state.data.empty:
     
     # --- MODO B: ARQUITECTURA DINÁMICA (Price Pack / Arquitectura) ---
     else:
-        st.subheader("🏛️ Auditoría de Arquitectura y Cascada de Precios")
+        st.subheader("🏛️ Sugerencias / Observaciones del price pack y de la curva de precio")
         hallazgos = [] 
         
         objetivos = {
@@ -1535,7 +1535,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
     # === CONTROL DE DESPLEGADO Y OPTIMIZACIÓN ===
     col_header_sim, col_toggle_sim = st.columns([3, 1])
     with col_header_sim:
-        st.subheader("🧪 Simulador de Escenarios: Paridad y Eficiencia")
+        st.subheader("🧪 Simulador de Cambios en el Mercado")
     with col_toggle_sim:
         activar_simulador = st.toggle("Activar Simulador", value=False, help="Habilita las herramientas de simulación de precios y gramajes.")
 
@@ -1600,11 +1600,11 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             idx_pkg_nue = int(round((pkg_b_nuevo / pkg_c_nuevo) * 100))
 
             # --- PARTE 2: DIAGNÓSTICO ---
-            st.markdown(f"### 📊 Diagnóstico de Paridad ({oca_sim})")
+            st.markdown(f"### 📊 Diagnóstico de Index ({oca_sim})")
             
             with st.container():
                 st.markdown('<div class="report-card">', unsafe_allow_html=True)
-                st.write("💰 **ANÁLISIS DE DESEMBOLSO (OUT-OF-POCKET)**")
+                st.write("💰 **Index de $ Desembolso **")
                 c1, c2, c3 = st.columns(3)
                 c1.metric(f"{comp_a_mover}", f"${n_p_c:.0f}", f"{var_p_c:+.1f}% vs act.")
                 c2.metric(f"{prod_b}", f"${n_p_b:.0f}", f"{var_p_b:+.1f}% vs act.")
@@ -1613,7 +1613,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
             with st.container():
                 st.markdown('<div class="report-card">', unsafe_allow_html=True)
-                st.write("⚖️ **ANÁLISIS DE EFICIENCIA (VALOR $/KG)**")
+                st.write("⚖️ **Index de $/KG**")
                 c1, c2, c3 = st.columns(3)
                 c1.metric(f"$/Kg {comp_a_mover}", f"${pkg_c_nuevo:.2f}", f"{var_pkg_c:+.1f}% efec.")
                 c2.metric(f"$/Kg {prod_b}", f"${pkg_b_nuevo:.2f}", f"{var_pkg_b:+.1f}% efec.")
@@ -2140,10 +2140,10 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
         <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                     padding: 2rem; border-radius: 15px; margin-bottom: 2rem;'>
             <h2 style='color: white; margin: 0; font-weight: 700;'>
-                📈 Análisis Avanzado de Tendencias y Elasticidad
+                📈 Curvas Precio Volumen
             </h2>
             <p style='color: rgba(255,255,255,0.9); margin-top: 0.5rem; margin-bottom: 0;'>
-                Visualiza comportamiento de precio, volumen y valor con detección automática de anomalías y patrones estacionales
+                Visualiza la evolución de precios, valor y volumen con detección automática de anomalías y patrones estacionales
             </p>
         </div>
     """, unsafe_allow_html=True)
