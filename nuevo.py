@@ -1956,71 +1956,72 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
             import plotly.graph_objects as go
             from plotly.subplots import make_subplots
 
-            # --- GRÁFICO 1: BASE (VALOR + VOLUMEN) ---
-            fig_perf = make_subplots(specs=[[{"secondary_y": True}]])
-            
-            # Valor (Área)
-            fig_perf.add_trace(go.Scatter(
-                x=df_filtrado["Semana"], y=df_filtrado["Venta Valor ($)"],
-                name="Venta Valor ($)", fill='tozeroy', mode='lines',
-                line=dict(color='#76D7C4', width=2),
-                fillcolor='rgba(118, 215, 196, 0.3)'
-            ), secondary_y=True)
+            # CREAMOS UN SOLO GRÁFICO CON 2 EJES Y (uno para Vol/Val y otro para Precio)
+            # El truco para que el precio "flote arriba" es ajustar los rangos de los ejes
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-            # Volumen (Barras)
-            fig_perf.add_trace(go.Bar(
-                x=df_filtrado["Semana"], y=df_filtrado["Venta Volumen (Pzas)"],
-                name="Volumen (Pzas)", marker_color='#002366'
+            # 1. Capa Fondo: Venta Valor ($) - Área Verde
+            fig.add_trace(go.Scatter(
+                x=df_filtrado["Semana"], 
+                y=df_filtrado["Venta Valor ($)"],
+                name="Venta Valor ($)", 
+                fill='tozeroy', 
+                mode='lines',
+                line=dict(color='#76D7C4', width=2),
+                fillcolor='rgba(118, 215, 196, 0.3)',
+                hoverinfo="skip" # Para no ensuciar el hover
             ), secondary_y=False)
 
-            fig_perf.update_layout(
-                title=f"<b>Análisis de Desempeño: {prod_sel}</b>",
-                height=400, template="plotly_white",
-                margin=dict(l=20, r=20, t=80, b=0), # Margen inferior en 0
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
-                barmode='overlay'
-            )
-            st.plotly_chart(fig_perf, use_container_width=True)
+            # 2. Capa Media: Venta Volumen (Pzas) - Barras Azules
+            fig.add_trace(go.Bar(
+                x=df_filtrado["Semana"], 
+                y=df_filtrado["Venta Volumen (Pzas)"],
+                name="Volumen (Pzas)", 
+                marker_color='#002366',
+                opacity=0.9
+            ), secondary_y=False)
 
-            # --- GRÁFICO 2: CAPA ENCIMADA (PRECIO) ---
-            # Usamos un contenedor de Streamlit para aplicar CSS de desplazamiento
-            fig_price = go.Figure()
-
-            fig_price.add_trace(go.Scatter(
+            # 3. Capa Superior: Precio ($) - Línea Rosa con Etiquetas
+            fig.add_trace(go.Scatter(
                 x=df_filtrado["Semana"], 
                 y=df_filtrado["Precio ($)"],
                 name="Precio Unitario ($)",
                 line=dict(color='#F72585', width=4),
-                mode='lines+markers+text', # Añadimos TEXT para las etiquetas
-                text=df_filtrado["Precio ($)"].apply(lambda x: f"${x:.1f}"), # Formato etiqueta
+                mode='lines+markers+text',
+                text=df_filtrado["Precio ($)"].apply(lambda x: f"${x:,.1f}"),
                 textposition="top center",
-                marker=dict(size=12, symbol='circle', line=dict(width=2, color='white'))
-            ))
+                marker=dict(size=10, symbol='circle', line=dict(width=2, color='white')),
+            ), secondary_y=True)
 
-            fig_price.update_layout(
-                height=250, # Más bajo para que parezca una franja flotante
-                template="none", # Sin fondo
-                paper_bgcolor='rgba(0,0,0,0)', # Transparente
-                plot_bgcolor='rgba(0,0,0,0)',  # Transparente
-                margin=dict(l=20, r=20, t=0, b=20), # Margen superior en 0
-                xaxis=dict(showgrid=False, visible=False), # Ocultamos eje X para que no se duplique visualmente
-                yaxis=dict(showgrid=False, side="right", title="Precio ($)", color="#F72585")
+            # --- CONFIGURACIÓN DE EJES PARA EL EFECTO "FLOTANTE" ---
+            # El secreto: Ajustamos el rango del eje secundario (precio) para que 
+            # empiece mucho más abajo y así la línea se vea en la parte alta.
+            p_min, p_max = df_filtrado["Precio ($)"].min(), df_filtrado["Precio ($)"].max()
+            
+            fig.update_layout(
+                title=f"<b>Análisis Dinámico: {prod_sel}</b>",
+                height=600,
+                template="plotly_white",
+                legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="center", x=0.5),
+                margin=dict(l=10, r=10, t=100, b=50),
+                hovermode="x unified",
+                barmode='overlay'
             )
 
-            # El truco de magia: CSS para subir el gráfico de precio
-            st.markdown("""
-                <style>
-                .price-overlay {
-                    margin-top: -160px; /* Ajusta este valor según necesites subirlo más o menos */
-                    position: relative;
-                    z-index: 10;
-                }
-                </style>
-                """, unsafe_allow_html=True)
+            # Eje Y Primario (Volumen y Valor)
+            fig.update_yaxes(title_text="Volumen / Valor", secondary_y=False)
 
-            st.markdown('<div class="price-overlay">', unsafe_allow_html=True)
-            st.plotly_chart(fig_price, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            # Eje Y Secundario (Precio)
+            fig.update_yaxes(
+                title_text="<b>Precio Unitario ($)</b>", 
+                secondary_y=True,
+                showgrid=False,
+                range=[p_min * 0.5, p_max * 1.2], # Empujamos la línea hacia la parte superior
+                title_font=dict(color='#F72585'),
+                tickfont=dict(color='#F72585')
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
 
             # --- MÉTRICAS ---
             st.markdown("---")
