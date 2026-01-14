@@ -1937,7 +1937,6 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
     st.divider()
     st.subheader("📈 Análisis de Tendencias y Elasticidad")
 
-    # --- FILTROS ESPECÍFICOS ---
     df_pv = st.session_state.data.copy()
     
     columnas_necesarias = ["Producto", "Semana", "Venta Valor ($)", "Venta Volumen (Pzas)", "Precio ($)"]
@@ -1958,94 +1957,62 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
 
         if not df_filtrado.empty:
             import plotly.graph_objects as go
-            from plotly.subplots import make_subplots
 
-            # Crear figura con ejes secundarios
-            fig = make_subplots(specs=[[{"secondary_y": True}]])
+            # --- GRÁFICO 1: VENTAS VALOR Y VOLUMEN ---
+            fig_perf = go.Figure()
 
-            # 1. CAPA BASE: Venta Volumen (Barras Gruesas)
-            fig.add_trace(
-                go.Bar(
-                    x=df_filtrado["Semana"],
-                    y=df_filtrado["Venta Volumen (Pzas)"],
-                    name="Volumen (Pzas)",
-                    marker_color='#002366',
-                    opacity=0.7,
-                    offsetgroup=1,
-                ),
-                secondary_y=False,
-            )
+            # Volumen (Barras)
+            fig_perf.add_trace(go.Bar(
+                x=df_filtrado["Semana"],
+                y=df_filtrado["Venta Volumen (Pzas)"],
+                name="Volumen (Pzas)",
+                marker_color='#002366',
+                opacity=0.6
+            ))
 
-            # 2. CAPA MEDIA: Venta Valor (Área con color sólido para contraste)
-            fig.add_trace(
-                go.Scatter(
-                    x=df_filtrado["Semana"],
-                    y=df_filtrado["Venta Valor ($)"],
-                    name="Valor ($)",
-                    fill='tozeroy',
-                    mode='lines',
-                    line=dict(color='#4CC9F0', width=0), # Sin borde para que parezca relleno puro
-                    fillcolor='rgba(76, 201, 240, 0.4)',
-                    offsetgroup=2,
-                ),
-                secondary_y=False,
-            )
+            # Valor (Área)
+            fig_perf.add_trace(go.Scatter(
+                x=df_filtrado["Semana"],
+                y=df_filtrado["Venta Valor ($)"],
+                name="Venta Valor ($)",
+                fill='tozeroy',
+                line=dict(color='#A6C8FF', width=2),
+                fillcolor='rgba(166, 200, 255, 0.3)'
+            ))
 
-            # 3. CAPA SUPERIOR (ENCIMADA): Evolución de Precio
-            # Usamos un estilo neón/brillante para que "flote" sobre el gráfico
-            fig.add_trace(
-                go.Scatter(
-                    x=df_filtrado["Semana"],
-                    y=df_filtrado["Precio ($)"],
-                    name="Evolución Precio ($)",
-                    line=dict(color='#F72585', width=5, dash='solid'), # Color vibrante (Rosa/Magenta)
-                    mode='lines+markers',
-                    marker=dict(
-                        size=10, 
-                        color='#F72585', 
-                        line=dict(width=2, color='white')
-                    ),
-                    hoverinfo="y+name"
-                ),
-                secondary_y=True,
-            )
-
-            # Ajustes de Diseño para el efecto PPT
-            fig.update_layout(
-                title=dict(
-                    text=f"<b>Análisis de Variación de Precios vs Sell Out: {prod_sel}</b>", 
-                    font=dict(size=22)
-                ),
+            fig_perf.update_layout(
+                title=f"<b>Desempeño de Ventas: {prod_sel}</b>",
                 hovermode="x unified",
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                height=650,
+                height=400,
                 template="plotly_white",
-                margin=dict(l=50, r=50, t=100, b=50),
-                # Forzamos a que las barras y el área no se tapen totalmente
-                barmode='overlay' 
+                margin=dict(l=20, r=20, t=50, b=20),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
+            st.plotly_chart(fig_perf, use_container_width=True)
 
-            # Eje Y Primario (Volumen y Valor)
-            fig.update_yaxes(
-                title_text="Desempeño (Vol/Val)", 
-                secondary_y=False,
-                showgrid=True,
-                gridcolor='#f0f0f0'
-            )
-            
-            # Eje Y Secundario (Precio) - El truco para que parezca "encimado"
-            # Ajustamos el rango para que la línea siempre quede en la mitad superior del gráfico
-            p_min, p_max = df_filtrado["Precio ($)"].min(), df_filtrado["Precio ($)"].max()
-            fig.update_yaxes(
-                title_text="<b>Evolución Precio ($)</b>", 
-                secondary_y=True, 
-                showgrid=False,
-                range=[p_min * 0.85, p_max * 1.15], # Esto centra la línea de precio
-                title_font=dict(color='#F72585'),
-                tickfont=dict(color='#F72585', size=14, family="Arial Black")
-            )
+            # --- GRÁFICO 2: EVOLUCIÓN DE PRECIOS (DEDICADO) ---
+            fig_price = go.Figure()
 
-            st.plotly_chart(fig, use_container_width=True)
+            fig_price.add_trace(go.Scatter(
+                x=df_filtrado["Semana"],
+                y=df_filtrado["Precio ($)"],
+                name="Precio Unitario ($)",
+                line=dict(color='#D32F2F', width=4),
+                mode='lines+markers',
+                marker=dict(size=8, symbol='diamond')
+            ))
+
+            fig_price.update_layout(
+                title="<b>Evolución del Precio Unitario</b>",
+                xaxis_title="Semana",
+                yaxis_title="Precio ($)",
+                hovermode="x unified",
+                height=300,
+                template="plotly_white",
+                margin=dict(l=20, r=20, t=50, b=20),
+                plot_bgcolor='rgba(242, 242, 242, 0.5)' # Fondo gris tenue para diferenciar
+            )
+            st.plotly_chart(fig_price, use_container_width=True)
 
             # --- MÉTRICAS ---
             st.markdown("---")
