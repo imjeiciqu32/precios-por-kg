@@ -1944,10 +1944,10 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
         c_f1, c_f2 = st.columns(2)
         with c_f1:
             lista_prods = sorted(df_pv["Producto"].unique())
-            prod_sel = st.selectbox("Seleccionar Producto para Análisis:", lista_prods)
+            prod_sel = st.selectbox("Seleccionar Producto:", lista_prods)
         with c_f2:
             min_sem, max_sem = int(df_pv["Semana"].min()), int(df_pv["Semana"].max())
-            rango_sem = st.slider("Rango de Semanas:", min_sem, max_sem, (min_sem, max_sem))
+            rango_sem = st.slider("Rango de Semanas para Gráfico:", min_sem, max_sem, (min_sem, max_sem))
 
         mask = (df_pv["Producto"] == prod_sel) & (df_pv["Semana"].between(rango_sem[0], rango_sem[1]))
         df_filtrado = df_pv[mask].sort_values("Semana")
@@ -1956,97 +1956,107 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
             import plotly.graph_objects as go
             from plotly.subplots import make_subplots
 
-            # CONFIGURACIÓN DE MÁRGENES IDÉNTICOS PARA ALINEACIÓN PERFECTA
-            margen_fijo = dict(l=80, r=80, t=20, b=20)
+            # --- CORRECCIÓN DE ALINEACIÓN ---
+            # Definimos márgenes laterales fijos para AMBOS gráficos
+            m_lat = 80 
+            margen_alineado = dict(l=m_lat, r=m_lat, t=20, b=20)
 
-            # --- GRÁFICO 1: BASE (VALOR + VOLUMEN) ---
+            # 1. Gráfico Base (Volumen y Valor)
             fig_perf = make_subplots(specs=[[{"secondary_y": True}]])
-            
             fig_perf.add_trace(go.Scatter(
                 x=df_filtrado["Semana"], y=df_filtrado["Venta Valor ($)"],
                 name="Venta Valor ($)", fill='tozeroy', mode='lines',
-                line=dict(color='#76D7C4', width=2),
-                fillcolor='rgba(118, 215, 196, 0.3)'
+                line=dict(color='#76D7C4', width=2), fillcolor='rgba(118, 215, 196, 0.3)'
             ), secondary_y=True)
-
             fig_perf.add_trace(go.Bar(
                 x=df_filtrado["Semana"], y=df_filtrado["Venta Volumen (Pzas)"],
                 name="Volumen (Pzas)", marker_color='#002366'
             ), secondary_y=False)
 
             fig_perf.update_layout(
-                height=450, template="plotly_white",
-                margin=margen_fijo,
+                height=450, template="plotly_white", margin=margen_alineado,
                 legend=dict(orientation="h", yanchor="bottom", y=1.1, xanchor="center", x=0.5),
                 barmode='overlay'
             )
             fig_perf.update_yaxes(title_text="Volumen", secondary_y=False)
             fig_perf.update_yaxes(title_text="Venta Valor", secondary_y=True)
 
-            # --- GRÁFICO 2: CAPA ENCIMADA (PRECIO) ---
-            fig_price = go.Figure()
-
+            # 2. Gráfico Superior (Precio) - Forzamos estructura idéntica
+            fig_price = make_subplots(specs=[[{"secondary_y": True}]]) # Aunque no lo usemos, iguala el espacio del eje R
             fig_price.add_trace(go.Scatter(
-                x=df_filtrado["Semana"], 
-                y=df_filtrado["Precio ($)"],
-                name="Precio Unitario ($)",
-                line=dict(color='#F72585', width=4),
+                x=df_filtrado["Semana"], y=df_filtrado["Precio ($)"],
+                name="Precio Unitario ($)", line=dict(color='#F72585', width=4),
                 mode='lines+markers+text',
                 text=df_filtrado["Precio ($)"].apply(lambda x: f"${x:.1f}"),
                 textposition="top center",
                 marker=dict(size=12, symbol='circle', color='#F72585', line=dict(width=2, color='white'))
-            ))
+            ), secondary_y=False)
 
             fig_price.update_layout(
-                height=300,
-                paper_bgcolor='rgba(0,0,0,0)', 
-                plot_bgcolor='rgba(0,0,0,0)',  
-                margin=margen_fijo, 
-                xaxis=dict(visible=False), 
-                yaxis=dict(
-                    side="right", 
-                    showgrid=False, 
-                    title="Precio ($)", 
-                    color="#F72585",
-                    range=[df_filtrado["Precio ($)"].min() * 0.8, df_filtrado["Precio ($)"].max() * 1.5]
-                )
+                height=300, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                margin=margen_alineado, xaxis=dict(visible=False),
+                showlegend=False
             )
+            # Sincronizamos los ejes Y para que el área de dibujo sea igual
+            fig_price.update_yaxes(title_text="Precio ($)", color="#F72585", secondary_y=False,
+                                 range=[df_filtrado["Precio ($)"].min()*0.8, df_filtrado["Precio ($)"].max()*1.6])
+            fig_price.update_yaxes(title_text="", secondary_y=True, showticklabels=False)
 
-            # CSS PARA ENCIMAR POR ENFRENTE
+            # --- RENDERIZADO CON CSS ---
             st.markdown("""
                 <style>
-                .main-chart-container { position: relative; z-index: 1; }
-                .price-overlay-container {
-                    margin-top: -320px; 
-                    position: relative;
-                    z-index: 999 !important; 
-                    pointer-events: none; 
-                }
-                .price-overlay-container .js-plotly-plot .plotly .main-svg {
-                    background: transparent !important;
-                }
+                .price-overlay { margin-top: -340px; position: relative; z-index: 99; pointer-events: none; }
+                .price-overlay .js-plotly-plot .plotly .main-svg { background: transparent !important; }
                 </style>
                 """, unsafe_allow_html=True)
 
-            st.markdown('<div class="main-chart-container">', unsafe_allow_html=True)
             st.plotly_chart(fig_perf, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-            st.markdown('<div class="price-overlay-container">', unsafe_allow_html=True)
+            st.markdown('<div class="price-overlay">', unsafe_allow_html=True)
             st.plotly_chart(fig_price, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-            # --- MÉTRICAS ---
+            # --- CALCULADORA DE ELASTICIDAD ---
+            st.markdown("### 🧮 Calculadora de Variación Periodo a Periodo")
+            with st.expander("Configurar análisis de variación", expanded=True):
+                col_calc1, col_calc2, col_calc3 = st.columns(3)
+                with col_calc1:
+                    sem_base = st.selectbox("Semana Base (Origen):", df_filtrado["Semana"].unique())
+                with col_calc2:
+                    sem_target = st.selectbox("Semana Objetivo (Comparar):", 
+                                            [s for s in df_filtrado["Semana"].unique() if s != sem_base])
+                
+                # Obtención de datos
+                d_base = df_filtrado[df_filtrado["Semana"] == sem_base].iloc[0]
+                d_target = df_filtrado[df_filtrado["Semana"] == sem_target].iloc[0]
+
+                # Cálculos
+                var_p = (d_target["Precio ($)"] / d_base["Precio ($)"] - 1)
+                var_v = (d_target["Venta Volumen (Pzas)"] / d_base["Venta Volumen (Pzas)"] - 1)
+                var_val = (d_target["Venta Valor ($)"] / d_base["Venta Valor ($)"] - 1)
+                
+                # Elasticidad Arco Simple
+                elasticidad = var_v / var_p if var_p != 0 else 0
+
+                # Mostrar Resultados
+                res1, res2, res3, res4 = st.columns(4)
+                res1.metric(f"Δ% Precio", f"{var_p:.1%}")
+                res2.metric(f"Δ% Volumen", f"{var_v:.1%}")
+                res3.metric(f"Δ% Valor $", f"{var_val:.1%}")
+                
+                color_e = "normal" if abs(elasticidad) < 1 else "inverse"
+                res4.metric("Elasticidad Calc.", f"{elasticidad:.2f}", 
+                           help="Mayor a 1 (absoluto) indica alta sensibilidad", delta_color=color_e)
+
+            # --- MÉTRICAS GENERALES ---
             st.markdown("---")
             m1, m2, m3, m4 = st.columns(4)
             m1.metric("Volumen Total", f"{df_filtrado['Venta Volumen (Pzas)'].sum():,}")
             m2.metric("Venta Total", f"${df_filtrado['Venta Valor ($)'].sum():,.0f}")
             m3.metric("Precio Promedio", f"${df_filtrado['Precio ($)'].mean():.2f}")
-            
             if len(df_filtrado) > 1:
                 corr = df_filtrado["Precio ($)"].corr(df_filtrado["Venta Volumen (Pzas)"])
                 m4.metric("Corr. Precio/Vol", f"{corr:.2f}")
         else:
-            st.warning("No hay datos para los filtros seleccionados.")
+            st.warning("No hay datos para los filtros.")
     else:
-        st.error("⚠️ La plantilla no tiene las columnas: Producto, Semana, Venta Valor ($), Venta Volumen (Pzas), Precio ($)")
+        st.error("Faltan columnas necesarias en el archivo.")
