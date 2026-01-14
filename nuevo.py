@@ -1938,18 +1938,15 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
     st.subheader("📈 Análisis de Tendencias y Elasticidad")
 
     df_pv = st.session_state.data.copy()
-    
     columnas_necesarias = ["Producto", "Semana", "Venta Valor ($)", "Venta Volumen (Pzas)", "Precio ($)"]
+    
     if all(col in df_pv.columns for col in columnas_necesarias):
-        
         c_f1, c_f2 = st.columns(2)
         with c_f1:
             lista_prods = sorted(df_pv["Producto"].unique())
             prod_sel = st.selectbox("Seleccionar Producto para Análisis:", lista_prods)
-        
         with c_f2:
-            min_sem = int(df_pv["Semana"].min())
-            max_sem = int(df_pv["Semana"].max())
+            min_sem, max_sem = int(df_pv["Semana"].min()), int(df_pv["Semana"].max())
             rango_sem = st.slider("Rango de Semanas:", min_sem, max_sem, (min_sem, max_sem))
 
         mask = (df_pv["Producto"] == prod_sel) & (df_pv["Semana"].between(rango_sem[0], rango_sem[1]))
@@ -1959,92 +1956,81 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
             import plotly.graph_objects as go
             from plotly.subplots import make_subplots
 
-            # --- GRÁFICO 1: VENTAS VALOR Y VOLUMEN (ESTILO EXCEL COMBINADO) ---
-            # Usamos ejes secundarios para que el área y las barras no se aplasten entre sí
+            # --- GRÁFICO 1: BASE (VALOR + VOLUMEN) ---
             fig_perf = make_subplots(specs=[[{"secondary_y": True}]])
+            
+            # Valor (Área)
+            fig_perf.add_trace(go.Scatter(
+                x=df_filtrado["Semana"], y=df_filtrado["Venta Valor ($)"],
+                name="Venta Valor ($)", fill='tozeroy', mode='lines',
+                line=dict(color='#76D7C4', width=2),
+                fillcolor='rgba(118, 215, 196, 0.3)'
+            ), secondary_y=True)
 
-            # 1. Valor (Área) - La ponemos primero para que quede al fondo
-            fig_perf.add_trace(
-                go.Scatter(
-                    x=df_filtrado["Semana"],
-                    y=df_filtrado["Venta Valor ($)"],
-                    name="Venta Valor ($)",
-                    fill='tozeroy',
-                    mode='lines',
-                    line=dict(color='#76D7C4', width=2), # Verde agua como tu ejemplo
-                    fillcolor='rgba(118, 215, 196, 0.4)'
-                ),
-                secondary_y=True,
-            )
-
-            # 2. Volumen (Barras) - Encima del área
-            fig_perf.add_trace(
-                go.Bar(
-                    x=df_filtrado["Semana"],
-                    y=df_filtrado["Venta Volumen (Pzas)"],
-                    name="Volumen (Pzas)",
-                    marker_color='#002366', # Azul oscuro
-                    opacity=1 # Sólidas para resaltar sobre el área
-                ),
-                secondary_y=False,
-            )
+            # Volumen (Barras)
+            fig_perf.add_trace(go.Bar(
+                x=df_filtrado["Semana"], y=df_filtrado["Venta Volumen (Pzas)"],
+                name="Volumen (Pzas)", marker_color='#002366'
+            ), secondary_y=False)
 
             fig_perf.update_layout(
-                title=f"<b>Desempeño Sell Out: {prod_sel}</b>",
-                hovermode="x unified",
-                height=450,
-                template="plotly_white",
-                margin=dict(l=20, r=20, t=80, b=20),
+                title=f"<b>Análisis de Desempeño: {prod_sel}</b>",
+                height=400, template="plotly_white",
+                margin=dict(l=20, r=20, t=80, b=0), # Margen inferior en 0
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
-                barmode='overlay' # Esto permite que se encimen perfectamente
+                barmode='overlay'
             )
-
-            # Ajuste de nombres de ejes
-            fig_perf.update_yaxes(title_text="<b>Volumen (pzas)</b>", secondary_y=False)
-            fig_perf.update_yaxes(title_text="Venta Valor ($)", secondary_y=True, showgrid=False)
-
             st.plotly_chart(fig_perf, use_container_width=True)
 
-            # --- GRÁFICO 2: EVOLUCIÓN DE PRECIOS (DEDICADO) ---
+            # --- GRÁFICO 2: CAPA ENCIMADA (PRECIO) ---
+            # Usamos un contenedor de Streamlit para aplicar CSS de desplazamiento
             fig_price = go.Figure()
 
             fig_price.add_trace(go.Scatter(
-                x=df_filtrado["Semana"],
+                x=df_filtrado["Semana"], 
                 y=df_filtrado["Precio ($)"],
                 name="Precio Unitario ($)",
-                line=dict(color='#F72585', width=4), # Rosa vibrante para que destaque
-                mode='lines+markers',
-                marker=dict(size=10, symbol='circle', line=dict(width=2, color='white'))
+                line=dict(color='#F72585', width=4),
+                mode='lines+markers+text', # Añadimos TEXT para las etiquetas
+                text=df_filtrado["Precio ($)"].apply(lambda x: f"${x:.1f}"), # Formato etiqueta
+                textposition="top center",
+                marker=dict(size=12, symbol='circle', line=dict(width=2, color='white'))
             ))
 
             fig_price.update_layout(
-                title="<b>Variación de Precio Unitario</b>",
-                xaxis_title="Semana",
-                yaxis_title="Precio ($)",
-                hovermode="x unified",
-                height=300,
-                template="plotly_white",
-                margin=dict(l=20, r=20, t=50, b=20),
-                plot_bgcolor='rgba(240, 242, 246, 0.5)'
+                height=250, # Más bajo para que parezca una franja flotante
+                template="none", # Sin fondo
+                paper_bgcolor='rgba(0,0,0,0)', # Transparente
+                plot_bgcolor='rgba(0,0,0,0)',  # Transparente
+                margin=dict(l=20, r=20, t=0, b=20), # Margen superior en 0
+                xaxis=dict(showgrid=False, visible=False), # Ocultamos eje X para que no se duplique visualmente
+                yaxis=dict(showgrid=False, side="right", title="Precio ($)", color="#F72585")
             )
+
+            # El truco de magia: CSS para subir el gráfico de precio
+            st.markdown("""
+                <style>
+                .price-overlay {
+                    margin-top: -160px; /* Ajusta este valor según necesites subirlo más o menos */
+                    position: relative;
+                    z-index: 10;
+                }
+                </style>
+                """, unsafe_allow_html=True)
+
+            st.markdown('<div class="price-overlay">', unsafe_allow_html=True)
             st.plotly_chart(fig_price, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
             # --- MÉTRICAS ---
             st.markdown("---")
             m1, m2, m3, m4 = st.columns(4)
-            
-            vol_total = df_filtrado["Venta Volumen (Pzas)"].sum()
-            val_total = df_filtrado["Venta Valor ($)"].sum()
-            precio_avg = df_filtrado["Precio ($)"].mean()
-            
-            m1.metric("Volumen Total", f"{vol_total:,}")
-            m2.metric("Venta Total", f"${val_total:,.0f}")
-            m3.metric("Precio Promedio", f"${precio_avg:.2f}")
+            m1.metric("Volumen Total", f"{df_filtrado['Venta Volumen (Pzas)'].sum():,}")
+            m2.metric("Venta Total", f"${df_filtrado['Venta Valor ($)'].sum():,.0f}")
+            m3.metric("Precio Promedio", f"${df_filtrado['Precio ($)'].mean():.2f}")
             
             if len(df_filtrado) > 1:
                 corr = df_filtrado["Precio ($)"].corr(df_filtrado["Venta Volumen (Pzas)"])
-                m4.metric("Corr. Precio/Vol", f"{corr:.2f}", help="Cercano a -1 es alta sensibilidad")
+                m4.metric("Corr. Precio/Vol", f"{corr:.2f}")
         else:
-            st.warning("No hay datos para los filtros seleccionados.")
-    else:
-        st.error("⚠️ La plantilla cargada no tiene las columnas necesarias para este análisis.")
+            st.warning("No hay datos disponibles.")
