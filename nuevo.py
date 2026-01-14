@@ -243,53 +243,280 @@ if "data" not in st.session_state or st.session_state.get("last_modo") != modo:
         st.session_state.data = pd.DataFrame(columns=columnas_tabla)
     st.session_state.last_modo = modo
 
-# --- 4. BARRA LATERAL (GESTIÓN MEJORADA) ---
+# --- 4. BARRA LATERAL (GESTIÓN MEJORADA CON DISEÑO PREMIUM) ---
 with st.sidebar:
-    st.markdown("---")
-    st.header("📁 Gestión de Datos")
+    # Header principal con gradiente
+    st.markdown("""
+        <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    padding: 1.5rem 1rem; 
+                    border-radius: 12px; 
+                    margin-bottom: 1.5rem;
+                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);'>
+            <h2 style='color: white; margin: 0; font-weight: 700; text-align: center; font-size: 1.5rem;'>
+                📁 Gestión de Datos
+            </h2>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # --- SECCIÓN 1: CARGAR DATOS ---
+    with st.container(border=True):
+        st.markdown("""
+            <div style='text-align: center; padding-bottom: 0.5rem;'>
+                <span style='font-size: 1.1rem; font-weight: 600; color: #334155;'>
+                    📥 Cargar Plantilla
+                </span>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        nombre_plantilla = st.selectbox(
+            "Selecciona una plantilla:", 
+            ["-- Seleccionar --"] + list(fuente_plantillas.keys()),
+            label_visibility="collapsed"
+        )
+        
+        # Mostrar preview de la plantilla seleccionada
+        if nombre_plantilla != "-- Seleccionar --":
+            df_preview = pd.DataFrame(fuente_plantillas[nombre_plantilla])
+            num_productos = len(df_preview['Producto'].unique()) if 'Producto' in df_preview.columns else 0
+            num_registros = len(df_preview)
+            
+            st.markdown(f"""
+                <div style='background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); 
+                            padding: 0.8rem; 
+                            border-radius: 8px; 
+                            margin: 0.5rem 0;
+                            border-left: 3px solid #3B82F6;'>
+                    <p style='margin: 0; font-size: 0.85rem; color: #1E40AF;'>
+                        <strong>📊 Vista Previa:</strong><br>
+                        • {num_productos} productos únicos<br>
+                        • {num_registros} registros totales<br>
+                        • Modo: <strong>{modo}</strong>
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        if st.button("🚀 Cargar Datos", use_container_width=True, type="primary"):
+            if nombre_plantilla != "-- Seleccionar --":
+                with st.spinner("⏳ Procesando datos..."):
+                    # Convertimos a DataFrame
+                    df_nuevo = pd.DataFrame(fuente_plantillas[nombre_plantilla])
+                    
+                    # CARGA INDEPENDIENTE: Evitamos pasar por calcular_pkg si es Price and Volumen
+                    if modo == "Price and Volumen":
+                        st.session_state.data = df_nuevo
+                    else:
+                        # Ladder y Pack sí necesitan calcular $/kg
+                        st.session_state.data = calcular_pkg(df_nuevo, modo)
+                    
+                    st.session_state.data.to_csv(DB_FILE, index=False)
+                    st.success("✅ ¡Datos cargados exitosamente!")
+                    st.balloons()
+                    st.rerun()
+            else:
+                st.warning("⚠️ Por favor selecciona una plantilla válida")
+    
+    # --- SECCIÓN 2: ESTADÍSTICAS RÁPIDAS ---
+    if not st.session_state.data.empty:
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        st.markdown("""
+            <div style='background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); 
+                        padding: 1rem; 
+                        border-radius: 10px; 
+                        margin-bottom: 1rem;
+                        box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);'>
+                <h3 style='color: white; margin: 0; font-weight: 600; text-align: center; font-size: 1.1rem;'>
+                    📊 Estadísticas Actuales
+                </h3>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        with st.container(border=True):
+            df = st.session_state.data
+            
+            # Métricas clave según el modo
+            if 'Producto' in df.columns:
+                num_productos = len(df['Producto'].unique())
+                st.metric("🏷️ Productos", f"{num_productos:,}")
+            
+            if 'Semana' in df.columns:
+                semanas = df['Semana'].nunique()
+                st.metric("📅 Semanas", f"{semanas:,}")
+            
+            if 'Venta Valor ($)' in df.columns:
+                total_ventas = df['Venta Valor ($)'].sum()
+                st.metric("💰 Ventas Totales", f"${total_ventas:,.0f}")
+            
+            if 'Venta Volumen (Pzas)' in df.columns:
+                total_volumen = df['Venta Volumen (Pzas)'].sum()
+                st.metric("📦 Volumen Total", f"{total_volumen:,.0f} pzas")
+            
+            # Indicador de registros
+            st.markdown(f"""
+                <div style='background: #F1F5F9; 
+                            padding: 0.5rem; 
+                            border-radius: 6px; 
+                            text-align: center;
+                            margin-top: 0.5rem;'>
+                    <span style='color: #475569; font-size: 0.85rem;'>
+                        📋 {len(df):,} registros cargados
+                    </span>
+                </div>
+            """, unsafe_allow_html=True)
+    
+    # --- SECCIÓN 3: EXPORTACIÓN ---
+    if not st.session_state.data.empty:
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        st.markdown("""
+            <div style='background: linear-gradient(135deg, #10B981 0%, #059669 100%); 
+                        padding: 1rem; 
+                        border-radius: 10px; 
+                        margin-bottom: 1rem;
+                        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);'>
+                <h3 style='color: white; margin: 0; font-weight: 600; text-align: center; font-size: 1.1rem;'>
+                    📥 Exportar Datos
+                </h3>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        with st.container(border=True):
+            # Función mejorada de exportación con múltiples formatos
+            def to_excel(df):
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    # Hoja principal con todos los datos
+                    df.to_excel(writer, index=False, sheet_name='Datos_Completos')
+                    
+                    # Si hay columnas de producto, crear hoja de resumen
+                    if 'Producto' in df.columns and 'Venta Valor ($)' in df.columns:
+                        resumen = df.groupby('Producto').agg({
+                            'Venta Valor ($)': 'sum',
+                            'Venta Volumen (Pzas)': 'sum' if 'Venta Volumen (Pzas)' in df.columns else 'count'
+                        }).reset_index()
+                        resumen.columns = ['Producto', 'Total Ventas ($)', 'Total Volumen']
+                        resumen = resumen.sort_values('Total Ventas ($)', ascending=False)
+                        resumen.to_excel(writer, index=False, sheet_name='Resumen_por_Producto')
+                    
+                    # Metadata
+                    metadata = pd.DataFrame({
+                        'Información': ['Fecha de Exportación', 'Modo de Análisis', 'Total Registros', 'Productos Únicos'],
+                        'Valor': [
+                            pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S'),
+                            modo,
+                            len(df),
+                            len(df['Producto'].unique()) if 'Producto' in df.columns else 'N/A'
+                        ]
+                    })
+                    metadata.to_excel(writer, index=False, sheet_name='Metadata')
+                
+                return output.getvalue()
+            
+            # Botón de descarga Excel con icono mejorado
+            excel_data = to_excel(st.session_state.data)
+            timestamp = pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')
+            
+            st.download_button(
+                label="📊 Descargar Excel Completo",
+                data=excel_data,
+                file_name=f'barcel_{modo.lower().replace(" ", "_")}_{timestamp}.xlsx',
+                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                use_container_width=True,
+                type="primary"
+            )
+            
+            # Opción adicional: Descargar CSV
+            csv_data = st.session_state.data.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📄 Descargar CSV",
+                data=csv_data,
+                file_name=f'barcel_{modo.lower().replace(" ", "_")}_{timestamp}.csv',
+                mime='text/csv',
+                use_container_width=True
+            )
+            
+            st.markdown("""
+                <div style='background: #F0FDF4; 
+                            padding: 0.6rem; 
+                            border-radius: 6px; 
+                            margin-top: 0.5rem;
+                            border-left: 3px solid #10B981;'>
+                    <p style='margin: 0; font-size: 0.8rem; color: #065F46;'>
+                        💡 <strong>Tip:</strong> El Excel incluye múltiples hojas con datos completos, resumen y metadata
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
+    
+    # --- SECCIÓN 4: HERRAMIENTAS AVANZADAS ---
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    st.markdown("""
+        <div style='background: linear-gradient(135deg, #64748B 0%, #475569 100%); 
+                    padding: 1rem; 
+                    border-radius: 10px; 
+                    margin-bottom: 1rem;
+                    box-shadow: 0 2px 8px rgba(100, 116, 139, 0.3);'>
+            <h3 style='color: white; margin: 0; font-weight: 600; text-align: center; font-size: 1.1rem;'>
+                🛠️ Herramientas
+            </h3>
+        </div>
+    """, unsafe_allow_html=True)
     
     with st.container(border=True):
-        nombre_plantilla = st.selectbox("Cargar Plantilla:", ["-- Seleccionar --"] + list(fuente_plantillas.keys()))
+        # Botón para limpiar filtros (si aplicable)
+        if st.button("🔄 Refrescar Vista", use_container_width=True):
+            st.rerun()
         
-        if st.button("📥 Cargar Datos", use_container_width=True, type="primary"):
-            if nombre_plantilla != "-- Seleccionar --":
-                # Convertimos a DataFrame
-                df_nuevo = pd.DataFrame(fuente_plantillas[nombre_plantilla])
-                
-                # CARGA INDEPENDIENTE: Evitamos pasar por calcular_pkg si es Price and Volumen
-                if modo == "Price and Volumen":
-                    st.session_state.data = df_nuevo
-                else:
-                    # Ladder y Pack sí necesitan calcular $/kg
-                    st.session_state.data = calcular_pkg(df_nuevo, modo)
-                
-                st.session_state.data.to_csv(DB_FILE, index=False)
-                st.success("¡Datos cargados!")
+        # Información del sistema
+        with st.expander("ℹ️ Información del Sistema"):
+            st.markdown(f"""
+                **Modo Actual:** {modo}  
+                **Base de Datos:** `{DB_FILE}`  
+                **Estado:** {'✅ Datos cargados' if not st.session_state.data.empty else '⚠️ Sin datos'}  
+                **Última actualización:** {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
+            """)
+        
+        # Reset con confirmación mejorada
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("""
+            <div style='background: #FEF2F2; 
+                        padding: 0.6rem; 
+                        border-radius: 6px;
+                        border-left: 3px solid #DC2626;'>
+                <p style='margin: 0; font-size: 0.8rem; color: #991B1B;'>
+                    ⚠️ <strong>Zona de Peligro</strong>
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Checkbox de confirmación antes del reset
+        confirmar_reset = st.checkbox("Confirmar eliminación de datos", value=False)
+        
+        if st.button(
+            "🗑️ Resetear Sistema Completo", 
+            use_container_width=True, 
+            type="secondary",
+            disabled=not confirmar_reset
+        ):
+            if confirmar_reset:
+                if os.path.exists(DB_FILE): 
+                    os.remove(DB_FILE)
+                st.session_state.data = pd.DataFrame(columns=columnas_tabla)
+                st.success("✅ Sistema reseteado correctamente")
                 st.rerun()
-
-    # EXPORTACIÓN
-    def to_excel(df):
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Analisis_Portafolio')
-        return output.getvalue()
-
-    if not st.session_state.data.empty:
-        st.divider()
-        st.subheader("📥 Exportar Catálogo")
-        excel_data = to_excel(st.session_state.data)
-        st.download_button(
-            label="📄 Descargar Excel Completo",
-            data=excel_data,
-            file_name=f'barcel_{modo.lower()}_data.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            use_container_width=True
-        )
-
-    if st.button("🗑️ Reset Sistema", use_container_width=True):
-        if os.path.exists(DB_FILE): os.remove(DB_FILE)
-        st.session_state.data = pd.DataFrame(columns=columnas_tabla)
-        st.rerun()
+            else:
+                st.warning("⚠️ Debes confirmar la acción marcando la casilla")
+    
+    # --- FOOTER ---
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("""
+        <div style='text-align: center; padding: 1rem; border-top: 1px solid #E2E8F0;'>
+            <p style='margin: 0; font-size: 0.75rem; color: #94A3B8;'>
+                🚀 Powered by Streamlit<br>
+                v2.0 - Análisis Avanzado
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
 
 # --- 5. PANEL PRINCIPAL ---
 st.title(f"📊 {modo.upper()}")
