@@ -315,56 +315,8 @@ with st.sidebar:
             else:
                 st.warning("⚠️ Por favor selecciona una plantilla válida")
     
-    # --- SECCIÓN 2: ESTADÍSTICAS RÁPIDAS ---
-    if not st.session_state.data.empty:
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        st.markdown("""
-            <div style='background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); 
-                        padding: 1rem; 
-                        border-radius: 10px; 
-                        margin-bottom: 1rem;
-                        box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);'>
-                <h3 style='color: white; margin: 0; font-weight: 600; text-align: center; font-size: 1.1rem;'>
-                    📊 Estadísticas Actuales
-                </h3>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        with st.container(border=True):
-            df = st.session_state.data
-            
-            # Métricas clave según el modo
-            if 'Producto' in df.columns:
-                num_productos = len(df['Producto'].unique())
-                st.metric("🏷️ Productos", f"{num_productos:,}")
-            
-            if 'Semana' in df.columns:
-                semanas = df['Semana'].nunique()
-                st.metric("📅 Semanas", f"{semanas:,}")
-            
-            if 'Venta Valor ($)' in df.columns:
-                total_ventas = df['Venta Valor ($)'].sum()
-                st.metric("💰 Ventas Totales", f"${total_ventas:,.0f}")
-            
-            if 'Venta Volumen (Pzas)' in df.columns:
-                total_volumen = df['Venta Volumen (Pzas)'].sum()
-                st.metric("📦 Volumen Total", f"{total_volumen:,.0f} pzas")
-            
-            # Indicador de registros
-            st.markdown(f"""
-                <div style='background: #F1F5F9; 
-                            padding: 0.5rem; 
-                            border-radius: 6px; 
-                            text-align: center;
-                            margin-top: 0.5rem;'>
-                    <span style='color: #475569; font-size: 0.85rem;'>
-                        📋 {len(df):,} registros cargados
-                    </span>
-                </div>
-            """, unsafe_allow_html=True)
-    
-    # --- SECCIÓN 3: EXPORTACIÓN ---
+
+    # --- SECCIÓN 2: EXPORTACIÓN ---
     if not st.session_state.data.empty:
         st.markdown("<br>", unsafe_allow_html=True)
         
@@ -447,7 +399,7 @@ with st.sidebar:
                 </div>
             """, unsafe_allow_html=True)
     
-    # --- SECCIÓN 4: HERRAMIENTAS AVANZADAS ---
+    # --- SECCIÓN 3: HERRAMIENTAS AVANZADAS ---
     st.markdown("<br>", unsafe_allow_html=True)
     
     st.markdown("""
@@ -512,8 +464,8 @@ with st.sidebar:
     st.markdown("""
         <div style='text-align: center; padding: 1rem; border-top: 1px solid #E2E8F0;'>
             <p style='margin: 0; font-size: 0.75rem; color: #94A3B8;'>
-                🚀 Powered by Streamlit<br>
-                v2.0 - Análisis Avanzado
+                🚀 Powered by <br>
+                 Revenue Growth Management - Pricing
             </p>
         </div>
     """, unsafe_allow_html=True)
