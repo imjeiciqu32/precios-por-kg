@@ -1932,17 +1932,17 @@ if modo == "Price and Volumen":
         with st.expander("Ver vista previa de datos"):
             st.dataframe(st.session_state.data.head())
             
-# --- 15. ANÁLISIS DE ELASTICIDAD: PRICE & VOLUME (VERSIÓN PRO) ---
+# --- 15. ANÁLISIS DE ELASTICIDAD: PRICE & VOLUME (VERSIÓN PRO CON FEATURES AVANZADAS) ---
 if modo == "Price and Volumen" and not st.session_state.data.empty:
     st.divider()
     st.markdown("""
         <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                     padding: 2rem; border-radius: 15px; margin-bottom: 2rem;'>
             <h2 style='color: white; margin: 0; font-weight: 700;'>
-                📈 Análisis de Tendencias y Elasticidad
+                📈 Análisis Avanzado de Tendencias y Elasticidad
             </h2>
             <p style='color: rgba(255,255,255,0.9); margin-top: 0.5rem; margin-bottom: 0;'>
-                Visualiza el comportamiento de precio, volumen y valor para tomar decisiones estratégicas
+                Visualiza comportamiento de precio, volumen y valor con detección automática de anomalías y patrones estacionales
             </p>
         </div>
     """, unsafe_allow_html=True)
@@ -1951,9 +1951,38 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
     columnas_necesarias = ["Producto", "Semana", "Venta Valor ($)", "Venta Volumen (Pzas)", "Precio ($)"]
     
     if all(col in df_pv.columns for col in columnas_necesarias):
-        # --- FILTROS CON DISEÑO MEJORADO ---
+        # --- TOOLTIPS INFORMATIVOS ---
+        def tooltip_info(texto, explicacion):
+            return f"""
+                <span style='position: relative; display: inline-block; cursor: help;'>
+                    {texto} 
+                    <span style='
+                        position: absolute;
+                        bottom: 100%;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        background: #1F2937;
+                        color: white;
+                        padding: 0.75rem;
+                        border-radius: 8px;
+                        font-size: 0.85rem;
+                        width: 250px;
+                        opacity: 0;
+                        pointer-events: none;
+                        transition: opacity 0.3s;
+                        z-index: 1000;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+                    ' class='tooltip-text'>
+                        {explicacion}
+                    </span>
+                </span>
+            """
+        
         st.markdown("""
             <style>
+            span:hover .tooltip-text {
+                opacity: 1 !important;
+            }
             .stSelectbox label, .stSlider label {
                 font-weight: 600;
                 color: #2D3748;
@@ -1962,22 +1991,53 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
             </style>
         """, unsafe_allow_html=True)
         
-        c_f1, c_f2 = st.columns([1, 2])
+        # --- FILTROS CON DISEÑO MEJORADO ---
+        c_f1, c_f2, c_f3 = st.columns([2, 3, 2])
         with c_f1:
             lista_prods = sorted(df_pv["Producto"].unique())
             prod_sel = st.selectbox("🏷️ Seleccionar Producto:", lista_prods)
         with c_f2:
             min_sem, max_sem = int(df_pv["Semana"].min()), int(df_pv["Semana"].max())
             rango_sem = st.slider("📅 Rango de Semanas para Análisis:", min_sem, max_sem, (min_sem, max_sem))
+        with c_f3:
+            mostrar_outliers = st.checkbox("🔍 Detectar Outliers", value=True, help="Marca semanas con comportamiento atípico en precio o volumen")
 
         mask = (df_pv["Producto"] == prod_sel) & (df_pv["Semana"].between(rango_sem[0], rango_sem[1]))
-        df_filtrado = df_pv[mask].sort_values("Semana")
+        df_filtrado = df_pv[mask].sort_values("Semana").copy()
 
         if not df_filtrado.empty:
             import plotly.graph_objects as go
             from plotly.subplots import make_subplots
+            import numpy as np
 
-            # --- GRÁFICO PRINCIPAL: VOLUMEN Y VALOR ---
+            # --- DETECCIÓN DE OUTLIERS (Z-SCORE) ---
+            def detectar_outliers(serie, umbral=2):
+                media = serie.mean()
+                std = serie.std()
+                z_scores = np.abs((serie - media) / std) if std > 0 else np.zeros(len(serie))
+                return z_scores > umbral
+            
+            df_filtrado['outlier_precio'] = detectar_outliers(df_filtrado['Precio ($)'])
+            df_filtrado['outlier_volumen'] = detectar_outliers(df_filtrado['Venta Volumen (Pzas)'])
+            df_filtrado['es_outlier'] = df_filtrado['outlier_precio'] | df_filtrado['outlier_volumen']
+            
+            num_outliers = df_filtrado['es_outlier'].sum()
+
+            # --- ANÁLISIS DE ESTACIONALIDAD ---
+            if len(df_filtrado) >= 4:
+                df_filtrado['semana_ciclo'] = df_filtrado['Semana'] % 4  # Ciclo de 4 semanas
+                estacionalidad = df_filtrado.groupby('semana_ciclo').agg({
+                    'Venta Volumen (Pzas)': 'mean',
+                    'Precio ($)': 'mean'
+                })
+                coef_variacion_vol = (estacionalidad['Venta Volumen (Pzas)'].std() / 
+                                     estacionalidad['Venta Volumen (Pzas)'].mean()) * 100 if estacionalidad['Venta Volumen (Pzas)'].mean() > 0 else 0
+                hay_estacionalidad = coef_variacion_vol > 15  # Más de 15% de variación indica estacionalidad
+            else:
+                hay_estacionalidad = False
+                coef_variacion_vol = 0
+
+            # --- GRÁFICO PRINCIPAL: VOLUMEN Y VALOR CON OUTLIERS ---
             m_lat = 80 
             margen_alineado = dict(l=m_lat, r=m_lat, t=40, b=40)
 
@@ -1995,18 +2055,34 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
                 hovertemplate='<b>Semana %{x}</b><br>Valor: $%{y:,.0f}<extra></extra>'
             ), secondary_y=True)
             
-            # Barras de volumen con gradiente
+            # Barras de volumen azul marino con contorno
+            df_normal = df_filtrado[~df_filtrado['es_outlier']]
+            df_outlier = df_filtrado[df_filtrado['es_outlier']]
+            
             fig_perf.add_trace(go.Bar(
-                x=df_filtrado["Semana"], 
-                y=df_filtrado["Venta Volumen (Pzas)"],
+                x=df_normal["Semana"], 
+                y=df_normal["Venta Volumen (Pzas)"],
                 name="Volumen (Pzas)", 
                 marker=dict(
-                    color=df_filtrado["Venta Volumen (Pzas)"],
-                    colorscale='Blues',
-                    line=dict(width=0)
+                    color='#002366',
+                    line=dict(color='#001a4d', width=1.5)
                 ),
                 hovertemplate='<b>Semana %{x}</b><br>Volumen: %{y:,} pzas<extra></extra>'
             ), secondary_y=False)
+            
+            # Barras de outliers en color diferente
+            if mostrar_outliers and not df_outlier.empty:
+                fig_perf.add_trace(go.Bar(
+                    x=df_outlier["Semana"], 
+                    y=df_outlier["Venta Volumen (Pzas)"],
+                    name="⚠️ Outliers", 
+                    marker=dict(
+                        color='#DC2626',
+                        line=dict(color='#991B1B', width=2),
+                        pattern=dict(shape="/", bgcolor="white", fgcolor="#DC2626", size=8, solidity=0.3)
+                    ),
+                    hovertemplate='<b>⚠️ Semana %{x} (Anomalía)</b><br>Volumen: %{y:,} pzas<extra></extra>'
+                ), secondary_y=False)
 
             fig_perf.update_layout(
                 height=480, 
@@ -2050,25 +2126,49 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
                 title_font=dict(size=13, color="#10B981")
             )
 
-            # --- GRÁFICO DE PRECIO CON DISEÑO PREMIUM ---
+            # --- GRÁFICO DE PRECIO CON DISEÑO PREMIUM Y OUTLIERS ---
             fig_price = make_subplots(specs=[[{"secondary_y": True}]])
-            fig_price.add_trace(go.Scatter(
-                x=df_filtrado["Semana"], 
-                y=df_filtrado["Precio ($)"],
-                name="Precio Unitario ($)", 
-                line=dict(color='#DC2626', width=4, shape='spline'),
-                mode='lines+markers+text',
-                text=df_filtrado["Precio ($)"].apply(lambda x: f"${x:.1f}"),
-                textposition="top center",
-                textfont=dict(size=11, color='#DC2626', family="Arial Black, sans-serif"),
-                marker=dict(
-                    size=14, 
-                    symbol='circle', 
-                    color='#DC2626',
-                    line=dict(width=3, color='white')
-                ),
-                hovertemplate='<b>Semana %{x}</b><br>Precio: $%{y:.2f}<extra></extra>'
-            ), secondary_y=False)
+            
+            # Precios normales
+            df_price_normal = df_filtrado[~df_filtrado['outlier_precio']]
+            if not df_price_normal.empty:
+                fig_price.add_trace(go.Scatter(
+                    x=df_price_normal["Semana"], 
+                    y=df_price_normal["Precio ($)"],
+                    name="Precio Unitario ($)", 
+                    line=dict(color='#DC2626', width=4, shape='spline'),
+                    mode='lines+markers+text',
+                    text=df_price_normal["Precio ($)"].apply(lambda x: f"${x:.1f}"),
+                    textposition="top center",
+                    textfont=dict(size=11, color='#DC2626', family="Arial Black, sans-serif"),
+                    marker=dict(
+                        size=14, 
+                        symbol='circle', 
+                        color='#DC2626',
+                        line=dict(width=3, color='white')
+                    ),
+                    hovertemplate='<b>Semana %{x}</b><br>Precio: $%{y:.2f}<extra></extra>'
+                ), secondary_y=False)
+            
+            # Precios outliers
+            df_price_outlier = df_filtrado[df_filtrado['outlier_precio']]
+            if mostrar_outliers and not df_price_outlier.empty:
+                fig_price.add_trace(go.Scatter(
+                    x=df_price_outlier["Semana"], 
+                    y=df_price_outlier["Precio ($)"],
+                    name="⚠️ Precio Atípico", 
+                    mode='markers+text',
+                    text=df_price_outlier["Precio ($)"].apply(lambda x: f"${x:.1f}"),
+                    textposition="top center",
+                    textfont=dict(size=11, color='#F59E0B', family="Arial Black, sans-serif"),
+                    marker=dict(
+                        size=18, 
+                        symbol='star', 
+                        color='#F59E0B',
+                        line=dict(width=3, color='white')
+                    ),
+                    hovertemplate='<b>⚠️ Semana %{x} (Precio Atípico)</b><br>Precio: $%{y:.2f}<extra></extra>'
+                ), secondary_y=False)
 
             fig_price.update_layout(
                 height=300, 
@@ -2112,14 +2212,44 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
             st.plotly_chart(fig_price, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-            # --- CALCULADORA DE ELASTICIDAD CON DISEÑO CORPORATIVO ---
+            # --- ALERTAS DE OUTLIERS Y ESTACIONALIDAD ---
+            if num_outliers > 0 or hay_estacionalidad:
+                st.markdown("<br>", unsafe_allow_html=True)
+                col_alert1, col_alert2 = st.columns(2)
+                
+                with col_alert1:
+                    if num_outliers > 0:
+                        semanas_outlier = df_filtrado[df_filtrado['es_outlier']]['Semana'].tolist()
+                        st.markdown(f"""
+                            <div style='background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%); 
+                                        padding: 1.2rem; border-radius: 10px; border-left: 4px solid #F59E0B;'>
+                                <p style='margin: 0; color: #92400E;'>
+                                    <strong>🔍 {num_outliers} Anomalía(s) Detectada(s)</strong><br>
+                                    <span style='font-size: 0.9rem;'>Semanas con comportamiento atípico: {', '.join(map(str, semanas_outlier))}</span>
+                                </p>
+                            </div>
+                        """, unsafe_allow_html=True)
+                
+                with col_alert2:
+                    if hay_estacionalidad:
+                        st.markdown(f"""
+                            <div style='background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); 
+                                        padding: 1.2rem; border-radius: 10px; border-left: 4px solid #3B82F6;'>
+                                <p style='margin: 0; color: #1E40AF;'>
+                                    <strong>📊 Patrón Estacional Detectado</strong><br>
+                                    <span style='font-size: 0.9rem;'>Coeficiente de variación: {coef_variacion_vol:.1f}% - El volumen sigue un patrón cíclico</span>
+                                </p>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+            # --- CALCULADORA DE ELASTICIDAD CON MODO COMPARATIVO ---
             st.markdown("<br>", unsafe_allow_html=True)
             
-            st.markdown("""
+            st.markdown(f"""
                 <div style='background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); 
                             padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;'>
                     <h3 style='color: white; margin: 0; font-weight: 700; font-size: 1.4rem;'>
-                        🧮 Calculadora de Elasticidad por Ventana de Tiempo
+                        🧮 {tooltip_info('Calculadora de Elasticidad', 'La elasticidad mide qué tan sensible es el volumen de ventas ante cambios en el precio. Valores >1 indican alta sensibilidad (elástico), <1 baja sensibilidad (inelástico)')} por Ventana de Tiempo
                     </h3>
                     <p style='color: rgba(255,255,255,0.95); margin-top: 0.5rem; margin-bottom: 0; font-size: 0.95rem;'>
                         Compara períodos y mide el impacto de cambios de precio en el volumen
@@ -2127,17 +2257,21 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
                 </div>
             """, unsafe_allow_html=True)
             
+            # Toggle para modo comparativo
+            modo_comparativo = st.checkbox("📊 Activar Vista Comparativa (Antes vs Después)", value=False, 
+                                          help="Muestra los datos en dos columnas para comparación visual lado a lado")
+            
             with st.expander("⚙️ Configurar Análisis de Impacto", expanded=True):
                 c1, c2, c3 = st.columns([2, 2, 2])
                 with c1:
                     sem_corte = st.selectbox(
-                        "📍 Semana del Cambio (Corte):", 
+                        f"📍 {tooltip_info('Semana del Cambio (Corte)', 'Semana donde ocurrió el cambio de precio o estrategia que quieres analizar')}:", 
                         df_filtrado["Semana"].unique(), 
                         index=len(df_filtrado)//2
                     )
                 with c2:
                     ventana = st.number_input(
-                        "📊 Semanas a Promediar (Ventana):", 
+                        f"📊 {tooltip_info('Semanas a Promediar (Ventana)', 'Número de semanas antes y después del corte para calcular promedios. Mayor ventana = análisis más estable')}:", 
                         min_value=1, 
                         max_value=8, 
                         value=3
@@ -2168,6 +2302,45 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
                             </p>
                         </div>
                     """, unsafe_allow_html=True)
+
+                    # --- MODO COMPARATIVO O NORMAL ---
+                    if modo_comparativo:
+                        # Vista de dos columnas
+                        st.markdown("### 🔄 Comparación Lado a Lado")
+                        col_antes, col_sep, col_despues = st.columns([5, 1, 5])
+                        
+                        with col_antes:
+                            st.markdown("""
+                                <div style='background: linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%); 
+                                            padding: 1rem; border-radius: 10px; text-align: center; margin-bottom: 1rem;'>
+                                    <h4 style='margin: 0; color: #374151;'>📉 PERÍODO ANTERIOR</h4>
+                                </div>
+                            """, unsafe_allow_html=True)
+                            
+                            st.metric("💰 Precio Promedio", f"${p_antes:.2f}")
+                            st.metric("📦 Volumen Promedio", f"{v_antes:,.0f} pzas")
+                            st.metric("💵 Valor Promedio", f"${val_antes:,.0f}")
+                        
+                        with col_sep:
+                            st.markdown("""
+                                <div style='text-align: center; padding-top: 80px;'>
+                                    <div style='font-size: 3rem; color: #6B7280;'>→</div>
+                                </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col_despues:
+                            st.markdown("""
+                                <div style='background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%); 
+                                            padding: 1rem; border-radius: 10px; text-align: center; margin-bottom: 1rem;'>
+                                    <h4 style='margin: 0; color: #1E40AF;'>📈 PERÍODO POSTERIOR</h4>
+                                </div>
+                            """, unsafe_allow_html=True)
+                            
+                            st.metric("💰 Precio Promedio", f"${p_despues:.2f}", delta=f"{var_p:.1%}")
+                            st.metric("📦 Volumen Promedio", f"{v_despues:,.0f} pzas", delta=f"{var_v:.1%}")
+                            st.metric("💵 Valor Promedio", f"${val_despues:,.0f}", delta=f"{var_val:.1%}")
+                        
+                        st.markdown("<br>", unsafe_allow_html=True)
 
                     # --- TARJETAS DE MÉTRICAS CON DISEÑO PREMIUM ---
                     st.markdown("""
@@ -2206,78 +2379,80 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
                         </style>
                     """, unsafe_allow_html=True)
 
-                    res1, res2, res3, res4 = st.columns(4)
-                    
-                    # Tarjeta 1: Precio
-                    delta_color_p = "#10B981" if var_p > 0 else "#EF4444"
-                    arrow_p = "↑" if var_p > 0 else "↓"
-                    with res1:
-                        st.markdown(f"""
-                            <div class="metric-card" style="border-left-color: {delta_color_p};">
-                                <div class="metric-label">💰 Δ Precio Promedio</div>
-                                <div class="metric-value" style="color: {delta_color_p};">
-                                    {var_p:.1%}
+                    if not modo_comparativo:
+                        st.markdown("### 📊 Cambios Detectados")
+                        res1, res2, res3, res4 = st.columns(4)
+                        
+                        # Tarjeta 1: Precio
+                        delta_color_p = "#10B981" if var_p > 0 else "#EF4444"
+                        arrow_p = "↑" if var_p > 0 else "↓"
+                        with res1:
+                            st.markdown(f"""
+                                <div class="metric-card" style="border-left-color: {delta_color_p};">
+                                    <div class="metric-label">💰 Δ Precio Promedio</div>
+                                    <div class="metric-value" style="color: {delta_color_p};">
+                                        {var_p:.1%}
+                                    </div>
+                                    <div class="metric-delta" style="color: {delta_color_p};">
+                                        {arrow_p} ${p_antes:.2f} → ${p_despues:.2f}
+                                    </div>
                                 </div>
-                                <div class="metric-delta" style="color: {delta_color_p};">
-                                    {arrow_p} ${p_antes:.2f} → ${p_despues:.2f}
+                            """, unsafe_allow_html=True)
+                        
+                        # Tarjeta 2: Volumen
+                        delta_color_v = "#10B981" if var_v > 0 else "#EF4444"
+                        arrow_v = "↑" if var_v > 0 else "↓"
+                        with res2:
+                            st.markdown(f"""
+                                <div class="metric-card" style="border-left-color: {delta_color_v};">
+                                    <div class="metric-label">📦 Δ Volumen Promedio</div>
+                                    <div class="metric-value" style="color: {delta_color_v};">
+                                        {var_v:.1%}
+                                    </div>
+                                    <div class="metric-delta" style="color: {delta_color_v};">
+                                        {arrow_v} {v_antes:,.0f} → {v_despues:,.0f} pzas
+                                    </div>
                                 </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    
-                    # Tarjeta 2: Volumen
-                    delta_color_v = "#10B981" if var_v > 0 else "#EF4444"
-                    arrow_v = "↑" if var_v > 0 else "↓"
-                    with res2:
-                        st.markdown(f"""
-                            <div class="metric-card" style="border-left-color: {delta_color_v};">
-                                <div class="metric-label">📦 Δ Volumen Promedio</div>
-                                <div class="metric-value" style="color: {delta_color_v};">
-                                    {var_v:.1%}
+                            """, unsafe_allow_html=True)
+                        
+                        # Tarjeta 3: Valor
+                        delta_color_val = "#10B981" if var_val > 0 else "#EF4444"
+                        arrow_val = "↑" if var_val > 0 else "↓"
+                        with res3:
+                            st.markdown(f"""
+                                <div class="metric-card" style="border-left-color: {delta_color_val};">
+                                    <div class="metric-label">💵 Δ Valor Promedio</div>
+                                    <div class="metric-value" style="color: {delta_color_val};">
+                                        {var_val:.1%}
+                                    </div>
+                                    <div class="metric-delta" style="color: {delta_color_val};">
+                                        {arrow_val} ${val_antes:,.0f} → ${val_despues:,.0f}
+                                    </div>
                                 </div>
-                                <div class="metric-delta" style="color: {delta_color_v};">
-                                    {arrow_v} {v_antes:,.0f} → {v_despues:,.0f} pzas
+                            """, unsafe_allow_html=True)
+                        
+                        # Tarjeta 4: Elasticidad
+                        if abs(elasticidad) > 1:
+                            elastic_color = "#DC2626"
+                            elastic_icon = "⚠️"
+                            elastic_label = "ELÁSTICO"
+                        else:
+                            elastic_color = "#059669"
+                            elastic_icon = "✅"
+                            elastic_label = "INELÁSTICO"
+                        
+                        with res4:
+                            st.markdown(f"""
+                                <div class="metric-card" style="border-left-color: {elastic_color};">
+                                    <div class="metric-label">{elastic_icon} Elasticidad</div>
+                                    <div class="metric-value" style="color: {elastic_color};">
+                                        {elasticidad:.2f}
+                                    </div>
+                                    <div class="metric-delta" style="color: {elastic_color};">
+                                        {elastic_label}
+                                    </div>
                                 </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    
-                    # Tarjeta 3: Valor
-                    delta_color_val = "#10B981" if var_val > 0 else "#EF4444"
-                    arrow_val = "↑" if var_val > 0 else "↓"
-                    with res3:
-                        st.markdown(f"""
-                            <div class="metric-card" style="border-left-color: {delta_color_val};">
-                                <div class="metric-label">💵 Δ Valor Promedio</div>
-                                <div class="metric-value" style="color: {delta_color_val};">
-                                    {var_val:.1%}
-                                </div>
-                                <div class="metric-delta" style="color: {delta_color_val};">
-                                    {arrow_val} ${val_antes:,.0f} → ${val_despues:,.0f}
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    
-                    # Tarjeta 4: Elasticidad
-                    if abs(elasticidad) > 1:
-                        elastic_color = "#DC2626"
-                        elastic_icon = "⚠️"
-                        elastic_label = "ELÁSTICO"
-                    else:
-                        elastic_color = "#059669"
-                        elastic_icon = "✅"
-                        elastic_label = "INELÁSTICO"
-                    
-                    with res4:
-                        st.markdown(f"""
-                            <div class="metric-card" style="border-left-color: {elastic_color};">
-                                <div class="metric-label">{elastic_icon} Elasticidad</div>
-                                <div class="metric-value" style="color: {elastic_color};">
-                                    {elasticidad:.2f}
-                                </div>
-                                <div class="metric-delta" style="color: {elastic_color};">
-                                    {elastic_label}
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
+                            """, unsafe_allow_html=True)
                     
                     # Mensaje interpretativo
                     st.markdown("<br>", unsafe_allow_html=True)
