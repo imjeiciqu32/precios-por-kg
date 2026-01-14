@@ -160,7 +160,7 @@ with st.sidebar:
             mostrar_glosario()
         else:
             st.info("Función de glosario no definida aún.")
-
+            
 # LÓGICA DE MODOS (Actualizada con Price and Volumen)
 if modo == "Price Ladder":
     DB_FILE = "historico_productos.csv"
@@ -178,15 +178,14 @@ elif modo == "Price Pack":
 
 else: # MODO: Price and Volumen
     DB_FILE = "historico_ventas_semanales.csv"
-    label_agru = "Semana"
+    label_agru = "Semana" # Aquí agruparemos por número de semana
     
-    # AJUSTE: Quitamos el str(i) para que coincida con los números de tu plantilla
+    # IMPORTANTE: Aseguramos que las opciones sean números para que coincidan con tu PLANTILLA_PV
     opciones_agru = list(range(1, 53)) 
     
-    # Asignamos la plantilla importada (que ahora es un diccionario)
-    fuente_plantillas = PLANTILLA_PV 
+    fuente_plantillas = PLANTILLA_PV if 'PLANTILLA_PV' in globals() else {}
     
-    # Columnas necesarias para el análisis de tendencia
+    # Definimos las columnas exactas que vienen en tu nueva plantilla
     columnas_tabla = ["Semana", "Producto", "Fabricante", "Precio ($)", "Venta Valor ($)", "Venta Volumen (Pzas)"]
 
 # --- 2. FUNCIONES CORE (Mantenidas intactas) ---
