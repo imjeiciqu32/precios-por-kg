@@ -476,7 +476,7 @@ st.title(f"📊 {modo.upper()}")
 
 # --- 5. FORMULARIOS DE AGREGAR ---
 # Solo mostramos el formulario si no estamos en el modo "Price and Volumen"
-if modo in ["Price Ladder", "Price Pack Architecture"]:
+if modo in ["Price Ladder", "Price Pack"]:
     with st.expander(f"➕ Agregar nuevo SKU a {modo}", expanded=False):
         with st.form("form_nuevo_sku", clear_on_submit=True):
             col1, col2, col3 = st.columns(3)
