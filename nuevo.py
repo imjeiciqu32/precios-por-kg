@@ -1237,7 +1237,8 @@ if modo != "Price and Volumen" and not st.session_state.data.empty:
 
 
 # --- 12. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO ---
-if not st.session_state.data.empty:
+# Ajuste: No mostrar en el modo de Volumen para evitar errores de compilación de hallazgos
+if modo != "Price and Volumen" and not st.session_state.data.empty:
     st.divider()
     
     # Título dinámico según el modo
@@ -1246,7 +1247,8 @@ if not st.session_state.data.empty:
     if st.button(btn_label, key="btn_exec_v4"):
         with st.spinner("Compilando diagnóstico..."):
             
-            if not hallazgos:
+            # Verificamos si existen hallazgos (esta variable viene de la sección anterior)
+            if 'hallazgos' not in locals() or not hallazgos:
                 st.success("✅ **Estado Óptimo:** No se detectan desviaciones en la estrategia actual.")
             else:
                 st.markdown("""
@@ -1274,6 +1276,7 @@ if not st.session_state.data.empty:
                     if ws_items:
                         st.markdown("#### 🚀 Expansión de Portafolio")
                         for ws in ws_items:
+                            # Extracción segura de datos del string de detalle
                             rival = ws['Detalle'].split('dominado por ')[-1].replace('.', '')
                             sug_data = ws['Accion'].replace("⚡ **Entrada:** Lanzar ", "")
                             st.write(f"* **{ws['Ocasión']}:** Barcel no participa. Dominio de <span class='rival-name'>{rival}</span>. Acción: Introducir SKU de **{sug_data}**.", unsafe_allow_html=True)
@@ -1309,7 +1312,12 @@ if not st.session_state.data.empty:
                         st.markdown("#### 💰 Corredores por Canal (vs Detalle)")
                         for i in indices:
                             color_tag = "🔴" if i["Prioridad"] == "ALTA" else "🟡"
-                            st.write(f"{color_tag} **{i['Ocasión']}:** {i['Msg']}. (Index {i['Detalle'].split('Index ')[1].split(' vs')[0]})")
+                            # Intento de extracción de Index para el resumen
+                            try:
+                                valor_idx = i['Detalle'].split('Index ')[1].split(' vs')[0]
+                            except:
+                                valor_idx = "N/A"
+                            st.write(f"{color_tag} **{i['Ocasión']}:** {i['Msg']}. (Index {valor_idx})")
 
                     st.markdown("---")
                     st.write("**💡 Veredicto Interno:** Asegurar la consistencia de la curva para incentivar el 'upsize' y proteger la rentabilidad de los canales estratégicos.")
