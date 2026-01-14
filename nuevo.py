@@ -1957,11 +1957,9 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
             from plotly.subplots import make_subplots
 
             # --- CORRECCIÓN DE ALINEACIÓN ---
-            # Definimos márgenes laterales fijos para AMBOS gráficos
             m_lat = 80 
             margen_alineado = dict(l=m_lat, r=m_lat, t=20, b=20)
 
-            # 1. Gráfico Base (Volumen y Valor)
             fig_perf = make_subplots(specs=[[{"secondary_y": True}]])
             fig_perf.add_trace(go.Scatter(
                 x=df_filtrado["Semana"], y=df_filtrado["Venta Valor ($)"],
@@ -1981,8 +1979,7 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
             fig_perf.update_yaxes(title_text="Volumen", secondary_y=False)
             fig_perf.update_yaxes(title_text="Venta Valor", secondary_y=True)
 
-            # 2. Gráfico Superior (Precio) - Forzamos estructura idéntica
-            fig_price = make_subplots(specs=[[{"secondary_y": True}]]) # Aunque no lo usemos, iguala el espacio del eje R
+            fig_price = make_subplots(specs=[[{"secondary_y": True}]])
             fig_price.add_trace(go.Scatter(
                 x=df_filtrado["Semana"], y=df_filtrado["Precio ($)"],
                 name="Precio Unitario ($)", line=dict(color='#F72585', width=4),
@@ -1994,58 +1991,65 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
 
             fig_price.update_layout(
                 height=300, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                margin=margen_alineado, xaxis=dict(visible=False),
-                showlegend=False
+                margin=margen_alineado, xaxis=dict(visible=False), showlegend=False
             )
-            # Sincronizamos los ejes Y para que el área de dibujo sea igual
             fig_price.update_yaxes(title_text="Precio ($)", color="#F72585", secondary_y=False,
                                  range=[df_filtrado["Precio ($)"].min()*0.8, df_filtrado["Precio ($)"].max()*1.6])
             fig_price.update_yaxes(title_text="", secondary_y=True, showticklabels=False)
 
-            # --- RENDERIZADO CON CSS ---
-            st.markdown("""
-                <style>
-                .price-overlay { margin-top: -340px; position: relative; z-index: 99; pointer-events: none; }
-                .price-overlay .js-plotly-plot .plotly .main-svg { background: transparent !important; }
-                </style>
-                """, unsafe_allow_html=True)
-
+            st.markdown("<style>.price-overlay { margin-top: -340px; position: relative; z-index: 99; pointer-events: none; } .price-overlay .js-plotly-plot .plotly .main-svg { background: transparent !important; }</style>", unsafe_allow_html=True)
             st.plotly_chart(fig_perf, use_container_width=True)
             st.markdown('<div class="price-overlay">', unsafe_allow_html=True)
             st.plotly_chart(fig_price, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-            # --- CALCULADORA DE ELASTICIDAD ---
-            st.markdown("### 🧮 Calculadora de Variación Periodo a Periodo")
-            with st.expander("Configurar análisis de variación", expanded=True):
-                col_calc1, col_calc2, col_calc3 = st.columns(3)
-                with col_calc1:
-                    sem_base = st.selectbox("Semana Base (Origen):", df_filtrado["Semana"].unique())
-                with col_calc2:
-                    sem_target = st.selectbox("Semana Objetivo (Comparar):", 
-                                            [s for s in df_filtrado["Semana"].unique() if s != sem_base])
+            # --- CALCULADORA DE ELASTICIDAD PROMEDIO (ROLLING WINDOW) ---
+            st.markdown("### 🧮 Calculadora de Elasticidad por Ventana de Tiempo")
+            with st.expander("Configurar análisis de impacto (Promedios)", expanded=True):
+                c1, c2, c3 = st.columns([2, 2, 2])
+                with c1:
+                    sem_corte = st.selectbox("Semana del Cambio (Corte):", df_filtrado["Semana"].unique(), index=len(df_filtrado)//2)
+                with c2:
+                    ventana = st.number_input("Semanas a promediar (Ventana):", min_value=1, max_value=8, value=3)
                 
-                # Obtención de datos
-                d_base = df_filtrado[df_filtrado["Semana"] == sem_base].iloc[0]
-                d_target = df_filtrado[df_filtrado["Semana"] == sem_target].iloc[0]
+                # Filtrar Periodo A (Antes) y Periodo B (Después/Durante)
+                # El Periodo A son las 'ventana' semanas anteriores a la de corte
+                # El Periodo B incluye la semana de corte y las siguientes
+                df_antes = df_filtrado[df_filtrado["Semana"] < sem_corte].tail(ventana)
+                df_despues = df_filtrado[df_filtrado["Semana"] >= sem_corte].head(ventana)
 
-                # Cálculos
-                var_p = (d_target["Precio ($)"] / d_base["Precio ($)"] - 1)
-                var_v = (d_target["Venta Volumen (Pzas)"] / d_base["Venta Volumen (Pzas)"] - 1)
-                var_val = (d_target["Venta Valor ($)"] / d_base["Venta Valor ($)"] - 1)
-                
-                # Elasticidad Arco Simple
-                elasticidad = var_v / var_p if var_p != 0 else 0
+                if len(df_antes) > 0 and len(df_despues) > 0:
+                    # Promedios
+                    p_antes = df_antes["Precio ($)"].mean()
+                    p_despues = df_despues["Precio ($)"].mean()
+                    v_antes = df_antes["Venta Volumen (Pzas)"].mean()
+                    v_despues = df_despues["Venta Volumen (Pzas)"].mean()
+                    val_antes = df_antes["Venta Valor ($)"].mean()
+                    val_despues = df_despues["Venta Valor ($)"].mean()
 
-                # Mostrar Resultados
-                res1, res2, res3, res4 = st.columns(4)
-                res1.metric(f"Δ% Precio", f"{var_p:.1%}")
-                res2.metric(f"Δ% Volumen", f"{var_v:.1%}")
-                res3.metric(f"Δ% Valor $", f"{var_val:.1%}")
-                
-                color_e = "normal" if abs(elasticidad) < 1 else "inverse"
-                res4.metric("Elasticidad Calc.", f"{elasticidad:.2f}", 
-                           help="Mayor a 1 (absoluto) indica alta sensibilidad", delta_color=color_e)
+                    # Variaciones
+                    var_p = (p_despues / p_antes) - 1
+                    var_v = (v_despues / v_antes) - 1
+                    var_val = (val_despues / val_antes) - 1
+                    elasticidad = var_v / var_p if var_p != 0 else 0
+
+                    st.info(f"Comparando promedio de {len(df_antes)} sem. antes vs {len(df_despues)} sem. después.")
+
+                    res1, res2, res3, res4 = st.columns(4)
+                    res1.metric("Δ% Precio Prom.", f"{var_p:.1%}")
+                    res2.metric("Δ% Vol. Prom.", f"{var_v:.1%}")
+                    res3.metric("Δ% Valor Prom.", f"{var_val:.1%}")
+                    
+                    # Color según sensibilidad
+                    color_e = "normal" if abs(elasticidad) < 1 else "inverse"
+                    res4.metric("Elasticidad Ventana", f"{elasticidad:.2f}", delta_color=color_e)
+                    
+                    if abs(elasticidad) > 1:
+                        st.warning("⚠️ **Producto Elástico:** El volumen cambia más que el precio. Cuidado con las subidas.")
+                    else:
+                        st.success("✅ **Producto Inelástico:** Los cambios de precio no afectan tanto al volumen.")
+                else:
+                    st.error("No hay suficientes semanas antes o después de la seleccionada para promediar.")
 
             # --- MÉTRICAS GENERALES ---
             st.markdown("---")
@@ -2059,4 +2063,4 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
         else:
             st.warning("No hay datos para los filtros.")
     else:
-        st.error("Faltan columnas necesarias en el archivo.")
+        st.error("Faltan columnas necesarias.")
