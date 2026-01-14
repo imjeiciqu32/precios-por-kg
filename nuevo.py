@@ -1029,7 +1029,8 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
 
 # --- 12. ANALISTA MAESTRO INTEGRAL: LADDER ULTRA 2.6 + ARQUITECTURA PRO ---
-if not st.session_state.data.empty:
+# Ajuste: No mostrar en el modo de Volumen para evitar KeyErrors
+if modo != "Price and Volumen" and not st.session_state.data.empty:
     st.divider()
     
     # 1. PREPARACIÓN DE DATOS (Común para ambos modos)
@@ -1105,7 +1106,7 @@ if not st.session_state.data.empty:
                                         "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **{p_sug_txt}**."
                                     })
                                     vistos.add(id_gap)
-        
+
                 # --- BLOQUE B: ANÁLISIS TÁCTICO POR OCASIÓN ---
                 for oca in df_p["Ocasión"].unique():
                     df_oca = df_p[df_p["Ocasión"] == oca].copy()
@@ -1191,7 +1192,7 @@ if not st.session_state.data.empty:
                                 "Accion": f"⚠️ **Competitividad:** Evaluar si el valor agregado justifica el sobreprecio."
                             })
 
-        # 2. Cascada de Gramaje (Ajustado a terminología Barcel)
+        # 2. Cascada de Gramaje
         if "Canal" in df_p.columns and "Gramaje (g)" in df_p.columns:
             for canal in df_p["Canal"].unique():
                 if "Fabricante" in df_p.columns:
@@ -1202,19 +1203,17 @@ if not st.session_state.data.empty:
                 if len(df_c) >= 2:
                     for i in range(len(df_c) - 1):
                         p_chico, p_grande = df_c.iloc[i], df_c.iloc[i+1]
-                        # Regla: Mayor gramaje debe tener menor $/Kg
                         if p_grande["Precio por Kg ($)"] > p_chico["Precio por Kg ($)"] and p_chico["Gramaje (g)"] > 0:
                             hallazgos.append({
-                                "Prioridad": "MEDIA", # Cambiado de ALTA a MEDIA (Amarillo)
-                                "Tipo": "CURVA DE PRECIO", # Cambiado de ERROR CASCADA
+                                "Prioridad": "MEDIA",
+                                "Tipo": "CURVA DE PRECIO",
                                 "Ocasión": canal,
                                 "Msg": f"Desviación en curva: {p_grande['Producto']}",
                                 "Detalle": f"El SKU de {int(p_grande['Gramaje (g)'])}g presenta un $/Kg superior al formato de {int(p_chico['Gramaje (g)'])}g.",
-                                "Accion": f"📉 **Arquitectura:** Optimizar la eficiencia de valor. Por regla comercial, el incremento en gramaje debe mejorar el costo por kilo para el consumidor."
+                                "Accion": f"📉 **Arquitectura:** Optimizar la eficiencia de valor. El incremento en gramaje debe mejorar el costo por kilo."
                             })
         else:
             st.info("ℹ️ Para activar la auditoría de cascada, asegúrate de que el archivo contenga: Canal y Gramaje.")
-
 
     # --- RENDERIZADO VISUAL ÚNICO (Para ambos modos) ---
     if hallazgos:
