@@ -296,73 +296,95 @@ st.title(f"📊 {modo.upper()}")
 
 
 # --- 5. FORMULARIOS DE AGREGAR ---
-with st.expander(f"➕ Agregar nuevo SKU a {modo}", expanded=False):
-    with st.form("form_nuevo_sku", clear_on_submit=True):
-        col1, col2, col3 = st.columns(3)
-        f_nom = col1.text_input("Nombre del Producto").upper()
-        if modo == "Price Ladder":
-            f_fab = col2.selectbox("Fabricante", ["BARCEL", "SABRITAS", "OTROS", "PROPUESTA"])
-            f_cat = col3.selectbox("Ocasión de Consumo", opciones_agru)
-            col4, col5, col6 = st.columns(3)
-            f_pre = col4.number_input("Precio ($)", min_value=0.0, step=0.5)
-            f_gra = col5.number_input("Gramaje (g)", min_value=1.0, step=1.0)
-            f_som = col6.number_input("SOM (%)", min_value=0.0, max_value=100.0, step=0.1)
-            if st.form_submit_button("Añadir a Escalera"):
-                nuevo = pd.DataFrame([{"Producto": f_nom, "Fabricante": f_fab, "Ocasión": f_cat, "Precio ($)": f_pre, "Gramaje (g)": f_gra, "SOM (%)": f_som}])
-                st.session_state.data = pd.concat([st.session_state.data, nuevo], ignore_index=True)
-                st.session_state.data = calcular_pkg(st.session_state.data, modo)
-                st.session_state.data.to_csv(DB_FILE, index=False)
-                st.rerun()
-        else:
-            f_fam = col2.text_input("Familia").upper()
-            f_can = col3.selectbox("Canal", opciones_agru)
-            col4, col5 = st.columns(2)
-            f_pre = col4.number_input("Precio ($)", min_value=0.0, step=0.5)
-            f_gra = col5.number_input("Gramaje (g)", min_value=1.0, step=1.0)
-            if st.form_submit_button("Añadir a Price Pack"):
-                nuevo = pd.DataFrame([{"Producto": f_nom, "Familia": f_fam, "Canal": f_can, "Precio ($)": f_pre, "Gramaje (g)": f_gra}])
-                st.session_state.data = pd.concat([st.session_state.data, nuevo], ignore_index=True)
-                st.session_state.data = calcular_pkg(st.session_state.data, modo)
-                st.session_state.data.to_csv(DB_FILE, index=False)
-                st.rerun()
-
+# Solo mostramos el formulario si no estamos en el modo "Price and Volumen"
+if modo in ["Price Ladder", "Price Pack Architecture"]:
+    with st.expander(f"➕ Agregar nuevo SKU a {modo}", expanded=False):
+        with st.form("form_nuevo_sku", clear_on_submit=True):
+            col1, col2, col3 = st.columns(3)
+            f_nom = col1.text_input("Nombre del Producto").upper()
+            
+            if modo == "Price Ladder":
+                f_fab = col2.selectbox("Fabricante", ["BARCEL", "SABRITAS", "OTROS", "PROPUESTA"])
+                f_cat = col3.selectbox("Ocasión de Consumo", opciones_agru)
+                col4, col5, col6 = st.columns(3)
+                f_pre = col4.number_input("Precio ($)", min_value=0.0, step=0.5)
+                f_gra = col5.number_input("Gramaje (g)", min_value=1.0, step=1.0)
+                f_som = col6.number_input("SOM (%)", min_value=0.0, max_value=100.0, step=0.1)
+                
+                if st.form_submit_button("Añadir a Escalera"):
+                    nuevo = pd.DataFrame([{
+                        "Producto": f_nom, 
+                        "Fabricante": f_fab, 
+                        "Ocasión": f_cat, 
+                        "Precio ($)": f_pre, 
+                        "Gramaje (g)": f_gra, 
+                        "SOM (%)": f_som
+                    }])
+                    st.session_state.data = pd.concat([st.session_state.data, nuevo], ignore_index=True)
+                    st.session_state.data = calcular_pkg(st.session_state.data, modo)
+                    st.session_state.data.to_csv(DB_FILE, index=False)
+                    st.rerun()
+            
+            else: # Este sería el caso de "Price Pack Architecture"
+                f_fam = col2.text_input("Familia").upper()
+                f_can = col3.selectbox("Canal", opciones_agru)
+                col4, col5 = st.columns(2)
+                f_pre = col4.number_input("Precio ($)", min_value=0.0, step=0.5)
+                f_gra = col5.number_input("Gramaje (g)", min_value=1.0, step=1.0)
+                
+                if st.form_submit_button("Añadir a Price Pack"):
+                    nuevo = pd.DataFrame([{
+                        "Producto": f_nom, 
+                        "Familia": f_fam, 
+                        "Canal": f_can, 
+                        "Precio ($)": f_pre, 
+                        "Gramaje (g)": f_gra
+                    }])
+                    st.session_state.data = pd.concat([st.session_state.data, nuevo], ignore_index=True)
+                    st.session_state.data = calcular_pkg(st.session_state.data, modo)
+                    st.session_state.data.to_csv(DB_FILE, index=False)
+                    st.rerun()
+                    
+                    
 # --- 6. EDITOR DE TABLA CON FUNCIÓN DE ELIMINAR ---
-st.markdown("### 📝 Gestión de Portafolio")
+# Solo mostramos la gestión de portafolio si no estamos en el modo "Price and Volumen"
+if modo in ["Price Ladder", "Price Pack Architecture"]:
+    st.markdown("### 📝 Gestión de Portafolio")
 
-# Creamos una columna temporal para selección si queremos borrado masivo
-df_with_selections = st.session_state.data.copy()
-if "Select" not in df_with_selections.columns:
-    df_with_selections.insert(0, "Select", False)
+    # Creamos una columna temporal para selección si queremos borrado masivo
+    df_with_selections = st.session_state.data.copy()
+    if "Select" not in df_with_selections.columns:
+        df_with_selections.insert(0, "Select", False)
 
-# El editor de datos
-edited_df = st.data_editor(
-    df_with_selections, 
-    num_rows="dynamic",      # Permite agregar filas al final
-    use_container_width=True,
-    key="portfolio_editor",
-    hide_index=True
-)
+    # El editor de datos
+    edited_df = st.data_editor(
+        df_with_selections, 
+        num_rows="dynamic",      # Permite agregar filas al final
+        use_container_width=True,
+        key="portfolio_editor",
+        hide_index=True
+    )
 
-# Lógica para guardar cambios o procesar eliminaciones
-col_btn1, col_btn2 = st.columns([1, 4])
+    # Lógica para guardar cambios o procesar eliminaciones
+    col_btn1, col_btn2 = st.columns([1, 4])
 
-with col_btn1:
-    # Botón para eliminar las filas que el usuario marcó en el checkbox
-    if st.button("🗑️ Eliminar seleccionados", type="secondary"):
-        # Filtramos para quedarnos solo con lo que NO está seleccionado
-        df_final = edited_df[edited_df["Select"] == False].drop(columns=["Select"])
-        st.session_state.data = calcular_pkg(df_final, modo)
+    with col_btn1:
+        # Botón para eliminar las filas que el usuario marcó en el checkbox
+        if st.button("🗑️ Eliminar seleccionados", type="secondary"):
+            # Filtramos para quedarnos solo con lo que NO está seleccionado
+            df_final = edited_df[edited_df["Select"] == False].drop(columns=["Select"])
+            st.session_state.data = calcular_pkg(df_final, modo)
+            st.session_state.data.to_csv(DB_FILE, index=False)
+            st.success("Filas eliminadas correctamente")
+            st.rerun()
+
+    # Lógica para detectar si hubo cambios manuales en las celdas (precios, nombres, etc.)
+    # Ignoramos la columna 'Select' para comparar si hubo cambios reales en los datos
+    current_data_no_select = edited_df.drop(columns=["Select"])
+    if not current_data_no_select.equals(st.session_state.data):
+        st.session_state.data = calcular_pkg(current_data_no_select, modo)
         st.session_state.data.to_csv(DB_FILE, index=False)
-        st.success("Filas eliminadas correctamente")
         st.rerun()
-
-# Lógica para detectar si hubo cambios manuales en las celdas (precios, nombres, etc.)
-# Ignoramos la columna 'Select' para comparar si hubo cambios reales en los datos
-current_data_no_select = edited_df.drop(columns=["Select"])
-if not current_data_no_select.equals(st.session_state.data):
-    st.session_state.data = calcular_pkg(current_data_no_select, modo)
-    st.session_state.data.to_csv(DB_FILE, index=False)
-    st.rerun()
 
 
 # --- 6.5 FILTROS DINÁMICOS (SOLO PARA PRICE LADDER) ---
