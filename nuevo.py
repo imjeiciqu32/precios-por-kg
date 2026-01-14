@@ -19,7 +19,6 @@ except ImportError:
     PLANTILLAS_PP = {}
 
 try:
-    # Importamos la nueva plantilla que acabas de subir a GitHub
     from data_price_vol import PLANTILLA_PV
 except ImportError:
     PLANTILLA_PV = {}
@@ -186,7 +185,7 @@ else: # MODO: Price and Volumen
     fuente_plantillas = PLANTILLA_PV if 'PLANTILLA_PV' in globals() else {}
     
     # Definimos las columnas exactas que vienen en tu nueva plantilla
-    columnas_tabla = ["Semana", "Producto", "Fabricante", "Precio ($)", "Venta Valor ($)", "Venta Volumen (Pzas)"]
+    columnas_tabla = ["Semana", "Producto", "Fabricante", "Precio ($)", "Venta Volumen (Pzas)","Venta Valor ($)"]
 
 # --- 2. FUNCIONES CORE (Mantenidas intactas) ---
 def calcular_pkg(df, modo_actual):
@@ -232,12 +231,25 @@ with st.sidebar:
     st.header("📁 Gestión de Datos")
     
     with st.container(border=True):
+        # El selectbox cargará las llaves de PLANTILLA_PV, PLANTILLAS o PLANTILLAS_PP según el modo
         nombre_plantilla = st.selectbox("Cargar Plantilla:", ["-- Seleccionar --"] + list(fuente_plantillas.keys()))
+        
         if st.button("📥 Cargar Datos", use_container_width=True, type="primary"):
             if nombre_plantilla != "-- Seleccionar --":
-                st.session_state.data = calcular_pkg(pd.DataFrame(fuente_plantillas[nombre_plantilla]), modo)
+                # 1. Convertimos la plantilla seleccionada en DataFrame
+                df_nuevo = pd.DataFrame(fuente_plantillas[nombre_plantilla])
+                
+                # 2. LÓGICA DE CARGA SEGÚN EL MODO
+                if modo == "Price and Volumen":
+                    # Cargamos directo (Price and Volumen no usa $/kg ni gramajes)
+                    st.session_state.data = df_nuevo
+                else:
+                    # Price Ladder y Price Pack sí pasan por el cálculo de $/kg
+                    st.session_state.data = calcular_pkg(df_nuevo, modo)
+                
+                # 3. Guardado y Refresco
                 st.session_state.data.to_csv(DB_FILE, index=False)
-                st.success("¡Datos cargados!")
+                st.success(f"¡Datos de {modo} cargados!")
                 st.rerun()
 
     # EXPORTACIÓN
