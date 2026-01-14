@@ -1940,7 +1940,7 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
     # --- FILTROS ESPECÍFICOS ---
     df_pv = st.session_state.data.copy()
     
-    # Aseguramos que las columnas necesarias existan antes de seguir
+    # Aseguramos que las columnas necesarias existan
     columnas_necesarias = ["Producto", "Semana", "Venta Valor ($)", "Venta Volumen (Pzas)", "Precio ($)"]
     if all(col in df_pv.columns for col in columnas_necesarias):
         
@@ -1952,7 +1952,6 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
         with c_f2:
             min_sem = int(df_pv["Semana"].min())
             max_sem = int(df_pv["Semana"].max())
-            # Slider para el rango de semanas
             rango_sem = st.slider("Rango de Semanas:", min_sem, max_sem, (min_sem, max_sem))
 
         # Aplicar Filtros
@@ -1966,59 +1965,84 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
             # Crear figura con ejes secundarios
             fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-            # 1. Ventas Valor (Gráfico de Área)
-            fig.add_trace(
-                go.Scatter(
-                    x=df_filtrado["Semana"],
-                    y=df_filtrado["Venta Valor ($)"],
-                    name="Venta Valor ($)",
-                    fill='tozeroy',
-                    line=dict(color='#A6C8FF', width=1.5),
-                    fillcolor='rgba(166, 200, 255, 0.3)'
-                ),
-                secondary_y=False,
-            )
-
-            # 2. Ventas Volumen (Gráfico de Barras)
+            # 1. Ventas Volumen (Barras - Al fondo para no tapar el área)
             fig.add_trace(
                 go.Bar(
                     x=df_filtrado["Semana"],
                     y=df_filtrado["Venta Volumen (Pzas)"],
                     name="Venta Volumen (Pzas)",
                     marker_color='#002366',
-                    opacity=0.6
+                    opacity=0.5,
+                    marker_line_width=0
                 ),
                 secondary_y=False,
             )
 
-            # 3. Evolución de Precio (Línea Punteada)
+            # 2. Ventas Valor (Área Suave)
+            fig.add_trace(
+                go.Scatter(
+                    x=df_filtrado["Semana"],
+                    y=df_filtrado["Venta Valor ($)"],
+                    name="Venta Valor ($)",
+                    fill='tozeroy',
+                    mode='lines',
+                    line=dict(color='#A6C8FF', width=2),
+                    fillcolor='rgba(166, 200, 255, 0.4)'
+                ),
+                secondary_y=False,
+            )
+
+            # 3. Evolución de Precio (Sobrepuesta y Destacada)
             fig.add_trace(
                 go.Scatter(
                     x=df_filtrado["Semana"],
                     y=df_filtrado["Precio ($)"],
-                    name="Precio ($)",
-                    line=dict(color='#D32F2F', width=3, dash='dot'),
-                    mode='lines+markers'
+                    name="Variación de Precio ($)",
+                    line=dict(color='#D32F2F', width=4), # Línea más gruesa para resaltar
+                    mode='lines+markers',
+                    marker=dict(size=8, symbol='circle', line=dict(width=2, color='white')),
+                    connectgaps=True
                 ),
                 secondary_y=True,
             )
 
-            # Diseño del Gráfico
+            # Diseño del Gráfico para simular "Sobreposición"
             fig.update_layout(
-                title=dict(text=f"<b>Análisis de Elasticidad: {prod_sel}</b>", font=dict(size=20)),
+                title=dict(
+                    text=f"<b>Correlación Precio vs Desempeño: {prod_sel}</b>", 
+                    font=dict(size=22, color='#1f1f1f')
+                ),
                 hovermode="x unified",
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                height=600,
+                legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="center", x=0.5),
+                height=650,
                 template="plotly_white",
-                margin=dict(l=20, r=20, t=100, b=20)
+                margin=dict(l=10, r=10, t=120, b=20),
+                # Resaltar el área de trazado
+                plot_bgcolor='rgba(250, 250, 250, 0.5)'
             )
 
-            fig.update_yaxes(title_text="Volumen / Valor", secondary_y=False)
-            fig.update_yaxes(title_text="Precio Unitario ($)", secondary_y=True, showgrid=False)
+            # Ajuste de ejes para que el precio no se pierda
+            fig.update_yaxes(
+                title_text="<b>Volumen / Valor</b>", 
+                secondary_y=False, 
+                gridcolor='#f0f0f0',
+                title_font=dict(color='#002366')
+            )
+            
+            # El eje de precio se ajusta automáticamente al rango del producto
+            fig.update_yaxes(
+                title_text="<b>Precio Unitario ($)</b>", 
+                secondary_y=True, 
+                showgrid=False,
+                title_font=dict(color='#D32F2F'),
+                tickfont=dict(color='#D32F2F'),
+                # Añadimos un pequeño margen para que la línea de precio no toque los bordes
+                range=[df_filtrado["Precio ($)"].min() * 0.9, df_filtrado["Precio ($)"].max() * 1.1]
+            )
 
             st.plotly_chart(fig, use_container_width=True)
 
-            # --- MÉTRICAS ---
+            # --- MÉTRICAS DE IMPACTO ---
             st.markdown("---")
             m1, m2, m3, m4 = st.columns(4)
             
@@ -2031,8 +2055,11 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
             m3.metric("Precio Promedio", f"${precio_avg:.2f}")
             
             if len(df_filtrado) > 1:
+                # Coeficiente de correlación de Pearson
                 corr = df_filtrado["Precio ($)"].corr(df_filtrado["Venta Volumen (Pzas)"])
-                m4.metric("Corr. Precio/Vol", f"{corr:.2f}", help="Cercano a -1 es alta sensibilidad")
+                color_corr = "normal" if corr > -0.5 else "inverse"
+                m4.metric("Corr. Precio/Vol", f"{corr:.2f}", 
+                          help="Un valor cercano a -1 indica que al subir el precio, el volumen baja drásticamente.")
         else:
             st.warning("No hay datos para los filtros seleccionados.")
     else:
