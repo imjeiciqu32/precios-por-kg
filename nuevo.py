@@ -1957,37 +1957,52 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
 
         if not df_filtrado.empty:
             import plotly.graph_objects as go
+            from plotly.subplots import make_subplots
 
-            # --- GRÁFICO 1: VENTAS VALOR Y VOLUMEN ---
-            fig_perf = go.Figure()
+            # --- GRÁFICO 1: VENTAS VALOR Y VOLUMEN (ESTILO EXCEL COMBINADO) ---
+            # Usamos ejes secundarios para que el área y las barras no se aplasten entre sí
+            fig_perf = make_subplots(specs=[[{"secondary_y": True}]])
 
-            # Volumen (Barras)
-            fig_perf.add_trace(go.Bar(
-                x=df_filtrado["Semana"],
-                y=df_filtrado["Venta Volumen (Pzas)"],
-                name="Volumen (Pzas)",
-                marker_color='#002366',
-                opacity=0.6
-            ))
+            # 1. Valor (Área) - La ponemos primero para que quede al fondo
+            fig_perf.add_trace(
+                go.Scatter(
+                    x=df_filtrado["Semana"],
+                    y=df_filtrado["Venta Valor ($)"],
+                    name="Venta Valor ($)",
+                    fill='tozeroy',
+                    mode='lines',
+                    line=dict(color='#76D7C4', width=2), # Verde agua como tu ejemplo
+                    fillcolor='rgba(118, 215, 196, 0.4)'
+                ),
+                secondary_y=True,
+            )
 
-            # Valor (Área)
-            fig_perf.add_trace(go.Scatter(
-                x=df_filtrado["Semana"],
-                y=df_filtrado["Venta Valor ($)"],
-                name="Venta Valor ($)",
-                fill='tozeroy',
-                line=dict(color='#A6C8FF', width=2),
-                fillcolor='rgba(166, 200, 255, 0.3)'
-            ))
+            # 2. Volumen (Barras) - Encima del área
+            fig_perf.add_trace(
+                go.Bar(
+                    x=df_filtrado["Semana"],
+                    y=df_filtrado["Venta Volumen (Pzas)"],
+                    name="Volumen (Pzas)",
+                    marker_color='#002366', # Azul oscuro
+                    opacity=1 # Sólidas para resaltar sobre el área
+                ),
+                secondary_y=False,
+            )
 
             fig_perf.update_layout(
-                title=f"<b>Desempeño de Ventas: {prod_sel}</b>",
+                title=f"<b>Desempeño Sell Out: {prod_sel}</b>",
                 hovermode="x unified",
-                height=400,
+                height=450,
                 template="plotly_white",
-                margin=dict(l=20, r=20, t=50, b=20),
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                margin=dict(l=20, r=20, t=80, b=20),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+                barmode='overlay' # Esto permite que se encimen perfectamente
             )
+
+            # Ajuste de nombres de ejes
+            fig_perf.update_yaxes(title_text="<b>Volumen (pzas)</b>", secondary_y=False)
+            fig_perf.update_yaxes(title_text="Venta Valor ($)", secondary_y=True, showgrid=False)
+
             st.plotly_chart(fig_perf, use_container_width=True)
 
             # --- GRÁFICO 2: EVOLUCIÓN DE PRECIOS (DEDICADO) ---
@@ -1997,20 +2012,20 @@ if modo == "Price and Volumen" and not st.session_state.data.empty:
                 x=df_filtrado["Semana"],
                 y=df_filtrado["Precio ($)"],
                 name="Precio Unitario ($)",
-                line=dict(color='#D32F2F', width=4),
+                line=dict(color='#F72585', width=4), # Rosa vibrante para que destaque
                 mode='lines+markers',
-                marker=dict(size=8, symbol='diamond')
+                marker=dict(size=10, symbol='circle', line=dict(width=2, color='white'))
             ))
 
             fig_price.update_layout(
-                title="<b>Evolución del Precio Unitario</b>",
+                title="<b>Variación de Precio Unitario</b>",
                 xaxis_title="Semana",
                 yaxis_title="Precio ($)",
                 hovermode="x unified",
                 height=300,
                 template="plotly_white",
                 margin=dict(l=20, r=20, t=50, b=20),
-                plot_bgcolor='rgba(242, 242, 242, 0.5)' # Fondo gris tenue para diferenciar
+                plot_bgcolor='rgba(240, 242, 246, 0.5)'
             )
             st.plotly_chart(fig_price, use_container_width=True)
 
