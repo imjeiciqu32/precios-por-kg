@@ -1340,7 +1340,6 @@ if modo != "Price and Volumen" and not st.session_state.data.empty:
                                             "Accion": f"📈 **Modo Líder:** Evaluar ajuste a **{calcular_rango_g(row_b['Precio ($)'], lider_c['Precio por Kg ($)'])}**."
                                         })
                                 elif lider_c is not None:
-                                elif lider_c is not None:
                                     marca_b = identificar_marca(row_b["Producto"])
                                     rivales = df_comp[df_comp.apply(lambda x: es_rival_de(x["Producto"], marca_b), axis=1)]
                                     bench = rivales.sort_values("SOM (%)", ascending=False).iloc[0] if not rivales.empty else lider_c
