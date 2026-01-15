@@ -1247,7 +1247,7 @@ if modo != "Price and Volumen" and not st.session_state.data.empty:
         st.subheader("🚀 Sugerencias / Observaciones en base al Mercado")
         
         mapa_rivales = {
-            "TAKIS": ["DORITO", "DINAMITA"],
+            "TAKIS": ["DORITO","doritos", "DINAMITA"],
             "CHIPS": ["SABRITA", "RECETA CRUJIENTE"],
             "PAPAS BARCEL": ["SABRITA", "RECETA CRUJIENTE"],
             "CHIPOTLES": ["RANCHERITO", "FRITO"],
@@ -1340,16 +1340,30 @@ if modo != "Price and Volumen" and not st.session_state.data.empty:
                                             "Accion": f"📈 **Modo Líder:** Evaluar ajuste a **{calcular_rango_g(row_b['Precio ($)'], lider_c['Precio por Kg ($)'])}**."
                                         })
                                 elif lider_c is not None:
+                                elif lider_c is not None:
                                     marca_b = identificar_marca(row_b["Producto"])
                                     rivales = df_comp[df_comp.apply(lambda x: es_rival_de(x["Producto"], marca_b), axis=1)]
                                     bench = rivales.sort_values("SOM (%)", ascending=False).iloc[0] if not rivales.empty else lider_c
+                                    
+                                    # Cálculo del Index de Precio por Kg
                                     idx = int((row_b["Precio por Kg ($)"] / bench["Precio por Kg ($)"]) * 100)
+                                    
+                                    # CASO 1: ESTÁS MUY CARO (INDEX > 95)
                                     if idx > 95:
                                         hallazgos.append({
                                             "Prioridad": "ALTA", "Tipo": f"DUELO vs {bench['Producto']}", "Ocasión": oca,
-                                            "Msg": f"{row_b['Producto']} fuera de rango ({peso_seg:.1f}% Occ)",
-                                            "Detalle": f"Index {idx} vs rival. Riesgo de pérdida de preferencia.",
-                                            "Accion": f"⚖️ **R&D:** Ajustar a **{calcular_rango_g(row_b['Precio ($)'], bench['Precio por Kg ($)'])}**."
+                                            "Msg": f"{row_b['Producto']} está sobre-preciado (Index {idx})",
+                                            "Detalle": f"Estás {idx-100}% más caro por Kg que tu rival directo en {oca}.",
+                                            "Accion": f"⚖️ **Defensa:** Aumentar gramaje a **{calcular_rango_g(row_b['Precio ($)'], bench['Precio por Kg ($)'])}** para ser competitivo."
+                                        })
+                                    
+                                    # CASO 2: ESTÁS REGALANDO PRODUCTO (INDEX < 90) - ¡EL QUE TE FALTABA!
+                                    elif idx < 90:
+                                        hallazgos.append({
+                                            "Prioridad": "MEDIA", "Tipo": f"RENTABILIDAD vs {bench['Producto']}", "Ocasión": oca,
+                                            "Msg": f"{row_b['Producto']} con exceso de gramaje (Index {idx})",
+                                            "Detalle": f"Estás {100-idx}% por debajo del precio/kg del rival. Estás sacrificando margen innecesariamente.",
+                                            "Accion": f"💰 **Optimización:** Reducir gramaje a **{calcular_rango_g(row_b['Precio ($)'], bench['Precio por Kg ($)'])}** para alinear rentabilidad."
                                         })
             else:
                 st.warning("⚠️ El análisis de mercado requiere la columna 'Ocasión'.")
