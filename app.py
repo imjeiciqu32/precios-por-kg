@@ -1453,7 +1453,7 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                                         })
                                     
                                     # CASO 2: ESTÁS REGALANDO PRODUCTO (INDEX < 90) - ¡EL QUE TE FALTABA!
-                                    elif idx < 90:
+                                    elif idx < 86:
                                         hallazgos.append({
                                             "Prioridad": "MEDIA", "Tipo": f"RENTABILIDAD vs {bench['Producto']}", "Ocasión": oca,
                                             "Msg": f"{row_b['Producto']} con exceso de gramaje (Index {idx})",
