@@ -17,6 +17,12 @@ try:
     from price_pack import PLANTILLAS_PP
 except ImportError:
     PLANTILLAS_PP = {}
+
+try:
+    from data_price_vol import PLANTILLA_PV
+except ImportError:
+    PLANTILLA_PV = {}
+    
     
 # --- CARGA DE ARQUITECTURA DESDE TU ARCHIVO EN GITHUB/LOCAL ---
 try:
@@ -97,7 +103,7 @@ def mostrar_glosario():
     st.write("Esta sección detalla la metodología técnica utilizada para el análisis de Pricing en Barcel.")
     
     st.divider()
-
+    
     # --- SECCIÓN: PRICE LADDER ---
     st.info("#### **1. Price Ladder (Escalera de Precios)**")
     st.markdown("""
@@ -108,7 +114,7 @@ def mostrar_glosario():
     """)
     
     st.divider()
-
+    
     # --- SECCIÓN: PRICE ARCHITECTURE ---
     st.success("#### **2. Price Architecture (Arquitectura de Precios)**")
     st.markdown("""
@@ -119,9 +125,9 @@ def mostrar_glosario():
     * **Curvas de Precio:** Facilita el análisis de las curvas de valor para identificar desviaciones y asegurar una transición suave entre diferentes tamaños (gramajes) y desembolsos.
     * **Benchmarking Inter-Canal:** Mediante la comparación de los **Index por Kilo ($/Kg)**, podemos evaluar cómo "jugamos" en cada canal, garantizando que nuestra competitividad sea consistente y evitando la canibalización interna entre canales de venta.
     """)
-
+    
     st.divider()
-
+    
     # --- SECCIÓN: PRECIO POR KILO E INDEX ---
     st.warning("#### **3. Precio por Kilo ($/Kg) e Index**")
     st.markdown("""    
@@ -133,14 +139,39 @@ def mostrar_glosario():
     
     Esta métrica es vital para definir si nuestra estrategia de precio está alineada con el posicionamiento de marca (Premium vs. Value) frente a la competencia.
     """)
+    
+    st.divider()
+    
+    # --- SECCIÓN: PRICE AND VOLUME ANALYTICS ---
+    st.info("#### **4. Price & Volume Analytics (Análisis de Precio y Volumen)**")
+    st.markdown("""
+    Es el módulo de **análisis temporal** que evalúa el desempeño comercial mediante el seguimiento semanal de las métricas clave del negocio. Permite comprender la dinámica entre las decisiones de pricing y la respuesta del mercado.
+    
+    **Indicadores de Performance:**
+    * **Evolución de Ventas en Valor:** Monitoreo del ingreso total generado semana a semana, identificando tendencias y períodos de crecimiento o contracción.
+    * **Evolución de Ventas en Volumen:** Seguimiento de las unidades vendidas para entender la rotación real de los productos de manera Sell In.
+    * **Tendencias de Precio:** Análisis de la variación promedio del precio para poder observar cuando fue el cambio de precios de determinado producto.
+    
+    **Análisis de Sensibilidad al Precio:**
+    * **Variación Valor vs. Volumen:** Cuantificación del cambio porcentual en ventas valor y unidades vendidas entre períodos.
+    * **Elasticidad Precio-Demanda:** Medición del impacto que tienen los ajustes de precio sobre el volumen de ventas, permitiendo calcular la **sensibilidad del consumidor** ante cambios en la estrategia de pricing.
+    * **Identificación de Períodos Críticos:** Reconocimiento de semanas donde las variaciones de precio generaron impactos significativos (positivos o negativos) en el desempeño comercial.
 
-    if st.button("Entendido", use_container_width=True):
+    """)
+    
+    st.divider()
+    
+    if st.button("✅ Entendido", use_container_width=True):
         st.rerun()
-
 # --- 1. NAVEGACIÓN Y CONFIGURACIÓN ---
 with st.sidebar:
     st.header("🚀 Modo de Visualización")
-    modo = st.radio("Seleccionar Herramienta:", ["Price Ladder", "Price Pack"], label_visibility="collapsed")
+    # Agregamos el nuevo modo a la lista
+    modo = st.radio(
+        "Seleccionar Herramienta:", 
+        ["Price Ladder", "Price Pack", "Price and Volume"], 
+        label_visibility="collapsed"
+    )
     
     # Botón limpio para el Glosario
     if st.button("❓ Ver Glosario Técnico", use_container_width=True):
@@ -148,30 +179,61 @@ with st.sidebar:
             mostrar_glosario()
         else:
             st.info("Función de glosario no definida aún.")
-
-# LÓGICA DE MODOS (Mantenida intacta)
+            
+# LÓGICA DE MODOS (Actualizada con Price and Volume)
 if modo == "Price Ladder":
     DB_FILE = "historico_productos.csv"
     label_agru = "Ocasión"
     opciones_agru = ["BITES", "INDIVIDUAL", "HAMBRE", "COMPARTIR", "FAMILIAR", "REUNIÓN", "FIESTA", "TRANSFORMADOR"]
     fuente_plantillas = PLANTILLAS if 'PLANTILLAS' in globals() else {}
     columnas_tabla = ["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)", "SOM (%)"]
-else:
+
+elif modo == "Price Pack":
     DB_FILE = "historico_price_pack.csv"
     label_agru = "Canal"
     opciones_agru = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "DETALLE", "AUTOSERVICIOS", "CONVENIENCIA"]
     fuente_plantillas = PLANTILLAS_PP if 'PLANTILLAS_PP' in globals() else {}
     columnas_tabla = ["Producto", "Familia", "Canal", "Precio ($)", "Gramaje (g)"]
 
+else: # MODO: Price and Volume
+    DB_FILE = "historico_ventas_semanales.csv"
+    label_agru = "Semana" # Aquí agruparemos por número de semana
+    
+    # IMPORTANTE: Aseguramos que las opciones sean números para que coincidan con tu PLANTILLA_PV
+    opciones_agru = list(range(1, 53)) 
+    
+    fuente_plantillas = PLANTILLA_PV if 'PLANTILLA_PV' in globals() else {}
+    
+    # Definimos las columnas exactas que vienen en tu nueva plantilla
+    columnas_tabla = ["Semana", "Producto", "Fabricante", "Precio ($)", "Venta Volumen (Pzas)","Venta Valor ($)"]
+
 # --- 2. FUNCIONES CORE (Mantenidas intactas) ---
 def calcular_pkg(df, modo_actual):
-    if df.empty: return df
-    df["Precio ($)"] = pd.to_numeric(df["Precio ($)"], errors='coerce').fillna(0)
-    df["Gramaje (g)"] = pd.to_numeric(df["Gramaje (g)"], errors='coerce').fillna(1).replace(0, 1)
-    df["Precio por Kg ($)"] = (df["Precio ($)"] / (df["Gramaje (g)"] / 1000)).round(1)
+    if df.empty: 
+        return df
+    
+    # 1. LÓGICA PARA PRICE LADDER Y PRICE PACK
+    # Solo calculamos $/kg si existen las columnas necesarias
+    if "Precio ($)" in df.columns and "Gramaje (g)" in df.columns:
+        df["Precio ($)"] = pd.to_numeric(df["Precio ($)"], errors='coerce').fillna(0)
+        df["Gramaje (g)"] = pd.to_numeric(df["Gramaje (g)"], errors='coerce').fillna(1).replace(0, 1)
+        # Mantenemos tu fórmula original: (Precio / (Gramos / 1000))
+        df["Precio por Kg ($)"] = (df["Precio ($)"] / (df["Gramaje (g)"] / 1000)).round(1)
+    
+    # 2. LÓGICA ESPECÍFICA POR MODO
     if modo_actual == "Price Ladder":
-        if "SOM (%)" not in df.columns: df["SOM (%)"] = 0.0
-        if "Fabricante" not in df.columns: df["Fabricante"] = "OTROS"
+        if "SOM (%)" not in df.columns: 
+            df["SOM (%)"] = 0.0
+        if "Fabricante" not in df.columns: 
+            df["Fabricante"] = "OTROS"
+            
+    elif modo_actual == "Price and Volume":
+        # Para este modo, solo aseguramos que las columnas de valor y volumen sean numéricas
+        cols_pv = ["Precio ($)", "Venta Volumen (Pzas)","Venta Valor ($)"]
+        for col in cols_pv:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                
     return df
 
 def procesar_datos_piramide(df):
@@ -201,116 +263,327 @@ if "data" not in st.session_state or st.session_state.get("last_modo") != modo:
         st.session_state.data = pd.DataFrame(columns=columnas_tabla)
     st.session_state.last_modo = modo
 
-# --- 4. BARRA LATERAL (GESTIÓN MEJORADA) ---
+# --- 4. BARRA LATERAL (GESTIÓN MEJORADA CON DISEÑO PREMIUM) ---
 with st.sidebar:
-    st.markdown("---")
-    st.header("📁 Gestión de Datos")
+    # Header principal con gradiente
+    st.markdown("""
+        <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    padding: 1.5rem 1rem; 
+                    border-radius: 12px; 
+                    margin-bottom: 1.5rem;
+                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);'>
+            <h2 style='color: white; margin: 0; font-weight: 700; text-align: center; font-size: 1.5rem;'>
+                📁 Gestión de Datos
+            </h2>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # --- SECCIÓN 1: CARGAR DATOS ---
+    with st.container(border=True):
+        st.markdown("""
+            <div style='text-align: center; padding-bottom: 0.5rem;'>
+                <span style='font-size: 1.1rem; font-weight: 600; color: #334155;'>
+                    📥 Cargar Plantilla
+                </span>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        nombre_plantilla = st.selectbox(
+            "Selecciona una plantilla:", 
+            ["-- Seleccionar --"] + list(fuente_plantillas.keys()),
+            label_visibility="collapsed"
+        )
+        
+        # Mostrar preview de la plantilla seleccionada
+        if nombre_plantilla != "-- Seleccionar --":
+            df_preview = pd.DataFrame(fuente_plantillas[nombre_plantilla])
+            num_productos = len(df_preview['Producto'].unique()) if 'Producto' in df_preview.columns else 0
+            num_registros = len(df_preview)
+            
+            st.markdown(f"""
+                <div style='background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); 
+                            padding: 0.8rem; 
+                            border-radius: 8px; 
+                            margin: 0.5rem 0;
+                            border-left: 3px solid #3B82F6;'>
+                    <p style='margin: 0; font-size: 0.85rem; color: #1E40AF;'>
+                        <strong>📊 Vista Previa:</strong><br>
+                        • {num_productos} productos únicos<br>
+                        • {num_registros} registros totales<br>
+                        • Modo: <strong>{modo}</strong>
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        if st.button("🚀 Cargar Datos", use_container_width=True, type="primary"):
+            if nombre_plantilla != "-- Seleccionar --":
+                with st.spinner("⏳ Procesando datos..."):
+                    # Convertimos a DataFrame
+                    df_nuevo = pd.DataFrame(fuente_plantillas[nombre_plantilla])
+                    
+                    # CARGA INDEPENDIENTE: Evitamos pasar por calcular_pkg si es Price and Volume
+                    if modo == "Price and Volume":
+                        st.session_state.data = df_nuevo
+                    else:
+                        # Ladder y Pack sí necesitan calcular $/kg
+                        st.session_state.data = calcular_pkg(df_nuevo, modo)
+                    
+                    st.session_state.data.to_csv(DB_FILE, index=False)
+                    st.success("✅ ¡Datos cargados exitosamente!")
+                    st.balloons()
+                    st.rerun()
+            else:
+                st.warning("⚠️ Por favor selecciona una plantilla válida")
+    
+
+    # --- SECCIÓN 2: EXPORTACIÓN ---
+    if not st.session_state.data.empty:
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        st.markdown("""
+            <div style='background: linear-gradient(135deg, #10B981 0%, #059669 100%); 
+                        padding: 1rem; 
+                        border-radius: 10px; 
+                        margin-bottom: 1rem;
+                        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);'>
+                <h3 style='color: white; margin: 0; font-weight: 600; text-align: center; font-size: 1.1rem;'>
+                    📥 Exportar Datos
+                </h3>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        with st.container(border=True):
+            # Función mejorada de exportación con múltiples formatos
+            def to_excel(df):
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    # Hoja principal con todos los datos
+                    df.to_excel(writer, index=False, sheet_name='Datos_Completos')
+                    
+                    # Si hay columnas de producto, crear hoja de resumen
+                    if 'Producto' in df.columns and 'Venta Valor ($)' in df.columns:
+                        resumen = df.groupby('Producto').agg({
+                            'Venta Valor ($)': 'sum',
+                            'Venta Volumen (Pzas)': 'sum' if 'Venta Volumen (Pzas)' in df.columns else 'count'
+                        }).reset_index()
+                        resumen.columns = ['Producto', 'Total Ventas ($)', 'Total Volumen']
+                        resumen = resumen.sort_values('Total Ventas ($)', ascending=False)
+                        resumen.to_excel(writer, index=False, sheet_name='Resumen_por_Producto')
+                    
+                    # Metadata
+                    metadata = pd.DataFrame({
+                        'Información': ['Fecha de Exportación', 'Modo de Análisis', 'Total Registros', 'Productos Únicos'],
+                        'Valor': [
+                            pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S'),
+                            modo,
+                            len(df),
+                            len(df['Producto'].unique()) if 'Producto' in df.columns else 'N/A'
+                        ]
+                    })
+                    metadata.to_excel(writer, index=False, sheet_name='Metadata')
+                
+                return output.getvalue()
+            
+            # Botón de descarga Excel con icono mejorado
+            excel_data = to_excel(st.session_state.data)
+            timestamp = pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')
+            
+            st.download_button(
+                label="📊 Descargar Excel Completo",
+                data=excel_data,
+                file_name=f'barcel_{modo.lower().replace(" ", "_")}_{timestamp}.xlsx',
+                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                use_container_width=True,
+                type="primary"
+            )
+            
+            # Opción adicional: Descargar CSV
+            csv_data = st.session_state.data.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📄 Descargar CSV",
+                data=csv_data,
+                file_name=f'barcel_{modo.lower().replace(" ", "_")}_{timestamp}.csv',
+                mime='text/csv',
+                use_container_width=True
+            )
+            
+            st.markdown("""
+                <div style='background: #F0FDF4; 
+                            padding: 0.6rem; 
+                            border-radius: 6px; 
+                            margin-top: 0.5rem;
+                            border-left: 3px solid #10B981;'>
+                    <p style='margin: 0; font-size: 0.8rem; color: #065F46;'>
+                        💡 <strong>Tip:</strong> El Excel incluye múltiples hojas con datos completos y metadata
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
+    
+    # --- SECCIÓN 3: HERRAMIENTAS AVANZADAS ---
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    st.markdown("""
+        <div style='background: linear-gradient(135deg, #64748B 0%, #475569 100%); 
+                    padding: 1rem; 
+                    border-radius: 10px; 
+                    margin-bottom: 1rem;
+                    box-shadow: 0 2px 8px rgba(100, 116, 139, 0.3);'>
+            <h3 style='color: white; margin: 0; font-weight: 600; text-align: center; font-size: 1.1rem;'>
+                🛠️ Herramientas
+            </h3>
+        </div>
+    """, unsafe_allow_html=True)
     
     with st.container(border=True):
-        nombre_plantilla = st.selectbox("Cargar Plantilla:", ["-- Seleccionar --"] + list(fuente_plantillas.keys()))
-        if st.button("📥 Cargar Datos", use_container_width=True, type="primary"):
-            if nombre_plantilla != "-- Seleccionar --":
-                st.session_state.data = calcular_pkg(pd.DataFrame(fuente_plantillas[nombre_plantilla]), modo)
-                st.session_state.data.to_csv(DB_FILE, index=False)
-                st.success("¡Datos cargados!")
+        # Botón para limpiar filtros (si aplicable)
+        if st.button("🔄 Refrescar Vista", use_container_width=True):
+            st.rerun()
+        
+        # Información del sistema
+        with st.expander("ℹ️ Información del Sistema"):
+            st.markdown(f"""
+                **Modo Actual:** {modo}  
+                **Base de Datos:** `{DB_FILE}`  
+                **Estado:** {'✅ Datos cargados' if not st.session_state.data.empty else '⚠️ Sin datos'}  
+                **Última actualización:** {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
+            """)
+        
+        # Reset con confirmación mejorada
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("""
+            <div style='background: #FEF2F2; 
+                        padding: 0.6rem; 
+                        border-radius: 6px;
+                        border-left: 3px solid #DC2626;'>
+                <p style='margin: 0; font-size: 0.8rem; color: #991B1B;'>
+                    ⚠️ <strong>Zona de Peligro</strong>
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Checkbox de confirmación antes del reset
+        confirmar_reset = st.checkbox("Confirmar eliminación de datos", value=False)
+        
+        if st.button(
+            "🗑️ Resetear Sistema Completo", 
+            use_container_width=True, 
+            type="secondary",
+            disabled=not confirmar_reset
+        ):
+            if confirmar_reset:
+                if os.path.exists(DB_FILE): 
+                    os.remove(DB_FILE)
+                st.session_state.data = pd.DataFrame(columns=columnas_tabla)
+                st.success("✅ Sistema reseteado correctamente")
                 st.rerun()
-
-    # EXPORTACIÓN
-    def to_excel(df):
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Analisis_Portafolio')
-        return output.getvalue()
-
-    if not st.session_state.data.empty:
-        st.divider()
-        st.subheader("📥 Exportar Catálogo")
-        excel_data = to_excel(st.session_state.data)
-        st.download_button(
-            label="📄 Descargar Excel Completo",
-            data=excel_data,
-            file_name=f'barcel_{modo.lower()}_data.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            use_container_width=True
-        )
-
-    if st.button("🗑️ Reset Sistema", use_container_width=True):
-        if os.path.exists(DB_FILE): os.remove(DB_FILE)
-        st.session_state.data = pd.DataFrame(columns=columnas_tabla)
-        st.rerun()
+            else:
+                st.warning("⚠️ Debes confirmar la acción marcando la casilla")
+    
+    # --- FOOTER ---
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("""
+        <div style='text-align: center; padding: 1rem; border-top: 1px solid #E2E8F0;'>
+            <p style='margin: 0; font-size: 0.75rem; color: #94A3B8;'>
+                🚀 Powered by <br>
+                 Revenue Growth Management - Pricing
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
 
 # --- 5. PANEL PRINCIPAL ---
 st.title(f"📊 {modo.upper()}")
 
 
 # --- 5. FORMULARIOS DE AGREGAR ---
-with st.expander(f"➕ Agregar nuevo SKU a {modo}", expanded=False):
-    with st.form("form_nuevo_sku", clear_on_submit=True):
-        col1, col2, col3 = st.columns(3)
-        f_nom = col1.text_input("Nombre del Producto").upper()
-        if modo == "Price Ladder":
-            f_fab = col2.selectbox("Fabricante", ["BARCEL", "SABRITAS", "OTROS", "PROPUESTA"])
-            f_cat = col3.selectbox("Ocasión de Consumo", opciones_agru)
-            col4, col5, col6 = st.columns(3)
-            f_pre = col4.number_input("Precio ($)", min_value=0.0, step=0.5)
-            f_gra = col5.number_input("Gramaje (g)", min_value=1.0, step=1.0)
-            f_som = col6.number_input("SOM (%)", min_value=0.0, max_value=100.0, step=0.1)
-            if st.form_submit_button("Añadir a Escalera"):
-                nuevo = pd.DataFrame([{"Producto": f_nom, "Fabricante": f_fab, "Ocasión": f_cat, "Precio ($)": f_pre, "Gramaje (g)": f_gra, "SOM (%)": f_som}])
-                st.session_state.data = pd.concat([st.session_state.data, nuevo], ignore_index=True)
-                st.session_state.data = calcular_pkg(st.session_state.data, modo)
-                st.session_state.data.to_csv(DB_FILE, index=False)
-                st.rerun()
-        else:
-            f_fam = col2.text_input("Familia").upper()
-            f_can = col3.selectbox("Canal", opciones_agru)
-            col4, col5 = st.columns(2)
-            f_pre = col4.number_input("Precio ($)", min_value=0.0, step=0.5)
-            f_gra = col5.number_input("Gramaje (g)", min_value=1.0, step=1.0)
-            if st.form_submit_button("Añadir a Price Pack"):
-                nuevo = pd.DataFrame([{"Producto": f_nom, "Familia": f_fam, "Canal": f_can, "Precio ($)": f_pre, "Gramaje (g)": f_gra}])
-                st.session_state.data = pd.concat([st.session_state.data, nuevo], ignore_index=True)
-                st.session_state.data = calcular_pkg(st.session_state.data, modo)
-                st.session_state.data.to_csv(DB_FILE, index=False)
-                st.rerun()
-
+# Solo mostramos el formulario si no estamos en el modo "Price and Volume"
+if modo in ["Price Ladder", "Price Pack"]:
+    with st.expander(f"➕ Agregar nuevo SKU a {modo}", expanded=False):
+        with st.form("form_nuevo_sku", clear_on_submit=True):
+            col1, col2, col3 = st.columns(3)
+            f_nom = col1.text_input("Nombre del Producto").upper()
+            
+            if modo == "Price Ladder":
+                f_fab = col2.selectbox("Fabricante", ["BARCEL", "SABRITAS", "OTROS", "PROPUESTA"])
+                f_cat = col3.selectbox("Ocasión de Consumo", opciones_agru)
+                col4, col5, col6 = st.columns(3)
+                f_pre = col4.number_input("Precio ($)", min_value=0.0, step=0.5)
+                f_gra = col5.number_input("Gramaje (g)", min_value=1.0, step=1.0)
+                f_som = col6.number_input("SOM (%)", min_value=0.0, max_value=100.0, step=0.1)
+                
+                if st.form_submit_button("Añadir a Escalera"):
+                    nuevo = pd.DataFrame([{
+                        "Producto": f_nom, 
+                        "Fabricante": f_fab, 
+                        "Ocasión": f_cat, 
+                        "Precio ($)": f_pre, 
+                        "Gramaje (g)": f_gra, 
+                        "SOM (%)": f_som
+                    }])
+                    st.session_state.data = pd.concat([st.session_state.data, nuevo], ignore_index=True)
+                    st.session_state.data = calcular_pkg(st.session_state.data, modo)
+                    st.session_state.data.to_csv(DB_FILE, index=False)
+                    st.rerun()
+            
+            else: # Este sería el caso de "Price Pack Architecture"
+                f_fam = col2.text_input("Familia").upper()
+                f_can = col3.selectbox("Canal", opciones_agru)
+                col4, col5 = st.columns(2)
+                f_pre = col4.number_input("Precio ($)", min_value=0.0, step=0.5)
+                f_gra = col5.number_input("Gramaje (g)", min_value=1.0, step=1.0)
+                
+                if st.form_submit_button("Añadir a Price Pack"):
+                    nuevo = pd.DataFrame([{
+                        "Producto": f_nom, 
+                        "Familia": f_fam, 
+                        "Canal": f_can, 
+                        "Precio ($)": f_pre, 
+                        "Gramaje (g)": f_gra
+                    }])
+                    st.session_state.data = pd.concat([st.session_state.data, nuevo], ignore_index=True)
+                    st.session_state.data = calcular_pkg(st.session_state.data, modo)
+                    st.session_state.data.to_csv(DB_FILE, index=False)
+                    st.rerun()
+                    
+                    
 # --- 6. EDITOR DE TABLA CON FUNCIÓN DE ELIMINAR ---
-st.markdown("### 📝 Gestión de Portafolio")
+# Solo mostramos la gestión de portafolio si no estamos en el modo "Price and Volume"
+if modo in ["Price Ladder", "Price Pack"]:
+    st.markdown("### 📝 Gestión de Portafolio")
 
-# Creamos una columna temporal para selección si queremos borrado masivo
-df_with_selections = st.session_state.data.copy()
-if "Select" not in df_with_selections.columns:
-    df_with_selections.insert(0, "Select", False)
+    # Creamos una columna temporal para selección si queremos borrado masivo
+    df_with_selections = st.session_state.data.copy()
+    if "Select" not in df_with_selections.columns:
+        df_with_selections.insert(0, "Select", False)
 
-# El editor de datos
-edited_df = st.data_editor(
-    df_with_selections, 
-    num_rows="dynamic",      # Permite agregar filas al final
-    use_container_width=True,
-    key="portfolio_editor",
-    hide_index=True
-)
+    # El editor de datos
+    edited_df = st.data_editor(
+        df_with_selections, 
+        num_rows="dynamic",      # Permite agregar filas al final
+        use_container_width=True,
+        key="portfolio_editor",
+        hide_index=True
+    )
 
-# Lógica para guardar cambios o procesar eliminaciones
-col_btn1, col_btn2 = st.columns([1, 4])
+    # Lógica para guardar cambios o procesar eliminaciones
+    col_btn1, col_btn2 = st.columns([1, 4])
 
-with col_btn1:
-    # Botón para eliminar las filas que el usuario marcó en el checkbox
-    if st.button("🗑️ Eliminar seleccionados", type="secondary"):
-        # Filtramos para quedarnos solo con lo que NO está seleccionado
-        df_final = edited_df[edited_df["Select"] == False].drop(columns=["Select"])
-        st.session_state.data = calcular_pkg(df_final, modo)
+    with col_btn1:
+        # Botón para eliminar las filas que el usuario marcó en el checkbox
+        if st.button("🗑️ Eliminar seleccionados", type="secondary"):
+            # Filtramos para quedarnos solo con lo que NO está seleccionado
+            df_final = edited_df[edited_df["Select"] == False].drop(columns=["Select"])
+            st.session_state.data = calcular_pkg(df_final, modo)
+            st.session_state.data.to_csv(DB_FILE, index=False)
+            st.success("Filas eliminadas correctamente")
+            st.rerun()
+
+    # Lógica para detectar si hubo cambios manuales en las celdas (precios, nombres, etc.)
+    # Ignoramos la columna 'Select' para comparar si hubo cambios reales en los datos
+    current_data_no_select = edited_df.drop(columns=["Select"])
+    if not current_data_no_select.equals(st.session_state.data):
+        st.session_state.data = calcular_pkg(current_data_no_select, modo)
         st.session_state.data.to_csv(DB_FILE, index=False)
-        st.success("Filas eliminadas correctamente")
         st.rerun()
-
-# Lógica para detectar si hubo cambios manuales en las celdas (precios, nombres, etc.)
-# Ignoramos la columna 'Select' para comparar si hubo cambios reales en los datos
-current_data_no_select = edited_df.drop(columns=["Select"])
-if not current_data_no_select.equals(st.session_state.data):
-    st.session_state.data = calcular_pkg(current_data_no_select, modo)
-    st.session_state.data.to_csv(DB_FILE, index=False)
-    st.rerun()
 
 
 # --- 6.5 FILTROS DINÁMICOS (SOLO PARA PRICE LADDER) ---
@@ -546,135 +819,156 @@ if not st.session_state.data.empty:
 
         else:
             # --- 6.9 FILTROS DINÁMICOS PARA PRICE PACK ---
-            st.write("") 
-            with st.container(border=True):
-                st.markdown("### 🔍 Filtros de Visualización (Price Pack)")
-                col_pp1, col_pp2 = st.columns(2)
-        
-                with col_pp1:
-                    lista_canales = sorted(st.session_state.data["Canal"].unique().tolist())
-                    sel_canal_pp = st.multiselect("Filtrar por Canal", lista_canales, key="filter_pp_canal")
-        
-                with col_pp2:
-                    lista_prod_pp = sorted(st.session_state.data["Producto"].unique().tolist())
-                    sel_prod_pp = st.multiselect("Filtrar por Producto", lista_prod_pp, key="filter_pp_prod")
-        
-            if sel_canal_pp:
-                df_p = df_p[df_p["Canal"].isin(sel_canal_pp)]
-            if sel_prod_pp:
-                df_p = df_p[df_p["Producto"].isin(sel_prod_pp)]
-        
-            ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIOS": 5, "CONVENIENCIA": 6}
-            df_p["O_Can"] = df_p["Canal"].str.upper().map(ord_can).fillna(99)
-            df_p = df_p.sort_values(by=["O_Can", "Precio ($)"]).reset_index(drop=True)
-            
-            if not df_p.empty:
-                fig = go.Figure()
-        
-                fig.add_trace(go.Bar(
-                    x=df_p.index, 
-                    y=df_p["Precio por Kg ($)"], 
-                    marker_color="#F8F9FA",
-                    marker_line=dict(color="#D1D1D1", width=1),
-                    marker_opacity=opacidad_barras,
-                    width=ancho_barras,
-                    showlegend=False
-                ))
-                
-                for i in range(len(df_p) + 1):
-                    fig.add_shape(
-                        type="line", x0=i-0.5, x1=i-0.5, 
-                        y0=-0.45, y1=0, 
-                        xref="x", yref="paper",
-                        line=dict(color="#EEEEEE", width=1)
-                    ) 
-        
-                for i, r in df_p.iterrows():
-                    # ETIQUETAS PARA PRICE PACK (Pkg normal como estaba)
-                    val_pkg_pp = r['Precio por Kg ($)']
-                    txt_pkg_pp = f"${val_pkg_pp:,.0f}"
-
-                    fig.add_annotation(
-                        x=i, y=r["Precio por Kg ($)"], 
-                        text=f"<b>{txt_pkg_pp}</b>", 
-                        yshift=15, 
-                        showarrow=False, 
-                        font=dict(size=t_pkg, color="#212121"),
-                        bgcolor="rgba(255,255,255,0.9)", 
-                        bordercolor="#616161", 
-                        borderwidth=1
-                    )
+            # --- 6.9 FILTROS DINÁMICOS PARA PRICE PACK ---
+            # Envolvemos TODO el bloque para que solo exista en el modo Price Pack
+            if modo == "Price Pack":
+                st.write("") 
+                with st.container(border=True):
+                    st.markdown("### 🔍 Filtros de Visualización (Price Pack)")
                     
-                    # Lógica inteligente para Precio Desembolso en Price Pack
-                    p_pp = r['Precio ($)']
-                    txt_p_pp = f"${p_pp:.1f}" if p_pp < 10 else f"${int(p_pp)}"
-
-                    fig.add_annotation(
-                        x=i, y=15, 
-                        text=f"<b>{txt_p_pp}</b>", 
-                        showarrow=False, 
-                        font=dict(size=t_precios, color="white"),
-                        bgcolor="#00B0F0", 
-                        bordercolor="black", 
-                        borderwidth=1.5,      
-                        borderpad=4
-                    )
+                    # Verificación de seguridad: solo mostramos si la columna 'Canal' existe
+                    if "Canal" in st.session_state.data.columns:
+                        col_pp1, col_pp2 = st.columns(2)
                 
-                for cat in df_p["Canal"].unique():
-                    indices = df_p.index[df_p["Canal"] == cat].tolist()
-                    center = (indices[0] + indices[-1]) / 2
-                    fig.add_shape(
-                        type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, 
-                        y0=-0.6, y1=1, xref="x", yref="paper", 
-                        line=dict(color="#CCCCCC", width=1.5) 
-                    )
-                    fig.add_annotation(
-                        x=center, y=-0.6, xref="x", yref="paper", 
-                        text=cat, 
-                        showarrow=False, 
-                        font=dict(size=14, color="#424242", family="Verdana")
-                    )
+                        with col_pp1:
+                            lista_canales = sorted(st.session_state.data["Canal"].unique().tolist())
+                            sel_canal_pp = st.multiselect("Filtrar por Canal", lista_canales, key="filter_pp_canal")
                 
-                fig.update_layout(
-                    height=alto_grafico,
-                    margin=dict(b=margen_b, t=50, l=50, r=50),
-                    template="plotly_white", 
-                    xaxis=dict(
-                        tickmode='array', 
-                        tickvals=list(df_p.index), 
-                        ticktext=["<b>"+str(t)+"</b>" for t in df_p["Producto"]],
-                        tickangle=angulo_nombres,
-                        tickfont=dict(color="#000000", size=t_nombres, family="Verdana"),
-                        showgrid=False
-                    ),
-                    yaxis=dict(
-                        tickprefix="$", 
-                        showgrid=True, 
-                        gridcolor="#F5F5F5"
-                    )
-                )
-        
-                # RENDERIZADO CON CONFIGURACIÓN DE DESCARGA
-                st.plotly_chart(fig, use_container_width=True, config={
-                    'toImageButtonOptions': {
-                        'format': 'png',
-                        'filename': 'Price_Pack_Export',
-                        'height': alto_grafico,
-                        'width': 1950,
-                        'scale': 2
-                    }
-                })
-            else:
-                st.info("Utiliza los filtros para visualizar los datos del Price Pack.")
+                        with col_pp2:
+                            lista_prod_pp = sorted(st.session_state.data["Producto"].unique().tolist())
+                            sel_prod_pp = st.multiselect("Filtrar por Producto", lista_prod_pp, key="filter_pp_prod")
+                
+                        # Lógica de filtrado sobre el DataFrame df_p
+                        if sel_canal_pp:
+                            df_p = df_p[df_p["Canal"].isin(sel_canal_pp)]
+                        if sel_prod_pp:
+                            df_p = df_p[df_p["Producto"].isin(sel_prod_pp)]
+                
+                        # Ordenamiento específico del modo Price Pack
+                        ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIOS": 5, "CONVENIENCIA": 6}
+                        df_p["O_Can"] = df_p["Canal"].str.upper().map(ord_can).fillna(99)
+                        df_p = df_p.sort_values(by=["O_Can", "Precio ($)"]).reset_index(drop=True)
+                        
+                        # Solo renderizamos el gráfico si hay datos tras filtrar
+                        if not df_p.empty:
+                            import plotly.graph_objects as go
+                            fig = go.Figure()
+                
+                            # 1. Barras de fondo (Pkg)
+                            fig.add_trace(go.Bar(
+                                x=df_p.index, 
+                                y=df_p["Precio por Kg ($)"], 
+                                marker_color="#F8F9FA",
+                                marker_line=dict(color="#D1D1D1", width=1),
+                                marker_opacity=opacidad_barras,
+                                width=ancho_barras,
+                                showlegend=False
+                            ))
+                            
+                            # Líneas de división de fondo
+                            for i in range(len(df_p) + 1):
+                                fig.add_shape(
+                                    type="line", x0=i-0.5, x1=i-0.5, 
+                                    y0=-0.45, y1=0, 
+                                    xref="x", yref="paper",
+                                    line=dict(color="#EEEEEE", width=1)
+                                ) 
+                
+                            # Iteración para etiquetas y anotaciones
+                            for i, r in df_p.iterrows():
+                                # ETIQUETAS PARA $/KG
+                                val_pkg_pp = r['Precio por Kg ($)']
+                                txt_pkg_pp = f"${val_pkg_pp:,.0f}"
+                
+                                fig.add_annotation(
+                                    x=i, y=r["Precio por Kg ($)"], 
+                                    text=f"<b>{txt_pkg_pp}</b>", 
+                                    yshift=15, 
+                                    showarrow=False, 
+                                    font=dict(size=t_pkg, color="#212121"),
+                                    bgcolor="rgba(255,255,255,0.9)", 
+                                    bordercolor="#616161", 
+                                    borderwidth=1
+                                )
+                                
+                                # ETIQUETAS PARA PRECIO DESEMBOLSO (Cajas Azules)
+                                p_pp = r['Precio ($)']
+                                txt_p_pp = f"${p_pp:.1f}" if p_pp < 10 else f"${int(p_pp)}"
+                
+                                fig.add_annotation(
+                                    x=i, y=15, 
+                                    text=f"<b>{txt_p_pp}</b>", 
+                                    showarrow=False, 
+                                    font=dict(size=t_precios, color="white"),
+                                    bgcolor="#00B0F0", 
+                                    bordercolor="black", 
+                                    borderwidth=1.5,      
+                                    borderpad=4
+                                )
+                            
+                            # Agrupación visual por Canal en el eje X
+                            for cat in df_p["Canal"].unique():
+                                indices = df_p.index[df_p["Canal"] == cat].tolist()
+                                center = (indices[0] + indices[-1]) / 2
+                                fig.add_shape(
+                                    type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, 
+                                    y0=-0.6, y1=1, xref="x", yref="paper", 
+                                    line=dict(color="#CCCCCC", width=1.5) 
+                                )
+                                fig.add_annotation(
+                                    x=center, y=-0.6, xref="x", yref="paper", 
+                                    text=cat, 
+                                    showarrow=False, 
+                                    font=dict(size=14, color="#424242", family="Verdana")
+                                )
+                            
+                            # Configuración de Layout (Ejes y Márgenes)
+                            fig.update_layout(
+                                height=alto_grafico,
+                                margin=dict(b=margen_b, t=50, l=50, r=50),
+                                template="plotly_white", 
+                                xaxis=dict(
+                                    tickmode='array', 
+                                    tickvals=list(df_p.index), 
+                                    ticktext=["<b>"+str(t)+"</b>" for t in df_p["Producto"]],
+                                    tickangle=angulo_nombres,
+                                    tickfont=dict(color="#000000", size=t_nombres, family="Verdana"),
+                                    showgrid=False
+                                ),
+                                yaxis=dict(
+                                    tickprefix="$", 
+                                    showgrid=True, 
+                                    gridcolor="#F5F5F5"
+                                )
+                            )
+                    
+                            # Renderizado con config de descarga
+                            st.plotly_chart(fig, use_container_width=True, config={
+                                'toImageButtonOptions': {
+                                    'format': 'png',
+                                    'filename': 'Price_Pack_Export',
+                                    'height': alto_grafico,
+                                    'width': 1950,
+                                    'scale': 2
+                                }
+                            })
+                        else:
+                            st.info("Utiliza los filtros para visualizar los datos del Price Pack.")
+                    else:
+                        st.warning("La base de datos actual no corresponde al formato de Price Pack (Falta columna 'Canal').")
+            
+            # --- FIN DEL MODO PRICE PACK ---
                 
 # --- 8. COMPARATIVAS INDEX (UNIFICADO: LADDER + ARQUITECTURA PPT) ---
-if not st.session_state.data.empty:
+# Agregamos la condición para que esta sección solo se ejecute en los modos que usan Index
+if modo != "Price and Volume" and not st.session_state.data.empty:
     st.divider()
     df_comp = st.session_state.data.copy()
     
-    # Limpieza estándar
+    # Limpieza estándar segura (solo si las columnas existen)
     for col in ["Precio ($)", "Precio por Kg ($)"]:
-        df_comp[col] = pd.to_numeric(df_comp[col], errors='coerce').fillna(0)
+        if col in df_comp.columns:
+            df_comp[col] = pd.to_numeric(df_comp[col], errors='coerce').fillna(0)
 
     # --- MODO 1: PRICE LADDER (COMPARATIVAS 1 A 1) ---
     if modo == "Price Ladder":
@@ -722,72 +1016,77 @@ if not st.session_state.data.empty:
                         <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:10px;"><span>${int(v_a)}</span><span style="color:#ccc; font-size:0.7rem;">vs</span><span>${int(v_b)}</span></div>
                         <div style="font-size:1.8rem; font-weight:900; color:{color};">{idx}</div><div style="font-size:0.6rem; font-weight:bold; color:#999;">Index $/Kg</div></div>""", unsafe_allow_html=True)
 
-    # --- MODO 2: MATRIZ DE ARQUITECTURA (VISTA PPT) ---
+    # --- MODO 2: MATRIZ DE ARQUITECTURA (VISTA PPT) / PRICE PACK ---
     else:
         # Encabezado con leyenda a la derecha
         col_tit, col_ley = st.columns([2, 1])
         with col_tit:
-            st.markdown("<h2 style='color: #0B3C8C; margin:0;'>🏛️ Matriz de Arquitectura Multibase</h2>", unsafe_allow_html=True)
+            st.markdown("<h2 style='color: #0B3C8C; margin:0;'>🏛️ Index del Price Pack Multibase</h2>", unsafe_allow_html=True)
         with col_ley:
             st.markdown("""<div style='text-align:right; padding-top:10px;'><span style='background:#f0f2f6; padding:5px 10px; border-radius:5px; font-size:14px; color:#555; border:1px solid #ddd;'><b>Nota:</b> Index Objetivo vs Detalle (Base 100)</span></div>""", unsafe_allow_html=True)
         
         # 1. Identificar Bases de Detalle y Colores
-        skus_det_base = sorted(df_comp[df_comp["Canal"].str.upper() == "DETALLE"]["Producto"].unique().tolist())
-        colores_disponibles = ["#27AE60", "#8E44AD", "#2980B9", "#E67E22", "#D32F2F", "#7F8C8D"]
-        dict_colores_base = {sku: colores_disponibles[i % len(colores_disponibles)] for i, sku in enumerate(skus_det_base)}
-        dict_valores_base = {sku: df_comp[(df_comp["Canal"].str.upper() == "DETALLE") & (df_comp["Producto"] == sku)]["Precio por Kg ($)"].mean() for sku in skus_det_base}
+        # Verificamos que la columna 'Canal' exista para evitar errores
+        if "Canal" in df_comp.columns:
+            skus_det_base = sorted(df_comp[df_comp["Canal"].str.upper() == "DETALLE"]["Producto"].unique().tolist())
+            colores_disponibles = ["#27AE60", "#8E44AD", "#2980B9", "#E67E22", "#D32F2F", "#7F8C8D"]
+            dict_colores_base = {sku: colores_disponibles[i % len(colores_disponibles)] for i, sku in enumerate(skus_det_base)}
+            dict_valores_base = {sku: df_comp[(df_comp["Canal"].str.upper() == "DETALLE") & (df_comp["Producto"] == sku)]["Precio por Kg ($)"].mean() for sku in skus_det_base}
 
-        if skus_det_base:
-            with st.expander("⚙️ Configurar productos y bases de comparación"):
-                canales_ordenados = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "AUTOSERVICIOS", "CONVENIENCIA"]
-                objetivos_canales = {"INSTITUCIONALES": "Index 60", "MAYOREO": "Index 70", "CLUBES": "Index 80", "AUTOSERVICIOS": "Index 110-120", "CONVENIENCIA": "Index 120-130"}
-                config_cols = st.columns(5)
-                selecciones_usuario = {}
+            if skus_det_base:
+                with st.expander("⚙️ Configurar productos y bases de comparación"):
+                    canales_ordenados = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "AUTOSERVICIOS", "CONVENIENCIA"]
+                    objetivos_canales = {"INSTITUCIONALES": "Index 60", "MAYOREO": "Index 70", "CLUBES": "Index 80", "AUTOSERVICIOS": "Index 110-120", "CONVENIENCIA": "Index 120-130"}
+                    config_cols = st.columns(5)
+                    selecciones_usuario = {}
+
+                    for i, canal_n in enumerate(canales_ordenados):
+                        with config_cols[i]:
+                            st.markdown(f"**{canal_n}**")
+                            prods_canal = sorted(df_comp[df_comp["Canal"].str.upper() == canal_n]["Producto"].unique().tolist())
+                            seleccionados = st.multiselect(f"Seleccionar {canal_n}", prods_canal, key=f"ms_{canal_n}", label_visibility="collapsed")
+                            lista_configs = []
+                            for p in seleccionados:
+                                base_sel = st.selectbox(f"Vs: {p}", skus_det_base, key=f"base_{canal_n}_{p}")
+                                lista_configs.append((p, base_sel))
+                            selecciones_usuario[canal_n] = lista_configs
+
+                st.write("")
+                viz_cols = st.columns(5)
+                bases_usadas_en_reporte = set()
 
                 for i, canal_n in enumerate(canales_ordenados):
-                    with config_cols[i]:
-                        st.markdown(f"**{canal_n}**")
-                        prods_canal = sorted(df_comp[df_comp["Canal"].str.upper() == canal_n]["Producto"].unique().tolist())
-                        seleccionados = st.multiselect(f"Seleccionar {canal_n}", prods_canal, key=f"ms_{canal_n}", label_visibility="collapsed")
-                        lista_configs = []
-                        for p in seleccionados:
-                            base_sel = st.selectbox(f"Vs: {p}", skus_det_base, key=f"base_{canal_n}_{p}")
-                            lista_configs.append((p, base_sel))
-                        selecciones_usuario[canal_n] = lista_configs
-
-            st.write("")
-            viz_cols = st.columns(5)
-            bases_usadas_en_reporte = set()
-
-            for i, canal_n in enumerate(canales_ordenados):
-                with viz_cols[i]:
-                    # Encabezado de Canal (Grande y Bold)
-                    st.markdown(f"""
-                        <div style="text-align:center; border-bottom:3px solid #0B3C8C; margin-bottom:15px; padding-bottom:8px;">
-                            <div style="font-size:16px; font-weight:900; color:#333; text-transform:uppercase; letter-spacing:1px;">{canal_n}</div>
-                            <div style="font-size:13px; color:#D32F2F; font-weight:bold; margin-top:4px;">{objetivos_canales.get(canal_n, '')}</div>
-                        </div>
-                    """, unsafe_allow_html=True)
-
-                    for p_name, b_name in selecciones_usuario[canal_n]:
-                        val_item = df_comp[(df_comp["Canal"].str.upper() == canal_n) & (df_comp["Producto"] == p_name)]["Precio por Kg ($)"].mean()
-                        val_base = dict_valores_base[b_name]
-                        index_calc = int((val_item / val_base * 100)) if val_base > 0 else 0
-                        color_pill = dict_colores_base[b_name]
-                        bases_usadas_en_reporte.add(b_name)
-
+                    with viz_cols[i]:
                         st.markdown(f"""
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; min-height:40px;">
-                                <span style="font-size:13px; color:#222; font-weight:500; line-height:1.2; width:70%; font-family:Verdana;">{p_name}</span>
-                                <span style="background:{color_pill}; color:white; padding:4px 8px; border-radius:6px; font-weight:900; font-size:15px; min-width:45px; text-align:center; box-shadow: 1px 1px 3px rgba(0,0,0,0.15);">{index_calc}</span>
+                            <div style="text-align:center; border-bottom:3px solid #0B3C8C; margin-bottom:15px; padding-bottom:8px;">
+                                <div style="font-size:16px; font-weight:900; color:#333; text-transform:uppercase; letter-spacing:1px;">{canal_n}</div>
+                                <div style="font-size:13px; color:#D32F2F; font-weight:bold; margin-top:4px;">{objetivos_canales.get(canal_n, '')}</div>
                             </div>
                         """, unsafe_allow_html=True)
 
-            if bases_usadas_en_reporte:
-                leyenda_items = "".join([f'<div style="display:inline-block; margin-right:25px; margin-bottom:10px;"><span style="color:{dict_colores_base[b]}; font-size:20px; vertical-align:middle;">●</span> <span style="font-weight:bold; font-size:14px; color:#444;">Vs {b}</span></div>' for b in sorted(list(bases_usadas_en_reporte))])
-                st.markdown(f"""<div style="background:#F8F9FA; padding:15px; border-radius:8px; border:1px solid #CCC; margin-top:20px;"><div style="font-size:12px; font-weight:bold; color:#888; margin-bottom:10px; text-transform:uppercase;">Leyenda de Comparación (Bases Detalle):</div>{leyenda_items}</div>""", unsafe_allow_html=True)
+                        for p_name, b_name in selecciones_usuario.get(canal_n, []):
+                            val_item = df_comp[(df_comp["Canal"].str.upper() == canal_n) & (df_comp["Producto"] == p_name)]["Precio por Kg ($)"].mean()
+                            val_base = dict_valores_base[b_name]
+                            index_calc = int((val_item / val_base * 100)) if val_base > 0 else 0
+                            color_pill = dict_colores_base[b_name]
+                            bases_usadas_en_reporte.add(b_name)
+
+                            st.markdown(f"""
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; min-height:40px;">
+                                    <span style="font-size:13px; color:#222; font-weight:500; line-height:1.2; width:70%; font-family:Verdana;">{p_name}</span>
+                                    <span style="background:{color_pill}; color:white; padding:4px 8px; border-radius:6px; font-weight:900; font-size:15px; min-width:45px; text-align:center; box-shadow: 1px 1px 3px rgba(0,0,0,0.15);">{index_calc}</span>
+                                </div>
+                            """, unsafe_allow_html=True)
+
+                if bases_usadas_en_reporte:
+                    leyenda_items = "".join([f'<div style="display:inline-block; margin-right:25px; margin-bottom:10px;"><span style="color:{dict_colores_base[b]}; font-size:20px; vertical-align:middle;">●</span> <span style="font-weight:bold; font-size:14px; color:#444;">Vs {b}</span></div>' for b in sorted(list(bases_usadas_en_reporte))])
+                    st.markdown(f"""<div style="background:#F8F9FA; padding:15px; border-radius:8px; border:1px solid #CCC; margin-top:20px;"><div style="font-size:12px; font-weight:bold; color:#888; margin-bottom:10px; text-transform:uppercase;">Leyenda de Comparación (Bases Detalle):</div>{leyenda_items}</div>""", unsafe_allow_html=True)
+            else:
+                st.warning("No hay datos en el canal DETALLE para realizar comparaciones.")
         else:
-            st.warning("No hay datos en el canal DETALLE para realizar comparaciones.")
+            st.error("⚠️ El formato de datos actual no es compatible con la Matriz (Falta columna 'Canal').")
+
+# --- FIN DE SECCIÓN 8 ---
         
 
 # --- 10. PIRÁMIDE DE POSICIONAMIENTO (SOLO LADDER) ---
@@ -951,7 +1250,8 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
 
 # --- 12. ANALISTA MAESTRO INTEGRAL: LADDER ULTRA 2.6 + ARQUITECTURA PRO ---
-if not st.session_state.data.empty:
+# Ajuste: No mostrar en el modo de Volume para evitar KeyErrors
+if modo != "Price and Volume" and not st.session_state.data.empty:
     st.divider()
     
     # 1. PREPARACIÓN DE DATOS (Común para ambos modos)
@@ -967,7 +1267,7 @@ if not st.session_state.data.empty:
         st.subheader("🚀 Sugerencias / Observaciones en base al Mercado")
         
         mapa_rivales = {
-            "TAKIS": ["DORITO", "DINAMITA"],
+            "TAKIS": ["DORITO","doritos", "DINAMITA"],
             "CHIPS": ["SABRITA", "RECETA CRUJIENTE"],
             "PAPAS BARCEL": ["SABRITA", "RECETA CRUJIENTE"],
             "CHIPOTLES": ["RANCHERITO", "FRITO"],
@@ -1027,7 +1327,7 @@ if not st.session_state.data.empty:
                                         "Accion": f"🪜 **Extensión:** Evaluar SKU de **{calcular_rango_g(p_sug, df_b_global.iloc[i]['Precio por Kg ($)'])}** a **{p_sug_txt}**."
                                     })
                                     vistos.add(id_gap)
-        
+
                 # --- BLOQUE B: ANÁLISIS TÁCTICO POR OCASIÓN ---
                 for oca in df_p["Ocasión"].unique():
                     df_oca = df_p[df_p["Ocasión"] == oca].copy()
@@ -1063,13 +1363,26 @@ if not st.session_state.data.empty:
                                     marca_b = identificar_marca(row_b["Producto"])
                                     rivales = df_comp[df_comp.apply(lambda x: es_rival_de(x["Producto"], marca_b), axis=1)]
                                     bench = rivales.sort_values("SOM (%)", ascending=False).iloc[0] if not rivales.empty else lider_c
+                                    
+                                    # Cálculo del Index de Precio por Kg
                                     idx = int((row_b["Precio por Kg ($)"] / bench["Precio por Kg ($)"]) * 100)
+                                    
+                                    # CASO 1: ESTÁS MUY CARO (INDEX > 95)
                                     if idx > 95:
                                         hallazgos.append({
                                             "Prioridad": "ALTA", "Tipo": f"DUELO vs {bench['Producto']}", "Ocasión": oca,
-                                            "Msg": f"{row_b['Producto']} fuera de rango ({peso_seg:.1f}% Occ)",
-                                            "Detalle": f"Index {idx} vs rival. Riesgo de pérdida de preferencia.",
-                                            "Accion": f"⚖️ **R&D:** Ajustar a **{calcular_rango_g(row_b['Precio ($)'], bench['Precio por Kg ($)'])}**."
+                                            "Msg": f"{row_b['Producto']} está sobre-preciado (Index {idx})",
+                                            "Detalle": f"Estás {idx-100}% más caro por Kg que tu rival directo en {oca}.",
+                                            "Accion": f"⚖️ **Defensa:** Aumentar gramaje a **{calcular_rango_g(row_b['Precio ($)'], bench['Precio por Kg ($)'])}** para ser competitivo."
+                                        })
+                                    
+                                    # CASO 2: ESTÁS REGALANDO PRODUCTO (INDEX < 90) - ¡EL QUE TE FALTABA!
+                                    elif idx < 90:
+                                        hallazgos.append({
+                                            "Prioridad": "MEDIA", "Tipo": f"RENTABILIDAD vs {bench['Producto']}", "Ocasión": oca,
+                                            "Msg": f"{row_b['Producto']} con exceso de gramaje (Index {idx})",
+                                            "Detalle": f"Estás {100-idx}% por debajo del precio/kg del rival. Estás sacrificando margen innecesariamente.",
+                                            "Accion": f"💰 **Optimización:** Reducir gramaje a **{calcular_rango_g(row_b['Precio ($)'], bench['Precio por Kg ($)'])}** para alinear rentabilidad."
                                         })
             else:
                 st.warning("⚠️ El análisis de mercado requiere la columna 'Ocasión'.")
@@ -1077,7 +1390,7 @@ if not st.session_state.data.empty:
     
     # --- MODO B: ARQUITECTURA DINÁMICA (Price Pack / Arquitectura) ---
     else:
-        st.subheader("🏛️ Auditoría de Arquitectura y Cascada de Precios")
+        st.subheader("🏛️ Sugerencias / Observaciones del price pack y de la curva de precio")
         hallazgos = [] 
         
         objetivos = {
@@ -1113,7 +1426,7 @@ if not st.session_state.data.empty:
                                 "Accion": f"⚠️ **Competitividad:** Evaluar si el valor agregado justifica el sobreprecio."
                             })
 
-        # 2. Cascada de Gramaje (Ajustado a terminología Barcel)
+        # 2. Cascada de Gramaje
         if "Canal" in df_p.columns and "Gramaje (g)" in df_p.columns:
             for canal in df_p["Canal"].unique():
                 if "Fabricante" in df_p.columns:
@@ -1124,19 +1437,17 @@ if not st.session_state.data.empty:
                 if len(df_c) >= 2:
                     for i in range(len(df_c) - 1):
                         p_chico, p_grande = df_c.iloc[i], df_c.iloc[i+1]
-                        # Regla: Mayor gramaje debe tener menor $/Kg
                         if p_grande["Precio por Kg ($)"] > p_chico["Precio por Kg ($)"] and p_chico["Gramaje (g)"] > 0:
                             hallazgos.append({
-                                "Prioridad": "MEDIA", # Cambiado de ALTA a MEDIA (Amarillo)
-                                "Tipo": "CURVA DE PRECIO", # Cambiado de ERROR CASCADA
+                                "Prioridad": "MEDIA",
+                                "Tipo": "CURVA DE PRECIO",
                                 "Ocasión": canal,
                                 "Msg": f"Desviación en curva: {p_grande['Producto']}",
                                 "Detalle": f"El SKU de {int(p_grande['Gramaje (g)'])}g presenta un $/Kg superior al formato de {int(p_chico['Gramaje (g)'])}g.",
-                                "Accion": f"📉 **Arquitectura:** Optimizar la eficiencia de valor. Por regla comercial, el incremento en gramaje debe mejorar el costo por kilo para el consumidor."
+                                "Accion": f"📉 **Arquitectura:** Optimizar la eficiencia de valor. El incremento en gramaje debe mejorar el costo por kilo."
                             })
         else:
             st.info("ℹ️ Para activar la auditoría de cascada, asegúrate de que el archivo contenga: Canal y Gramaje.")
-
 
     # --- RENDERIZADO VISUAL ÚNICO (Para ambos modos) ---
     if hallazgos:
@@ -1160,7 +1471,8 @@ if not st.session_state.data.empty:
 
 
 # --- 12. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO ---
-if not st.session_state.data.empty:
+# Ajuste: No mostrar en el modo de Volumen para evitar errores de compilación de hallazgos
+if modo != "Price and Volume" and not st.session_state.data.empty:
     st.divider()
     
     # Título dinámico según el modo
@@ -1169,7 +1481,8 @@ if not st.session_state.data.empty:
     if st.button(btn_label, key="btn_exec_v4"):
         with st.spinner("Compilando diagnóstico..."):
             
-            if not hallazgos:
+            # Verificamos si existen hallazgos (esta variable viene de la sección anterior)
+            if 'hallazgos' not in locals() or not hallazgos:
                 st.success("✅ **Estado Óptimo:** No se detectan desviaciones en la estrategia actual.")
             else:
                 st.markdown("""
@@ -1197,6 +1510,7 @@ if not st.session_state.data.empty:
                     if ws_items:
                         st.markdown("#### 🚀 Expansión de Portafolio")
                         for ws in ws_items:
+                            # Extracción segura de datos del string de detalle
                             rival = ws['Detalle'].split('dominado por ')[-1].replace('.', '')
                             sug_data = ws['Accion'].replace("⚡ **Entrada:** Lanzar ", "")
                             st.write(f"* **{ws['Ocasión']}:** Barcel no participa. Dominio de <span class='rival-name'>{rival}</span>. Acción: Introducir SKU de **{sug_data}**.", unsafe_allow_html=True)
@@ -1232,7 +1546,12 @@ if not st.session_state.data.empty:
                         st.markdown("#### 💰 Corredores por Canal (vs Detalle)")
                         for i in indices:
                             color_tag = "🔴" if i["Prioridad"] == "ALTA" else "🟡"
-                            st.write(f"{color_tag} **{i['Ocasión']}:** {i['Msg']}. (Index {i['Detalle'].split('Index ')[1].split(' vs')[0]})")
+                            # Intento de extracción de Index para el resumen
+                            try:
+                                valor_idx = i['Detalle'].split('Index ')[1].split(' vs')[0]
+                            except:
+                                valor_idx = "N/A"
+                            st.write(f"{color_tag} **{i['Ocasión']}:** {i['Msg']}. (Index {valor_idx})")
 
                     st.markdown("---")
                     st.write("**💡 Veredicto Interno:** Asegurar la consistencia de la curva para incentivar el 'upsize' y proteger la rentabilidad de los canales estratégicos.")
@@ -1249,7 +1568,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
     # === CONTROL DE DESPLEGADO Y OPTIMIZACIÓN ===
     col_header_sim, col_toggle_sim = st.columns([3, 1])
     with col_header_sim:
-        st.subheader("🧪 Simulador de Escenarios: Paridad y Eficiencia")
+        st.subheader("🧪 Simulador de Cambios en el Mercado")
     with col_toggle_sim:
         activar_simulador = st.toggle("Activar Simulador", value=False, help="Habilita las herramientas de simulación de precios y gramajes.")
 
@@ -1314,11 +1633,11 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
             idx_pkg_nue = int(round((pkg_b_nuevo / pkg_c_nuevo) * 100))
 
             # --- PARTE 2: DIAGNÓSTICO ---
-            st.markdown(f"### 📊 Diagnóstico de Paridad ({oca_sim})")
+            st.markdown(f"### 📊 Diagnóstico de Index ({oca_sim})")
             
             with st.container():
                 st.markdown('<div class="report-card">', unsafe_allow_html=True)
-                st.write("💰 **ANÁLISIS DE DESEMBOLSO (OUT-OF-POCKET)**")
+                st.write("💰 **Index de $ Desembolso **")
                 c1, c2, c3 = st.columns(3)
                 c1.metric(f"{comp_a_mover}", f"${n_p_c:.0f}", f"{var_p_c:+.1f}% vs act.")
                 c2.metric(f"{prod_b}", f"${n_p_b:.0f}", f"{var_p_b:+.1f}% vs act.")
@@ -1327,7 +1646,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
             with st.container():
                 st.markdown('<div class="report-card">', unsafe_allow_html=True)
-                st.write("⚖️ **ANÁLISIS DE EFICIENCIA (VALOR $/KG)**")
+                st.write("⚖️ **Index de $/KG**")
                 c1, c2, c3 = st.columns(3)
                 c1.metric(f"$/Kg {comp_a_mover}", f"${pkg_c_nuevo:.2f}", f"{var_pkg_c:+.1f}% efec.")
                 c2.metric(f"$/Kg {prod_b}", f"${pkg_b_nuevo:.2f}", f"{var_pkg_b:+.1f}% efec.")
@@ -1393,6 +1712,24 @@ if modo == "Price Ladder":
                 "Producto", "Fabricante", "Marca", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"
             ])
 
+    # === NUEVO: Estados para persistir filtros y configuración ===
+    if 'size_imp_filtros' not in st.session_state:
+        st.session_state.size_imp_filtros = {
+            'fabricantes': [],
+            'canales': [],
+            'marcas': [],
+            'ocasiones': [],
+            'productos': []
+        }
+    
+    if 'size_imp_config' not in st.session_state:
+        st.session_state.size_imp_config = {
+            'escala_base': 45,
+            'gap_productos': 12,
+            'modo_vista': "Automático",
+            'zoom_nivel': "100%"
+        }
+
     st.divider()
     
     # === CONTROL DE DESPLEGADO Y OPTIMIZACIÓN ===
@@ -1406,9 +1743,9 @@ if modo == "Price Ladder":
     if not activar_seccion:
         st.info("💡 La sección está contraída para mejorar el rendimiento. Activa el interruptor para ver los datos.")
     else:
-        # === 1. FORMULARIO DE ALTA (NUEVO SKU) ===
+        # === 1. FORMULARIO DE ALTA (NUEVO SKU) - SIN RERUN ===
         with st.expander("➕ Añadir un Nuevo SKU en la Simulación", expanded=False):
-            with st.form("nuevo_sku_form"):
+            with st.form("nuevo_sku_form", clear_on_submit=True):
                 c1, c2, c3 = st.columns(3)
                 nuevo_p = c1.text_input("Nombre Completo (Producto)", placeholder="Ej. Takis Fuego 240g")
                 nuevo_m = c2.text_input("Marca", placeholder="Ej. TAKIS")
@@ -1417,62 +1754,133 @@ if modo == "Price Ladder":
                 c4, c5, c6 = st.columns(3)
                 nuevo_c = c4.text_input("Canal", value="AUTOSERVICIO")
                 nuevo_o = c5.selectbox("Ocasión de Consumo", ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"])
-                nuevo_ancho = c6.number_input("Ancho (cm)", min_value=1.0, step=0.1)
+                nuevo_ancho = c6.number_input("Ancho (cm)", min_value=1.0, step=0.1, value=10.0)
                 
-                nuevo_alto = st.number_input("Alto (cm)", min_value=1.0, step=0.1)
+                nuevo_alto = st.number_input("Alto (cm)", min_value=1.0, step=0.1, value=15.0)
                 
                 if st.form_submit_button("🚀 Registrar SKU"):
-                    # Aplicamos la G mayúscula al producto
-                    nuevo_p_fmt = nuevo_p.capitalize()
-                    nueva_fila = {
-                        "Producto": nuevo_p_fmt, "Fabricante": nuevo_f, "Marca": nuevo_m,
-                        "Canal": nuevo_c, "Ocasión de Consumo": nuevo_o,
-                        "Ancho (cm)": nuevo_ancho, "Alto (cm)": nuevo_alto
-                    }
-                    st.session_state.df_arq_sim = pd.concat([st.session_state.df_arq_sim, pd.DataFrame([nueva_fila])], ignore_index=True)
-                    st.success(f"Producto {nuevo_p_fmt} añadido correctamente.")
-                    st.rerun()
+                    if nuevo_p.strip():  # Validar que no esté vacío
+                        # Aplicamos la capitalización al producto
+                        nuevo_p_fmt = nuevo_p.strip().upper()
+                        nueva_fila = {
+                            "Producto": nuevo_p_fmt, 
+                            "Fabricante": nuevo_f, 
+                            "Marca": nuevo_m.strip().upper(),
+                            "Canal": nuevo_c.strip().upper(), 
+                            "Ocasión de Consumo": nuevo_o,
+                            "Ancho (cm)": nuevo_ancho, 
+                            "Alto (cm)": nuevo_alto
+                        }
+                        st.session_state.df_arq_sim = pd.concat(
+                            [st.session_state.df_arq_sim, pd.DataFrame([nueva_fila])], 
+                            ignore_index=True
+                        )
+                        st.success(f"✅ Producto **{nuevo_p_fmt}** añadido correctamente.")
+                        # NO HACEMOS RERUN - Los datos se actualizarán automáticamente
+                    else:
+                        st.error("⚠️ El nombre del producto no puede estar vacío.")
 
-        # === 2. FILTROS AVANZADOS DINÁMICOS (VACÍOS POR DEFECTO PARA VELOCIDAD) ===
+        # === 2. FILTROS AVANZADOS DINÁMICOS CON PERSISTENCIA ===
         with st.container(border=True):
             col_t1, col_t2 = st.columns([4, 1])
             col_t1.markdown("**Filtros Globales de Visualización**")
             
             if col_t2.button("🔄 Reset Filtros", use_container_width=True):
+                st.session_state.size_imp_filtros = {
+                    'fabricantes': [],
+                    'canales': [],
+                    'marcas': [],
+                    'ocasiones': [],
+                    'productos': []
+                }
                 st.rerun()
             
             df_base = st.session_state.df_arq_sim
             
             r1_c1, r1_c2, r1_c3 = st.columns(3)
-            # Iniciamos en [] para que el usuario elija y no se sature la app
-            sel_fab = r1_c1.multiselect("Fabricante", df_base["Fabricante"].unique(), default=[])
             
-            df_can = df_base[df_base["Fabricante"].isin(sel_fab)]
-            sel_can = r1_c2.multiselect("Canal", df_can["Canal"].unique(), default=[])
+            # Filtro Fabricante
+            sel_fab = r1_c1.multiselect(
+                "Fabricante", 
+                df_base["Fabricante"].unique(), 
+                default=st.session_state.size_imp_filtros['fabricantes'],
+                key="filt_fab"
+            )
+            st.session_state.size_imp_filtros['fabricantes'] = sel_fab
             
-            df_mar = df_can[df_can["Canal"].isin(sel_can)]
-            sel_marcas = r1_c3.multiselect("Marcas", df_mar["Marca"].unique(), default=[])
+            # Filtro Canal (dependiente de Fabricante)
+            df_can = df_base[df_base["Fabricante"].isin(sel_fab)] if sel_fab else df_base
+            canales_disponibles = df_can["Canal"].unique()
+            sel_can_filtrados = [c for c in st.session_state.size_imp_filtros['canales'] if c in canales_disponibles]
+            
+            sel_can = r1_c2.multiselect(
+                "Canal", 
+                canales_disponibles, 
+                default=sel_can_filtrados,
+                key="filt_can"
+            )
+            st.session_state.size_imp_filtros['canales'] = sel_can
+            
+            # Filtro Marca (dependiente de Canal)
+            df_mar = df_can[df_can["Canal"].isin(sel_can)] if sel_can else df_can
+            marcas_disponibles = df_mar["Marca"].unique()
+            sel_mar_filtrados = [m for m in st.session_state.size_imp_filtros['marcas'] if m in marcas_disponibles]
+            
+            sel_marcas = r1_c3.multiselect(
+                "Marcas", 
+                marcas_disponibles, 
+                default=sel_mar_filtrados,
+                key="filt_mar"
+            )
+            st.session_state.size_imp_filtros['marcas'] = sel_marcas
             
             r2_c1, r2_c2 = st.columns(2)
-            df_oca = df_mar[df_mar["Marca"].isin(sel_marcas)]
-            sel_ocasiones = r2_c1.multiselect("Ocasiones", df_oca["Ocasión de Consumo"].unique(), default=[])
             
-            df_prod = df_oca[df_oca["Ocasión de Consumo"].isin(sel_ocasiones)]
-            sel_productos = r2_c2.multiselect("Productos específicos", df_prod["Producto"].unique(), default=[])
+            # Filtro Ocasión (dependiente de Marca)
+            df_oca = df_mar[df_mar["Marca"].isin(sel_marcas)] if sel_marcas else df_mar
+            ocasiones_disponibles = df_oca["Ocasión de Consumo"].unique()
+            sel_oca_filtrados = [o for o in st.session_state.size_imp_filtros['ocasiones'] if o in ocasiones_disponibles]
+            
+            sel_ocasiones = r2_c1.multiselect(
+                "Ocasiones", 
+                ocasiones_disponibles, 
+                default=sel_oca_filtrados,
+                key="filt_oca"
+            )
+            st.session_state.size_imp_filtros['ocasiones'] = sel_ocasiones
+            
+            # Filtro Producto (dependiente de Ocasión)
+            df_prod = df_oca[df_oca["Ocasión de Consumo"].isin(sel_ocasiones)] if sel_ocasiones else df_oca
+            productos_disponibles = df_prod["Producto"].unique()
+            sel_prod_filtrados = [p for p in st.session_state.size_imp_filtros['productos'] if p in productos_disponibles]
+            
+            sel_productos = r2_c2.multiselect(
+                "Productos específicos", 
+                productos_disponibles, 
+                default=sel_prod_filtrados,
+                key="filt_prod"
+            )
+            st.session_state.size_imp_filtros['productos'] = sel_productos
 
         # --- LÓGICA DE FILTRADO ---
-        df_filtered = df_base[
-            (df_base["Fabricante"].isin(sel_fab)) & 
-            (df_base["Canal"].isin(sel_can)) & 
-            (df_base["Marca"].isin(sel_marcas)) & 
-            (df_base["Ocasión de Consumo"].isin(sel_ocasiones)) &
-            (df_base["Producto"].isin(sel_productos))
-        ].copy()
+        df_filtered = df_base.copy()
+        
+        if sel_fab:
+            df_filtered = df_filtered[df_filtered["Fabricante"].isin(sel_fab)]
+        if sel_can:
+            df_filtered = df_filtered[df_filtered["Canal"].isin(sel_can)]
+        if sel_marcas:
+            df_filtered = df_filtered[df_filtered["Marca"].isin(sel_marcas)]
+        if sel_ocasiones:
+            df_filtered = df_filtered[df_filtered["Ocasión de Consumo"].isin(sel_ocasiones)]
+        if sel_productos:
+            df_filtered = df_filtered[df_filtered["Producto"].isin(sel_productos)]
         
         if df_filtered.empty:
             st.warning("⚠️ Selecciona filtros para visualizar la tabla y el gráfico.")
         else:
             # Agregamos columna de selección
+            df_filtered = df_filtered.copy()
             df_filtered.insert(0, "Seleccionar", False)
             
             # Editor Dinámico
@@ -1481,119 +1889,172 @@ if modo == "Price Ladder":
                 column_order=("Seleccionar", "Producto", "Marca", "Fabricante", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"),
                 hide_index=True, 
                 use_container_width=True, 
-                key="editor_v5_1"
+                key="editor_v6_persistente"
             )
             
             # Acciones
             c_save, c_del = st.columns(2)
             if c_save.button("💾 Guardar Cambios en Dimensiones", use_container_width=True, type="primary"):
                 for _, row in df_editado.iterrows():
-                    st.session_state.df_arq_sim.loc[st.session_state.df_arq_sim["Producto"] == row["Producto"], ["Ancho (cm)", "Alto (cm)"]] = [row["Ancho (cm)"], row["Alto (cm)"]]
-                st.success("¡Dimensiones actualizadas!")
-                st.rerun()
+                    mask = st.session_state.df_arq_sim["Producto"] == row["Producto"]
+                    st.session_state.df_arq_sim.loc[mask, ["Ancho (cm)", "Alto (cm)"]] = [row["Ancho (cm)"], row["Alto (cm)"]]
+                st.success("✅ ¡Dimensiones actualizadas correctamente!")
+                # NO hacemos rerun - las actualizaciones se reflejarán automáticamente
             
             if c_del.button("🗑️ Eliminar Productos Seleccionados", use_container_width=True):
                 productos_a_eliminar = df_editado[df_editado["Seleccionar"] == True]["Producto"].tolist()
                 if productos_a_eliminar:
-                    st.session_state.df_arq_sim = st.session_state.df_arq_sim[~st.session_state.df_arq_sim["Producto"].isin(productos_a_eliminar)].copy()
+                    st.session_state.df_arq_sim = st.session_state.df_arq_sim[
+                        ~st.session_state.df_arq_sim["Producto"].isin(productos_a_eliminar)
+                    ].copy()
+                    st.success(f"✅ {len(productos_a_eliminar)} producto(s) eliminado(s)")
                     st.rerun()
+                else:
+                    st.warning("⚠️ No hay productos seleccionados para eliminar")
 
-            # === 3. COMPARADOR 1 VS 1 ===
+            # === 3. COMPARADOR 1 VS 1 - ADAPTATIVO A FILTROS ===
             st.markdown("#### ⚖️ Comparativa de Size Impression Index")
-            with st.container(border=True):
-                col_sel1, col_sel2 = st.columns(2)
-                with col_sel1:
-                    prod_base = st.selectbox("Producto 1 (Base 100)", st.session_state.df_arq_sim["Producto"].unique(), key="sb_1")
-                with col_sel2:
-                    prod_comp = st.selectbox("Producto 2 (Comparativo)", st.session_state.df_arq_sim["Producto"].unique(), key="sb_2")
-                
-                # Obtención de datos
-                d1 = st.session_state.df_arq_sim[st.session_state.df_arq_sim["Producto"] == prod_base].iloc[0]
-                d2 = st.session_state.df_arq_sim[st.session_state.df_arq_sim["Producto"] == prod_comp].iloc[0]
-                
-                # Cálculo de áreas e Index
-                a1 = d1["Ancho (cm)"] * d1["Alto (cm)"]
-                a2 = d2["Ancho (cm)"] * d2["Alto (cm)"]
-                index_val = (a2 / a1) * 100
-                delta = index_val - 100
             
-                # === LÓGICA DE COLOR: POSITIVO SI SOBRE-INDEXA ===
-                # Verde si el comparativo es más grande (>100), Rojo si es más pequeño (<100)
-                color_exito = "#28a745" if index_val >= 100 else "#d32f2f"
-                bg_exito = "#f0fff4" if index_val >= 100 else "#fff5f5"
+            # USAR SOLO LOS PRODUCTOS FILTRADOS
+            productos_disponibles_comparar = df_editado["Producto"].unique().tolist()
             
-                _, col_card, _ = st.columns([1, 2, 1])
+            if len(productos_disponibles_comparar) < 2:
+                st.info("ℹ️ Necesitas al menos 2 productos en la vista filtrada para realizar comparaciones.")
+            else:
+                with st.container(border=True):
+                    col_sel1, col_sel2 = st.columns(2)
+                    with col_sel1:
+                        prod_base = st.selectbox(
+                            "Producto 1 (Base 100)", 
+                            productos_disponibles_comparar, 
+                            key="sb_1_filtrado"
+                        )
+                    with col_sel2:
+                        # Asegurar que el producto 2 sea diferente al 1
+                        productos_comp = [p for p in productos_disponibles_comparar if p != prod_base]
+                        prod_comp = st.selectbox(
+                            "Producto 2 (Comparativo)", 
+                            productos_comp, 
+                            key="sb_2_filtrado"
+                        )
+                    
+                    # Obtención de datos desde el dataframe filtrado
+                    d1 = df_editado[df_editado["Producto"] == prod_base].iloc[0]
+                    d2 = df_editado[df_editado["Producto"] == prod_comp].iloc[0]
+                    
+                    # Cálculo de áreas e Index
+                    a1 = d1["Ancho (cm)"] * d1["Alto (cm)"]
+                    a2 = d2["Ancho (cm)"] * d2["Alto (cm)"]
+                    index_val = (a2 / a1) * 100
+                    delta = index_val - 100
                 
-                with col_card:
-                    st.markdown(f"""
-                        <div style="
-                            background-color: white;
-                            padding: 15px 25px;
-                            border-radius: 12px;
-                            border-top: 5px solid {color_exito};
-                            box-shadow: 0px 2px 10px rgba(0,0,0,0.08);
-                            text-align: center;
-                            margin: 10px auto;
-                            max-width: 400px;
-                        ">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
-                                <div style="text-align: left; width: 42%;">
-                                    <p style="margin: 0; color: #777; font-size: 0.75rem; line-height: 1.1;">{prod_base}</p>
-                                    <h4 style="margin: 2px 0; color: #333; font-weight: bold; font-size: 1.1rem;">{a1:,.0f} <span style="font-size: 0.7rem;">cm²</span></h4>
+                    # === LÓGICA DE COLOR: POSITIVO SI SOBRE-INDEXA ===
+                    color_exito = "#28a745" if index_val >= 100 else "#d32f2f"
+                    bg_exito = "#f0fff4" if index_val >= 100 else "#fff5f5"
+                
+                    _, col_card, _ = st.columns([1, 2, 1])
+                    
+                    with col_card:
+                        st.markdown(f"""
+                            <div style="
+                                background-color: white;
+                                padding: 15px 25px;
+                                border-radius: 12px;
+                                border-top: 5px solid {color_exito};
+                                box-shadow: 0px 2px 10px rgba(0,0,0,0.08);
+                                text-align: center;
+                                margin: 10px auto;
+                                max-width: 400px;
+                            ">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
+                                    <div style="text-align: left; width: 42%;">
+                                        <p style="margin: 0; color: #777; font-size: 0.75rem; line-height: 1.1;">{prod_base}</p>
+                                        <h4 style="margin: 2px 0; color: #333; font-weight: bold; font-size: 1.1rem;">{a1:,.0f} <span style="font-size: 0.7rem;">cm²</span></h4>
+                                    </div>
+                                    <div style="color: #bbb; font-size: 0.8rem; margin-top: 15px; font-weight: bold;">vs</div>
+                                    <div style="text-align: right; width: 42%;">
+                                        <p style="margin: 0; color: #777; font-size: 0.75rem; line-height: 1.1;">{prod_comp}</p>
+                                        <h4 style="margin: 2px 0; color: #333; font-weight: bold; font-size: 1.1rem;">{a2:,.0f} <span style="font-size: 0.7rem;">cm²</span></h4>
+                                    </div>
                                 </div>
-                                <div style="color: #bbb; font-size: 0.8rem; margin-top: 15px; font-weight: bold;">vs</div>
-                                <div style="text-align: right; width: 42%;">
-                                    <p style="margin: 0; color: #777; font-size: 0.75rem; line-height: 1.1;">{prod_comp}</p>
-                                    <h4 style="margin: 2px 0; color: #333; font-weight: bold; font-size: 1.1rem;">{a2:,.0f} <span style="font-size: 0.7rem;">cm²</span></h4>
+                                <div style="margin-top: 10px;">
+                                    <h1 style="margin: 0; color: {color_exito}; font-size: 3rem; font-weight: 800; line-height: 1;">{index_val:.0f}</h1>
+                                    <p style="margin: 2px 0; color: #666; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Index Size Impression</p>
+                                    <div style="
+                                        display: inline-block;
+                                        margin-top: 8px;
+                                        padding: 4px 12px;
+                                        border-radius: 15px;
+                                        background-color: {bg_exito};
+                                        color: {color_exito};
+                                        font-size: 0.9rem;
+                                        font-weight: bold;
+                                    ">
+                                        {'▲' if delta >= 0 else '▼'} {abs(delta):.1f}% <span style="font-weight: normal; font-size: 0.8rem;">vs base</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div style="margin-top: 10px;">
-                                <h1 style="margin: 0; color: {color_exito}; font-size: 3rem; font-weight: 800; line-height: 1;">{index_val:.0f}</h1>
-                                <p style="margin: 2px 0; color: #666; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Index Size Impression</p>
-                                <div style="
-                                    display: inline-block;
-                                    margin-top: 8px;
-                                    padding: 4px 12px;
-                                    border-radius: 15px;
-                                    background-color: {bg_exito};
-                                    color: {color_exito};
-                                    font-size: 0.9rem;
-                                    font-weight: bold;
-                                ">
-                                    {'▲' if delta >= 0 else '▼'} {abs(delta):.1f}% <span style="font-weight: normal; font-size: 0.8rem;">vs base</span>
-                                </div>
-                            </div>
-                        </div>
-                    """, unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
 
-            # === GRÁFICO TÉCNICO ADAPTATIVO CON NAVEGACIÓN MEJORADA ===
+            # === GRÁFICO TÉCNICO ADAPTATIVO CON CONFIGURACIÓN PERSISTENTE ===
             if not df_editado.empty:
-                df_editado['Area'] = df_editado['Ancho (cm)'] * df_editado['Alto (cm)']
-                # Aseguramos la G mayúscula en el nombre de los productos
-                df_editado['Producto'] = df_editado['Producto'].str.upper()
+                df_editado_graf = df_editado.copy()
+                df_editado_graf['Area'] = df_editado_graf['Ancho (cm)'] * df_editado_graf['Alto (cm)']
+                df_editado_graf['Producto'] = df_editado_graf['Producto'].str.upper()
                 
                 orden_o = ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"]
-                df_editado['Ocasión de Consumo'] = pd.Categorical(df_editado['Ocasión de Consumo'], categories=orden_o, ordered=True)
-                df_viz = df_editado.sort_values(['Ocasión de Consumo', 'Area'])
+                df_editado_graf['Ocasión de Consumo'] = pd.Categorical(
+                    df_editado_graf['Ocasión de Consumo'], 
+                    categories=orden_o, 
+                    ordered=True
+                )
+                df_viz = df_editado_graf.sort_values(['Ocasión de Consumo', 'Area'])
             
-                # === CONTROLES DE VISUALIZACIÓN MEJORADOS ===
+                # === CONTROLES DE VISUALIZACIÓN CON PERSISTENCIA ===
                 st.markdown("#### ⚙️ Controles de Visualización")
                 
                 col_ctrl1, col_ctrl2, col_ctrl3, col_ctrl4 = st.columns(4)
                 
                 with col_ctrl1:
-                    escala_base = st.slider("📏 Escala Base", 20, 80, 45, step=5, 
-                                           help="Aumenta para hacer los empaques más grandes")
+                    escala_base = st.slider(
+                        "📏 Escala Base", 20, 80, 
+                        st.session_state.size_imp_config['escala_base'], 
+                        step=5, 
+                        help="Aumenta para hacer los empaques más grandes",
+                        key="slider_escala"
+                    )
+                    st.session_state.size_imp_config['escala_base'] = escala_base
+                    
                 with col_ctrl2:
-                    gap_productos = st.slider("↔️ Separación", 5, 30, 12, 
-                                             help="Espacio entre productos")
+                    gap_productos = st.slider(
+                        "↔️ Separación", 5, 30, 
+                        st.session_state.size_imp_config['gap_productos'], 
+                        help="Espacio entre productos",
+                        key="slider_gap"
+                    )
+                    st.session_state.size_imp_config['gap_productos'] = gap_productos
+                    
                 with col_ctrl3:
-                    modo_vista = st.selectbox("👁️ Modo Vista", 
-                                              ["Automático", "Compacto", "Expandido", "Ultra Grande"])
+                    modo_vista = st.selectbox(
+                        "👁️ Modo Vista", 
+                        ["Automático", "Compacto", "Expandido", "Ultra Grande"],
+                        index=["Automático", "Compacto", "Expandido", "Ultra Grande"].index(
+                            st.session_state.size_imp_config['modo_vista']
+                        ),
+                        key="select_modo"
+                    )
+                    st.session_state.size_imp_config['modo_vista'] = modo_vista
+                    
                 with col_ctrl4:
-                    zoom_nivel = st.selectbox("🔍 Zoom Inicial",
-                                              ["100%", "125%", "150%", "175%", "200%"],
-                                              index=0)
+                    zoom_nivel = st.selectbox(
+                        "🔍 Zoom Inicial",
+                        ["100%", "125%", "150%", "175%", "200%"],
+                        index=["100%", "125%", "150%", "175%", "200%"].index(
+                            st.session_state.size_imp_config['zoom_nivel']
+                        ),
+                        key="select_zoom"
+                    )
+                    st.session_state.size_imp_config['zoom_nivel'] = zoom_nivel
             
                 # === CÁLCULO DE ESCALA INTELIGENTE ===
                 num_productos = len(df_viz)
@@ -1694,7 +2155,7 @@ if modo == "Price Ladder":
                         showarrow=False, font=dict(size=font_size_medidas, color="#333"), xanchor="right"
                     )
                     
-                    # === ÁREA EN EL CENTRO (SOLO TEXTO REFORZADO) ===
+                    # === ÁREA EN EL CENTRO ===
                     fig.add_annotation(
                         x=x_ptr+w/2, y=h/2, 
                         text=f"<b>{area:.0f}</b><br><span style='font-size:{int(font_size_area*0.6)}px;'>cm²</span>", 
@@ -1713,7 +2174,7 @@ if modo == "Price Ladder":
                     last_ocasion = r['Ocasión de Consumo']
                     x_ptr += w + gap_productos
             
-                # === ETIQUETAS DE OCASIÓN CON BADGE STYLE ===
+                # === ETIQUETAS DE OCASIÓN ===
                 for ocasion, pos in ocasion_positions.items():
                     center_x = (pos['start'] + pos['end']) / 2
                     fig.add_annotation(
@@ -1763,7 +2224,7 @@ if modo == "Price Ladder":
                     hovermode='closest'
                 )
                 
-                # === CONTENEDOR DEL GRÁFICO (CON BORDE Y SOMBRA) ===
+                # === CONTENEDOR DEL GRÁFICO ===
                 st.markdown(
                     """
                     <div style="
@@ -1836,5 +2297,631 @@ if modo == "Price Ladder":
                     - Aumenta "Escala Base" para agrandar
                     - "Zoom Inicial" 150% para presentar
                     - "Ultra Grande" para proyector
+                    - Los ajustes se mantienen al agregar SKUs
                     """)
 
+if modo == "Price and Volume":
+    if st.session_state.data.empty:
+        st.info("ℹ️ Por favor, selecciona una plantilla en la barra lateral y presiona 'Cargar Datos'.")
+    else:
+        st.success(f"✅ Datos cargados: {len(st.session_state.data)} registros encontrados.")
+        # Opcional: mostrar una vista previa pequeña
+        with st.expander("Ver vista previa de datos"):
+            st.dataframe(st.session_state.data.head())
+            
+# --- 15. ANÁLISIS DE ELASTICIDAD: PRICE & VOLUME (VERSIÓN PRO CON FEATURES AVANZADAS) ---
+if modo == "Price and Volume" and not st.session_state.data.empty:
+    st.divider()
+    st.markdown("""
+        <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    padding: 2rem; border-radius: 15px; margin-bottom: 2rem;'>
+            <h2 style='color: white; margin: 0; font-weight: 700;'>
+                📈 Curvas Precio Volumen
+            </h2>
+            <p style='color: rgba(255,255,255,0.9); margin-top: 0.5rem; margin-bottom: 0;'>
+                Visualiza la evolución de precios, valor y volumen con detección automática de anomalías y patrones estacionales
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    df_pv = st.session_state.data.copy()
+    columnas_necesarias = ["Producto", "Semana", "Venta Valor ($)", "Venta Volumen (Pzas)", "Precio ($)"]
+    
+    if all(col in df_pv.columns for col in columnas_necesarias):
+        # --- TOOLTIPS INFORMATIVOS ---
+        def tooltip_info(texto, explicacion):
+            return f"""
+                <span style='position: relative; display: inline-block; cursor: help;'>
+                    {texto} 
+                    <span style='
+                        position: absolute;
+                        bottom: 100%;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        background: #1F2937;
+                        color: white;
+                        padding: 0.75rem;
+                        border-radius: 8px;
+                        font-size: 0.85rem;
+                        width: 250px;
+                        opacity: 0;
+                        pointer-events: none;
+                        transition: opacity 0.3s;
+                        z-index: 1000;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+                    ' class='tooltip-text'>
+                        {explicacion}
+                    </span>
+                </span>
+            """
+        
+        st.markdown("""
+            <style>
+            span:hover .tooltip-text {
+                opacity: 1 !important;
+            }
+            .stSelectbox label, .stSlider label {
+                font-weight: 600;
+                color: #2D3748;
+                font-size: 0.95rem;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+        
+        # --- FILTROS CON DISEÑO MEJORADO ---
+        c_f1, c_f2, c_f3 = st.columns([2, 3, 2])
+        with c_f1:
+            lista_prods = sorted(df_pv["Producto"].unique())
+            prod_sel = st.selectbox("🏷️ Seleccionar Producto:", lista_prods)
+        with c_f2:
+            min_sem, max_sem = int(df_pv["Semana"].min()), int(df_pv["Semana"].max())
+            rango_sem = st.slider("📅 Rango de Semanas para Análisis:", min_sem, max_sem, (min_sem, max_sem))
+        with c_f3:
+            mostrar_outliers = st.checkbox("🔍 Detectar Outliers", value=True, help="Marca semanas con comportamiento atípico en precio o volumen")
+
+        mask = (df_pv["Producto"] == prod_sel) & (df_pv["Semana"].between(rango_sem[0], rango_sem[1]))
+        df_filtrado = df_pv[mask].sort_values("Semana").copy()
+
+        if not df_filtrado.empty:
+            import plotly.graph_objects as go
+            from plotly.subplots import make_subplots
+            import numpy as np
+
+            # --- DETECCIÓN DE OUTLIERS (Z-SCORE) ---
+            def detectar_outliers(serie, umbral=2):
+                media = serie.mean()
+                std = serie.std()
+                z_scores = np.abs((serie - media) / std) if std > 0 else np.zeros(len(serie))
+                return z_scores > umbral
+            
+            df_filtrado['outlier_precio'] = detectar_outliers(df_filtrado['Precio ($)'])
+            df_filtrado['outlier_volumen'] = detectar_outliers(df_filtrado['Venta Volumen (Pzas)'])
+            df_filtrado['es_outlier'] = df_filtrado['outlier_precio'] | df_filtrado['outlier_volumen']
+            
+            num_outliers = df_filtrado['es_outlier'].sum()
+
+            # --- ANÁLISIS DE ESTACIONALIDAD ---
+            if len(df_filtrado) >= 4:
+                df_filtrado['semana_ciclo'] = df_filtrado['Semana'] % 4  # Ciclo de 4 semanas
+                estacionalidad = df_filtrado.groupby('semana_ciclo').agg({
+                    'Venta Volumen (Pzas)': 'mean',
+                    'Precio ($)': 'mean'
+                })
+                coef_variacion_vol = (estacionalidad['Venta Volumen (Pzas)'].std() / 
+                                     estacionalidad['Venta Volumen (Pzas)'].mean()) * 100 if estacionalidad['Venta Volumen (Pzas)'].mean() > 0 else 0
+                hay_estacionalidad = coef_variacion_vol > 15  # Más de 15% de variación indica estacionalidad
+            else:
+                hay_estacionalidad = False
+                coef_variacion_vol = 0
+
+            # --- GRÁFICO PRINCIPAL: VOLUMEN Y VALOR CON OUTLIERS ---
+            m_lat = 80 
+            margen_alineado = dict(l=m_lat, r=m_lat, t=40, b=40)
+
+            fig_perf = make_subplots(specs=[[{"secondary_y": True}]])
+            
+            # Área de valor con gradiente
+            fig_perf.add_trace(go.Scatter(
+                x=df_filtrado["Semana"], 
+                y=df_filtrado["Venta Valor ($)"],
+                name="Venta Valor ($)", 
+                fill='tozeroy', 
+                mode='lines',
+                line=dict(color='#10B981', width=3, shape='spline'),
+                fillcolor='rgba(16, 185, 129, 0.15)',
+                hovertemplate='<b>Semana %{x}</b><br>Valor: $%{y:,.0f}<extra></extra>'
+            ), secondary_y=True)
+            
+            # CORRECCIÓN: Barras de volumen - mostrar TODOS los datos
+            if mostrar_outliers:
+                # Si está activado, separar normales y outliers
+                df_normal = df_filtrado[~df_filtrado['es_outlier']]
+                df_outlier = df_filtrado[df_filtrado['es_outlier']]
+                
+                # Barras normales
+                if not df_normal.empty:
+                    fig_perf.add_trace(go.Bar(
+                        x=df_normal["Semana"], 
+                        y=df_normal["Venta Volumen (Pzas)"],
+                        name="Volumen (Pzas)", 
+                        marker=dict(
+                            color='#002366',
+                            line=dict(color='#001a4d', width=1.5)
+                        ),
+                        hovertemplate='<b>Semana %{x}</b><br>Volumen: %{y:,} pzas<extra></extra>'
+                    ), secondary_y=False)
+                
+                # Barras de outliers con estilo diferente
+                if not df_outlier.empty:
+                    fig_perf.add_trace(go.Bar(
+                        x=df_outlier["Semana"], 
+                        y=df_outlier["Venta Volumen (Pzas)"],
+                        name="⚠️ Outliers", 
+                        marker=dict(
+                            color='#DC2626',
+                            line=dict(color='#991B1B', width=2),
+                            pattern=dict(shape="/", bgcolor="white", fgcolor="#DC2626", size=8, solidity=0.3)
+                        ),
+                        hovertemplate='<b>⚠️ Semana %{x} (Anomalía)</b><br>Volumen: %{y:,} pzas<extra></extra>'
+                    ), secondary_y=False)
+            else:
+                # Si NO está activado, mostrar TODO como normal
+                fig_perf.add_trace(go.Bar(
+                    x=df_filtrado["Semana"], 
+                    y=df_filtrado["Venta Volumen (Pzas)"],
+                    name="Volumen (Pzas)", 
+                    marker=dict(
+                        color='#002366',
+                        line=dict(color='#001a4d', width=1.5)
+                    ),
+                    hovertemplate='<b>Semana %{x}</b><br>Volumen: %{y:,} pzas<extra></extra>'
+                ), secondary_y=False)
+
+            fig_perf.update_layout(
+                height=480, 
+                template="plotly_white", 
+                margin=margen_alineado,
+                legend=dict(
+                    orientation="h", 
+                    yanchor="bottom", 
+                    y=1.02, 
+                    xanchor="center", 
+                    x=0.5,
+                    font=dict(size=12, family="Arial, sans-serif"),
+                    bgcolor="rgba(255,255,255,0.9)",
+                    bordercolor="#E2E8F0",
+                    borderwidth=1
+                ),
+                barmode='overlay',
+                plot_bgcolor='rgba(248, 250, 252, 0.5)',
+                font=dict(family="Arial, sans-serif", size=12, color="#2D3748"),
+                hovermode='x unified'
+            )
+            fig_perf.update_xaxes(
+                title_text="Semana",
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='rgba(226, 232, 240, 0.5)',
+                title_font=dict(size=13, color="#4A5568")
+            )
+            fig_perf.update_yaxes(
+                title_text="Volumen (Pzas)", 
+                secondary_y=False,
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='rgba(226, 232, 240, 0.5)',
+                title_font=dict(size=13, color="#2563EB")
+            )
+            fig_perf.update_yaxes(
+                title_text="Venta Valor ($)", 
+                secondary_y=True,
+                showgrid=False,
+                title_font=dict(size=13, color="#10B981")
+            )
+
+            # --- GRÁFICO DE PRECIO CON DISEÑO PREMIUM Y OUTLIERS ---
+            fig_price = make_subplots(specs=[[{"secondary_y": True}]])
+            
+            # Precios normales
+            df_price_normal = df_filtrado[~df_filtrado['outlier_precio']]
+            if not df_price_normal.empty:
+                fig_price.add_trace(go.Scatter(
+                    x=df_price_normal["Semana"], 
+                    y=df_price_normal["Precio ($)"],
+                    name="Precio Unitario ($)", 
+                    line=dict(color='#DC2626', width=4, shape='spline'),
+                    mode='lines+markers+text',
+                    text=df_price_normal["Precio ($)"].apply(lambda x: f"${x:.1f}"),
+                    textposition="top center",
+                    textfont=dict(size=11, color='#DC2626', family="Arial Black, sans-serif"),
+                    marker=dict(
+                        size=14, 
+                        symbol='circle', 
+                        color='#DC2626',
+                        line=dict(width=3, color='white')
+                    ),
+                    hovertemplate='<b>Semana %{x}</b><br>Precio: $%{y:.2f}<extra></extra>'
+                ), secondary_y=False)
+            
+            # Precios outliers
+            df_price_outlier = df_filtrado[df_filtrado['outlier_precio']]
+            if mostrar_outliers and not df_price_outlier.empty:
+                fig_price.add_trace(go.Scatter(
+                    x=df_price_outlier["Semana"], 
+                    y=df_price_outlier["Precio ($)"],
+                    name="⚠️ Precio Atípico", 
+                    mode='markers+text',
+                    text=df_price_outlier["Precio ($)"].apply(lambda x: f"${x:.1f}"),
+                    textposition="top center",
+                    textfont=dict(size=11, color='#F59E0B', family="Arial Black, sans-serif"),
+                    marker=dict(
+                        size=18, 
+                        symbol='star', 
+                        color='#F59E0B',
+                        line=dict(width=3, color='white')
+                    ),
+                    hovertemplate='<b>⚠️ Semana %{x} (Precio Atípico)</b><br>Precio: $%{y:.2f}<extra></extra>'
+                ), secondary_y=False)
+
+            fig_price.update_layout(
+                height=300, 
+                paper_bgcolor='rgba(0,0,0,0)', 
+                plot_bgcolor='rgba(0,0,0,0)',
+                margin=margen_alineado, 
+                xaxis=dict(visible=False), 
+                showlegend=False,
+                font=dict(family="Arial, sans-serif")
+            )
+            fig_price.update_yaxes(
+                title_text="Precio ($)", 
+                color="#DC2626", 
+                secondary_y=False,
+                range=[df_filtrado["Precio ($)"].min()*0.85, df_filtrado["Precio ($)"].max()*1.65],
+                showgrid=False,
+                title_font=dict(size=13)
+            )
+            fig_price.update_yaxes(
+                title_text="", 
+                secondary_y=True, 
+                showticklabels=False
+            )
+
+            st.markdown("""
+                <style>
+                .price-overlay { 
+                    margin-top: -340px; 
+                    position: relative; 
+                    z-index: 99; 
+                    pointer-events: none; 
+                } 
+                .price-overlay .js-plotly-plot .plotly .main-svg { 
+                    background: transparent !important; 
+                }
+                </style>
+            """, unsafe_allow_html=True)
+            
+            st.plotly_chart(fig_perf, use_container_width=True)
+            st.markdown('<div class="price-overlay">', unsafe_allow_html=True)
+            st.plotly_chart(fig_price, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            # --- ALERTAS DE OUTLIERS Y ESTACIONALIDAD ---
+            if num_outliers > 0 or hay_estacionalidad:
+                st.markdown("<br>", unsafe_allow_html=True)
+                col_alert1, col_alert2 = st.columns(2)
+                
+                with col_alert1:
+                    if num_outliers > 0:
+                        semanas_outlier = df_filtrado[df_filtrado['es_outlier']]['Semana'].tolist()
+                        st.markdown(f"""
+                            <div style='background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%); 
+                                        padding: 1.2rem; border-radius: 10px; border-left: 4px solid #F59E0B;'>
+                                <p style='margin: 0; color: #92400E;'>
+                                    <strong>🔍 {num_outliers} Anomalía(s) Detectada(s)</strong><br>
+                                    <span style='font-size: 0.9rem;'>Semanas con comportamiento atípico: {', '.join(map(str, semanas_outlier))}</span>
+                                </p>
+                            </div>
+                        """, unsafe_allow_html=True)
+                
+                with col_alert2:
+                    if hay_estacionalidad:
+                        st.markdown(f"""
+                            <div style='background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); 
+                                        padding: 1.2rem; border-radius: 10px; border-left: 4px solid #3B82F6;'>
+                                <p style='margin: 0; color: #1E40AF;'>
+                                    <strong>📊 Patrón Estacional Detectado</strong><br>
+                                    <span style='font-size: 0.9rem;'>Coeficiente de variación: {coef_variacion_vol:.1f}% - El volumen sigue un patrón cíclico</span>
+                                </p>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+            # --- CALCULADORA DE ELASTICIDAD CON DISEÑO MEJORADO ---
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.markdown(f"""
+                <div style='background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); 
+                            padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;'>
+                    <h3 style='color: white; margin: 0; font-weight: 700; font-size: 1.4rem;'>
+                        🧮 Calculadora de Elasticidad por Ventana de Tiempo
+                    </h3>
+                    <p style='color: rgba(255,255,255,0.95); margin-top: 0.5rem; margin-bottom: 0; font-size: 0.95rem;'>
+                        Compara períodos y mide el impacto de cambios de precio en el volumen
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # ELIMINADO: Toggle de modo comparativo (ya no se usa)
+            
+            with st.expander("⚙️ Configurar Análisis de Impacto", expanded=True):
+                # CORRECCIÓN: Layout mejorado para los selectores
+                st.markdown("""
+                    <style>
+                    div[data-testid="stNumberInput"] > div > div > input {
+                        font-size: 1rem;
+                        padding: 0.5rem;
+                    }
+                    div[data-testid="stSelectbox"] > div > div > div {
+                        font-size: 1rem;
+                    }
+                    </style>
+                """, unsafe_allow_html=True)
+                
+                c1, c2 = st.columns([1, 1])
+                with c1:
+                    st.markdown("**📍 Semana del Cambio (Corte)**")
+                    st.caption("Semana donde ocurrió el cambio de precio o estrategia que quieres analizar")
+                    sem_corte = st.selectbox(
+                        "Selecciona la semana:", 
+                        df_filtrado["Semana"].unique(), 
+                        index=len(df_filtrado)//2,
+                        label_visibility="collapsed"
+                    )
+                with c2:
+                    st.markdown("**📊 Semanas a Promediar (Ventana)**")
+                    st.caption("Número de semanas antes y después del corte para calcular promedios")
+                    ventana = st.number_input(
+                        "Ventana:", 
+                        min_value=1, 
+                        max_value=8, 
+                        value=3,
+                        label_visibility="collapsed"
+                    )
+                
+                df_antes = df_filtrado[df_filtrado["Semana"] < sem_corte].tail(ventana)
+                df_despues = df_filtrado[df_filtrado["Semana"] >= sem_corte].head(ventana)
+
+                if len(df_antes) > 0 and len(df_despues) > 0:
+                    # Cálculos
+                    p_antes = df_antes["Precio ($)"].mean()
+                    p_despues = df_despues["Precio ($)"].mean()
+                    v_antes = df_antes["Venta Volumen (Pzas)"].mean()
+                    v_despues = df_despues["Venta Volumen (Pzas)"].mean()
+                    val_antes = df_antes["Venta Valor ($)"].mean()
+                    val_despues = df_despues["Venta Valor ($)"].mean()
+
+                    var_p = (p_despues / p_antes) - 1
+                    var_v = (v_despues / v_antes) - 1
+                    var_val = (val_despues / val_antes) - 1
+                    elasticidad = var_v / var_p if var_p != 0 else 0
+
+                    st.markdown(f"""
+                        <div style='background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); 
+                                    padding: 1rem; border-radius: 10px; border-left: 4px solid #3B82F6; margin-top: 1rem;'>
+                            <p style='margin: 0; color: #1E40AF; font-size: 0.95rem;'>
+                                📊 <strong>Período de Comparación:</strong> Promedio de {len(df_antes)} semanas antes vs {len(df_despues)} semanas después
+                            </p>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+                    # --- TARJETAS DE MÉTRICAS CON DISEÑO PREMIUM ---
+                    st.markdown("""
+                        <style>
+                        .metric-card {
+                            background: white;
+                            padding: 1.5rem;
+                            border-radius: 12px;
+                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+                            border-left: 4px solid;
+                            transition: transform 0.2s, box-shadow 0.2s;
+                        }
+                        .metric-card:hover {
+                            transform: translateY(-2px);
+                            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.1);
+                        }
+                        .metric-label {
+                            font-size: 0.85rem;
+                            color: #64748B;
+                            font-weight: 600;
+                            margin-bottom: 0.5rem;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                        }
+                        .metric-value {
+                            font-size: 2rem;
+                            font-weight: 700;
+                            margin: 0;
+                            line-height: 1;
+                        }
+                        .metric-delta {
+                            font-size: 0.9rem;
+                            margin-top: 0.5rem;
+                            font-weight: 500;
+                        }
+                        </style>
+                    """, unsafe_allow_html=True)
+
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    st.markdown("### 📊 Cambios Detectados")
+                    res1, res2, res3, res4 = st.columns(4)
+                    
+                    # Tarjeta 1: Precio
+                    delta_color_p = "#10B981" if var_p > 0 else "#EF4444"
+                    arrow_p = "↑" if var_p > 0 else "↓"
+                    with res1:
+                        st.markdown(f"""
+                            <div class="metric-card" style="border-left-color: {delta_color_p};">
+                                <div class="metric-label">💰 Δ Precio Promedio</div>
+                                <div class="metric-value" style="color: {delta_color_p};">
+                                    {var_p:.1%}
+                                </div>
+                                <div class="metric-delta" style="color: {delta_color_p};">
+                                    {arrow_p} ${p_antes:.2f} → ${p_despues:.2f}
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # Tarjeta 2: Volumen
+                    delta_color_v = "#10B981" if var_v > 0 else "#EF4444"
+                    arrow_v = "↑" if var_v > 0 else "↓"
+                    with res2:
+                        st.markdown(f"""
+                            <div class="metric-card" style="border-left-color: {delta_color_v};">
+                                <div class="metric-label">📦 Δ Volumen Promedio</div>
+                                <div class="metric-value" style="color: {delta_color_v};">
+                                    {var_v:.1%}
+                                </div>
+                                <div class="metric-delta" style="color: {delta_color_v};">
+                                    {arrow_v} {v_antes:,.0f} → {v_despues:,.0f} pzas
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # Tarjeta 3: Valor
+                    delta_color_val = "#10B981" if var_val > 0 else "#EF4444"
+                    arrow_val = "↑" if var_val > 0 else "↓"
+                    with res3:
+                        st.markdown(f"""
+                            <div class="metric-card" style="border-left-color: {delta_color_val};">
+                                <div class="metric-label">💵 Δ Valor Promedio</div>
+                                <div class="metric-value" style="color: {delta_color_val};">
+                                    {var_val:.1%}
+                                </div>
+                                <div class="metric-delta" style="color: {delta_color_val};">
+                                    {arrow_val} ${val_antes:,.0f} → ${val_despues:,.0f}
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # Tarjeta 4: Elasticidad
+                    if abs(elasticidad) > 1:
+                        elastic_color = "#DC2626"
+                        elastic_icon = "⚠️"
+                        elastic_label = "ELÁSTICO"
+                    else:
+                        elastic_color = "#059669"
+                        elastic_icon = "✅"
+                        elastic_label = "INELÁSTICO"
+                    
+                    with res4:
+                        st.markdown(f"""
+                            <div class="metric-card" style="border-left-color: {elastic_color};">
+                                <div class="metric-label">{elastic_icon} Elasticidad</div>
+                                <div class="metric-value" style="color: {elastic_color};">
+                                    {elasticidad:.2f}
+                                </div>
+                                <div class="metric-delta" style="color: {elastic_color};">
+                                    {elastic_label}
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # Mensaje interpretativo
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    if abs(elasticidad) > 1:
+                        st.markdown(f"""
+                            <div style='background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%); 
+                                        padding: 1.2rem; border-radius: 10px; border-left: 4px solid #DC2626;'>
+                                <p style='margin: 0; color: #991B1B;'>
+                                    <strong>⚠️ Producto Elástico (|E| = {abs(elasticidad):.2f} > 1):</strong><br>
+                                    El volumen es muy sensible a cambios de precio. Una variación del 1% en precio genera 
+                                    un cambio del {abs(elasticidad):.2f}% en volumen. Se recomienda precaución con incrementos de precio.
+                                </p>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"""
+                            <div style='background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); 
+                                        padding: 1.2rem; border-radius: 10px; border-left: 4px solid #059669;'>
+                                <p style='margin: 0; color: #064E3B;'>
+                                    <strong>✅ Producto Inelástico (|E| = {abs(elasticidad):.2f} < 1):</strong><br>
+                                    El volumen es poco sensible a cambios de precio. Una variación del 1% en precio genera 
+                                    solo un {abs(elasticidad):.2f}% de cambio en volumen. Hay margen para ajustes de precio.
+                                </p>
+                            </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.error("❌ No hay suficientes semanas antes o después de la seleccionada para calcular promedios.")
+
+            # --- MÉTRICAS GENERALES DEL PERÍODO ---
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("""
+                <div style='background: linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%); 
+                            padding: 1rem; border-radius: 10px; margin-bottom: 1rem;'>
+                    <h4 style='color: #334155; margin: 0; font-weight: 600;'>
+                        📊 Resumen del Período Completo
+                    </h4>
+                </div>
+            """, unsafe_allow_html=True)
+
+            m1, m2, m3, m4 = st.columns(4)
+            
+            with m1:
+                st.markdown(f"""
+                    <div class="metric-card" style="border-left-color: #3B82F6;">
+                        <div class="metric-label">📦 Volumen Total</div>
+                        <div class="metric-value" style="color: #1E40AF;">
+                            {df_filtrado['Venta Volumen (Pzas)'].sum():,.0f}
+                        </div>
+                        <div class="metric-delta" style="color: #64748B;">
+                            Piezas vendidas
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+            
+            with m2:
+                st.markdown(f"""
+                    <div class="metric-card" style="border-left-color: #10B981;">
+                        <div class="metric-label">💵 Venta Total</div>
+                        <div class="metric-value" style="color: #065F46;">
+                            ${df_filtrado['Venta Valor ($)'].sum():,.0f}
+                        </div>
+                        <div class="metric-delta" style="color: #64748B;">
+                            Ingresos generados
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+            
+            with m3:
+                st.markdown(f"""
+                    <div class="metric-card" style="border-left-color: #F59E0B;">
+                        <div class="metric-label">💰 Precio Promedio</div>
+                        <div class="metric-value" style="color: #B45309;">
+                            ${df_filtrado['Precio ($)'].mean():.2f}
+                        </div>
+                        <div class="metric-delta" style="color: #64748B;">
+                            Precio unitario
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+            
+            if len(df_filtrado) > 1:
+                corr = df_filtrado["Precio ($)"].corr(df_filtrado["Venta Volumen (Pzas)"])
+                corr_color = "#DC2626" if corr < -0.3 else "#F59E0B" if corr < 0.3 else "#10B981"
+                corr_label = "Negativa" if corr < -0.3 else "Neutral" if corr < 0.3 else "Positiva"
+                
+                with m4:
+                    st.markdown(f"""
+                        <div class="metric-card" style="border-left-color: {corr_color};">
+                            <div class="metric-label">📈 Correlación P/V</div>
+                            <div class="metric-value" style="color: {corr_color};">
+                                {corr:.2f}
+                            </div>
+                            <div class="metric-delta" style="color: {corr_color};">
+                                {corr_label}
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.warning("⚠️ No hay datos disponibles para los filtros seleccionados.")
+    else:
+        st.error("❌ Error: Faltan columnas necesarias en el dataset.")
