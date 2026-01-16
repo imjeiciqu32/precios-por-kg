@@ -491,20 +491,14 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # --- 5. PANEL PRINCIPAL ---
-
-# Header con diseño mejorado
-col1 = st.columns([1])
-
-with col1:
-    # Icono según el modo
-    iconos_modo = {
-        "price ladder": "🪜",
-        "price pack": "📦",
-        "price and volume": "📊"
-    }
-    icono = iconos_modo.get(modo.lower(), "📊")
-    st.title(f"{icono} {modo.upper()}")
-
+# Icono según el modo
+iconos_modo = {
+    "price ladder": "🪜",
+    "price pack": "📦",
+    "price and volume": "📊"
+}
+icono = iconos_modo.get(modo.lower(), "📊")
+st.title(f"{icono} {modo.upper()}")
 
 # Línea separadora
 st.divider()
