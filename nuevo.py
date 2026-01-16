@@ -1712,6 +1712,24 @@ if modo == "Price Ladder":
                 "Producto", "Fabricante", "Marca", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"
             ])
 
+    # === NUEVO: Estados para persistir filtros y configuración ===
+    if 'size_imp_filtros' not in st.session_state:
+        st.session_state.size_imp_filtros = {
+            'fabricantes': [],
+            'canales': [],
+            'marcas': [],
+            'ocasiones': [],
+            'productos': []
+        }
+    
+    if 'size_imp_config' not in st.session_state:
+        st.session_state.size_imp_config = {
+            'escala_base': 45,
+            'gap_productos': 12,
+            'modo_vista': "Automático",
+            'zoom_nivel': "100%"
+        }
+
     st.divider()
     
     # === CONTROL DE DESPLEGADO Y OPTIMIZACIÓN ===
@@ -1725,9 +1743,9 @@ if modo == "Price Ladder":
     if not activar_seccion:
         st.info("💡 La sección está contraída para mejorar el rendimiento. Activa el interruptor para ver los datos.")
     else:
-        # === 1. FORMULARIO DE ALTA (NUEVO SKU) ===
+        # === 1. FORMULARIO DE ALTA (NUEVO SKU) - SIN RERUN ===
         with st.expander("➕ Añadir un Nuevo SKU en la Simulación", expanded=False):
-            with st.form("nuevo_sku_form"):
+            with st.form("nuevo_sku_form", clear_on_submit=True):
                 c1, c2, c3 = st.columns(3)
                 nuevo_p = c1.text_input("Nombre Completo (Producto)", placeholder="Ej. Takis Fuego 240g")
                 nuevo_m = c2.text_input("Marca", placeholder="Ej. TAKIS")
@@ -1736,62 +1754,133 @@ if modo == "Price Ladder":
                 c4, c5, c6 = st.columns(3)
                 nuevo_c = c4.text_input("Canal", value="AUTOSERVICIO")
                 nuevo_o = c5.selectbox("Ocasión de Consumo", ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"])
-                nuevo_ancho = c6.number_input("Ancho (cm)", min_value=1.0, step=0.1)
+                nuevo_ancho = c6.number_input("Ancho (cm)", min_value=1.0, step=0.1, value=10.0)
                 
-                nuevo_alto = st.number_input("Alto (cm)", min_value=1.0, step=0.1)
+                nuevo_alto = st.number_input("Alto (cm)", min_value=1.0, step=0.1, value=15.0)
                 
                 if st.form_submit_button("🚀 Registrar SKU"):
-                    # Aplicamos la G mayúscula al producto
-                    nuevo_p_fmt = nuevo_p.capitalize()
-                    nueva_fila = {
-                        "Producto": nuevo_p_fmt, "Fabricante": nuevo_f, "Marca": nuevo_m,
-                        "Canal": nuevo_c, "Ocasión de Consumo": nuevo_o,
-                        "Ancho (cm)": nuevo_ancho, "Alto (cm)": nuevo_alto
-                    }
-                    st.session_state.df_arq_sim = pd.concat([st.session_state.df_arq_sim, pd.DataFrame([nueva_fila])], ignore_index=True)
-                    st.success(f"Producto {nuevo_p_fmt} añadido correctamente.")
-                    st.rerun()
+                    if nuevo_p.strip():  # Validar que no esté vacío
+                        # Aplicamos la capitalización al producto
+                        nuevo_p_fmt = nuevo_p.strip().upper()
+                        nueva_fila = {
+                            "Producto": nuevo_p_fmt, 
+                            "Fabricante": nuevo_f, 
+                            "Marca": nuevo_m.strip().upper(),
+                            "Canal": nuevo_c.strip().upper(), 
+                            "Ocasión de Consumo": nuevo_o,
+                            "Ancho (cm)": nuevo_ancho, 
+                            "Alto (cm)": nuevo_alto
+                        }
+                        st.session_state.df_arq_sim = pd.concat(
+                            [st.session_state.df_arq_sim, pd.DataFrame([nueva_fila])], 
+                            ignore_index=True
+                        )
+                        st.success(f"✅ Producto **{nuevo_p_fmt}** añadido correctamente.")
+                        # NO HACEMOS RERUN - Los datos se actualizarán automáticamente
+                    else:
+                        st.error("⚠️ El nombre del producto no puede estar vacío.")
 
-        # === 2. FILTROS AVANZADOS DINÁMICOS (VACÍOS POR DEFECTO PARA VELOCIDAD) ===
+        # === 2. FILTROS AVANZADOS DINÁMICOS CON PERSISTENCIA ===
         with st.container(border=True):
             col_t1, col_t2 = st.columns([4, 1])
             col_t1.markdown("**Filtros Globales de Visualización**")
             
             if col_t2.button("🔄 Reset Filtros", use_container_width=True):
+                st.session_state.size_imp_filtros = {
+                    'fabricantes': [],
+                    'canales': [],
+                    'marcas': [],
+                    'ocasiones': [],
+                    'productos': []
+                }
                 st.rerun()
             
             df_base = st.session_state.df_arq_sim
             
             r1_c1, r1_c2, r1_c3 = st.columns(3)
-            # Iniciamos en [] para que el usuario elija y no se sature la app
-            sel_fab = r1_c1.multiselect("Fabricante", df_base["Fabricante"].unique(), default=[])
             
-            df_can = df_base[df_base["Fabricante"].isin(sel_fab)]
-            sel_can = r1_c2.multiselect("Canal", df_can["Canal"].unique(), default=[])
+            # Filtro Fabricante
+            sel_fab = r1_c1.multiselect(
+                "Fabricante", 
+                df_base["Fabricante"].unique(), 
+                default=st.session_state.size_imp_filtros['fabricantes'],
+                key="filt_fab"
+            )
+            st.session_state.size_imp_filtros['fabricantes'] = sel_fab
             
-            df_mar = df_can[df_can["Canal"].isin(sel_can)]
-            sel_marcas = r1_c3.multiselect("Marcas", df_mar["Marca"].unique(), default=[])
+            # Filtro Canal (dependiente de Fabricante)
+            df_can = df_base[df_base["Fabricante"].isin(sel_fab)] if sel_fab else df_base
+            canales_disponibles = df_can["Canal"].unique()
+            sel_can_filtrados = [c for c in st.session_state.size_imp_filtros['canales'] if c in canales_disponibles]
+            
+            sel_can = r1_c2.multiselect(
+                "Canal", 
+                canales_disponibles, 
+                default=sel_can_filtrados,
+                key="filt_can"
+            )
+            st.session_state.size_imp_filtros['canales'] = sel_can
+            
+            # Filtro Marca (dependiente de Canal)
+            df_mar = df_can[df_can["Canal"].isin(sel_can)] if sel_can else df_can
+            marcas_disponibles = df_mar["Marca"].unique()
+            sel_mar_filtrados = [m for m in st.session_state.size_imp_filtros['marcas'] if m in marcas_disponibles]
+            
+            sel_marcas = r1_c3.multiselect(
+                "Marcas", 
+                marcas_disponibles, 
+                default=sel_mar_filtrados,
+                key="filt_mar"
+            )
+            st.session_state.size_imp_filtros['marcas'] = sel_marcas
             
             r2_c1, r2_c2 = st.columns(2)
-            df_oca = df_mar[df_mar["Marca"].isin(sel_marcas)]
-            sel_ocasiones = r2_c1.multiselect("Ocasiones", df_oca["Ocasión de Consumo"].unique(), default=[])
             
-            df_prod = df_oca[df_oca["Ocasión de Consumo"].isin(sel_ocasiones)]
-            sel_productos = r2_c2.multiselect("Productos específicos", df_prod["Producto"].unique(), default=[])
+            # Filtro Ocasión (dependiente de Marca)
+            df_oca = df_mar[df_mar["Marca"].isin(sel_marcas)] if sel_marcas else df_mar
+            ocasiones_disponibles = df_oca["Ocasión de Consumo"].unique()
+            sel_oca_filtrados = [o for o in st.session_state.size_imp_filtros['ocasiones'] if o in ocasiones_disponibles]
+            
+            sel_ocasiones = r2_c1.multiselect(
+                "Ocasiones", 
+                ocasiones_disponibles, 
+                default=sel_oca_filtrados,
+                key="filt_oca"
+            )
+            st.session_state.size_imp_filtros['ocasiones'] = sel_ocasiones
+            
+            # Filtro Producto (dependiente de Ocasión)
+            df_prod = df_oca[df_oca["Ocasión de Consumo"].isin(sel_ocasiones)] if sel_ocasiones else df_oca
+            productos_disponibles = df_prod["Producto"].unique()
+            sel_prod_filtrados = [p for p in st.session_state.size_imp_filtros['productos'] if p in productos_disponibles]
+            
+            sel_productos = r2_c2.multiselect(
+                "Productos específicos", 
+                productos_disponibles, 
+                default=sel_prod_filtrados,
+                key="filt_prod"
+            )
+            st.session_state.size_imp_filtros['productos'] = sel_productos
 
         # --- LÓGICA DE FILTRADO ---
-        df_filtered = df_base[
-            (df_base["Fabricante"].isin(sel_fab)) & 
-            (df_base["Canal"].isin(sel_can)) & 
-            (df_base["Marca"].isin(sel_marcas)) & 
-            (df_base["Ocasión de Consumo"].isin(sel_ocasiones)) &
-            (df_base["Producto"].isin(sel_productos))
-        ].copy()
+        df_filtered = df_base.copy()
+        
+        if sel_fab:
+            df_filtered = df_filtered[df_filtered["Fabricante"].isin(sel_fab)]
+        if sel_can:
+            df_filtered = df_filtered[df_filtered["Canal"].isin(sel_can)]
+        if sel_marcas:
+            df_filtered = df_filtered[df_filtered["Marca"].isin(sel_marcas)]
+        if sel_ocasiones:
+            df_filtered = df_filtered[df_filtered["Ocasión de Consumo"].isin(sel_ocasiones)]
+        if sel_productos:
+            df_filtered = df_filtered[df_filtered["Producto"].isin(sel_productos)]
         
         if df_filtered.empty:
             st.warning("⚠️ Selecciona filtros para visualizar la tabla y el gráfico.")
         else:
             # Agregamos columna de selección
+            df_filtered = df_filtered.copy()
             df_filtered.insert(0, "Seleccionar", False)
             
             # Editor Dinámico
@@ -1800,119 +1889,172 @@ if modo == "Price Ladder":
                 column_order=("Seleccionar", "Producto", "Marca", "Fabricante", "Canal", "Ocasión de Consumo", "Ancho (cm)", "Alto (cm)"),
                 hide_index=True, 
                 use_container_width=True, 
-                key="editor_v5_1"
+                key="editor_v6_persistente"
             )
             
             # Acciones
             c_save, c_del = st.columns(2)
             if c_save.button("💾 Guardar Cambios en Dimensiones", use_container_width=True, type="primary"):
                 for _, row in df_editado.iterrows():
-                    st.session_state.df_arq_sim.loc[st.session_state.df_arq_sim["Producto"] == row["Producto"], ["Ancho (cm)", "Alto (cm)"]] = [row["Ancho (cm)"], row["Alto (cm)"]]
-                st.success("¡Dimensiones actualizadas!")
-                st.rerun()
+                    mask = st.session_state.df_arq_sim["Producto"] == row["Producto"]
+                    st.session_state.df_arq_sim.loc[mask, ["Ancho (cm)", "Alto (cm)"]] = [row["Ancho (cm)"], row["Alto (cm)"]]
+                st.success("✅ ¡Dimensiones actualizadas correctamente!")
+                # NO hacemos rerun - las actualizaciones se reflejarán automáticamente
             
             if c_del.button("🗑️ Eliminar Productos Seleccionados", use_container_width=True):
                 productos_a_eliminar = df_editado[df_editado["Seleccionar"] == True]["Producto"].tolist()
                 if productos_a_eliminar:
-                    st.session_state.df_arq_sim = st.session_state.df_arq_sim[~st.session_state.df_arq_sim["Producto"].isin(productos_a_eliminar)].copy()
+                    st.session_state.df_arq_sim = st.session_state.df_arq_sim[
+                        ~st.session_state.df_arq_sim["Producto"].isin(productos_a_eliminar)
+                    ].copy()
+                    st.success(f"✅ {len(productos_a_eliminar)} producto(s) eliminado(s)")
                     st.rerun()
+                else:
+                    st.warning("⚠️ No hay productos seleccionados para eliminar")
 
-            # === 3. COMPARADOR 1 VS 1 ===
+            # === 3. COMPARADOR 1 VS 1 - ADAPTATIVO A FILTROS ===
             st.markdown("#### ⚖️ Comparativa de Size Impression Index")
-            with st.container(border=True):
-                col_sel1, col_sel2 = st.columns(2)
-                with col_sel1:
-                    prod_base = st.selectbox("Producto 1 (Base 100)", st.session_state.df_arq_sim["Producto"].unique(), key="sb_1")
-                with col_sel2:
-                    prod_comp = st.selectbox("Producto 2 (Comparativo)", st.session_state.df_arq_sim["Producto"].unique(), key="sb_2")
-                
-                # Obtención de datos
-                d1 = st.session_state.df_arq_sim[st.session_state.df_arq_sim["Producto"] == prod_base].iloc[0]
-                d2 = st.session_state.df_arq_sim[st.session_state.df_arq_sim["Producto"] == prod_comp].iloc[0]
-                
-                # Cálculo de áreas e Index
-                a1 = d1["Ancho (cm)"] * d1["Alto (cm)"]
-                a2 = d2["Ancho (cm)"] * d2["Alto (cm)"]
-                index_val = (a2 / a1) * 100
-                delta = index_val - 100
             
-                # === LÓGICA DE COLOR: POSITIVO SI SOBRE-INDEXA ===
-                # Verde si el comparativo es más grande (>100), Rojo si es más pequeño (<100)
-                color_exito = "#28a745" if index_val >= 100 else "#d32f2f"
-                bg_exito = "#f0fff4" if index_val >= 100 else "#fff5f5"
+            # USAR SOLO LOS PRODUCTOS FILTRADOS
+            productos_disponibles_comparar = df_editado["Producto"].unique().tolist()
             
-                _, col_card, _ = st.columns([1, 2, 1])
+            if len(productos_disponibles_comparar) < 2:
+                st.info("ℹ️ Necesitas al menos 2 productos en la vista filtrada para realizar comparaciones.")
+            else:
+                with st.container(border=True):
+                    col_sel1, col_sel2 = st.columns(2)
+                    with col_sel1:
+                        prod_base = st.selectbox(
+                            "Producto 1 (Base 100)", 
+                            productos_disponibles_comparar, 
+                            key="sb_1_filtrado"
+                        )
+                    with col_sel2:
+                        # Asegurar que el producto 2 sea diferente al 1
+                        productos_comp = [p for p in productos_disponibles_comparar if p != prod_base]
+                        prod_comp = st.selectbox(
+                            "Producto 2 (Comparativo)", 
+                            productos_comp, 
+                            key="sb_2_filtrado"
+                        )
+                    
+                    # Obtención de datos desde el dataframe filtrado
+                    d1 = df_editado[df_editado["Producto"] == prod_base].iloc[0]
+                    d2 = df_editado[df_editado["Producto"] == prod_comp].iloc[0]
+                    
+                    # Cálculo de áreas e Index
+                    a1 = d1["Ancho (cm)"] * d1["Alto (cm)"]
+                    a2 = d2["Ancho (cm)"] * d2["Alto (cm)"]
+                    index_val = (a2 / a1) * 100
+                    delta = index_val - 100
                 
-                with col_card:
-                    st.markdown(f"""
-                        <div style="
-                            background-color: white;
-                            padding: 15px 25px;
-                            border-radius: 12px;
-                            border-top: 5px solid {color_exito};
-                            box-shadow: 0px 2px 10px rgba(0,0,0,0.08);
-                            text-align: center;
-                            margin: 10px auto;
-                            max-width: 400px;
-                        ">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
-                                <div style="text-align: left; width: 42%;">
-                                    <p style="margin: 0; color: #777; font-size: 0.75rem; line-height: 1.1;">{prod_base}</p>
-                                    <h4 style="margin: 2px 0; color: #333; font-weight: bold; font-size: 1.1rem;">{a1:,.0f} <span style="font-size: 0.7rem;">cm²</span></h4>
+                    # === LÓGICA DE COLOR: POSITIVO SI SOBRE-INDEXA ===
+                    color_exito = "#28a745" if index_val >= 100 else "#d32f2f"
+                    bg_exito = "#f0fff4" if index_val >= 100 else "#fff5f5"
+                
+                    _, col_card, _ = st.columns([1, 2, 1])
+                    
+                    with col_card:
+                        st.markdown(f"""
+                            <div style="
+                                background-color: white;
+                                padding: 15px 25px;
+                                border-radius: 12px;
+                                border-top: 5px solid {color_exito};
+                                box-shadow: 0px 2px 10px rgba(0,0,0,0.08);
+                                text-align: center;
+                                margin: 10px auto;
+                                max-width: 400px;
+                            ">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
+                                    <div style="text-align: left; width: 42%;">
+                                        <p style="margin: 0; color: #777; font-size: 0.75rem; line-height: 1.1;">{prod_base}</p>
+                                        <h4 style="margin: 2px 0; color: #333; font-weight: bold; font-size: 1.1rem;">{a1:,.0f} <span style="font-size: 0.7rem;">cm²</span></h4>
+                                    </div>
+                                    <div style="color: #bbb; font-size: 0.8rem; margin-top: 15px; font-weight: bold;">vs</div>
+                                    <div style="text-align: right; width: 42%;">
+                                        <p style="margin: 0; color: #777; font-size: 0.75rem; line-height: 1.1;">{prod_comp}</p>
+                                        <h4 style="margin: 2px 0; color: #333; font-weight: bold; font-size: 1.1rem;">{a2:,.0f} <span style="font-size: 0.7rem;">cm²</span></h4>
+                                    </div>
                                 </div>
-                                <div style="color: #bbb; font-size: 0.8rem; margin-top: 15px; font-weight: bold;">vs</div>
-                                <div style="text-align: right; width: 42%;">
-                                    <p style="margin: 0; color: #777; font-size: 0.75rem; line-height: 1.1;">{prod_comp}</p>
-                                    <h4 style="margin: 2px 0; color: #333; font-weight: bold; font-size: 1.1rem;">{a2:,.0f} <span style="font-size: 0.7rem;">cm²</span></h4>
+                                <div style="margin-top: 10px;">
+                                    <h1 style="margin: 0; color: {color_exito}; font-size: 3rem; font-weight: 800; line-height: 1;">{index_val:.0f}</h1>
+                                    <p style="margin: 2px 0; color: #666; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Index Size Impression</p>
+                                    <div style="
+                                        display: inline-block;
+                                        margin-top: 8px;
+                                        padding: 4px 12px;
+                                        border-radius: 15px;
+                                        background-color: {bg_exito};
+                                        color: {color_exito};
+                                        font-size: 0.9rem;
+                                        font-weight: bold;
+                                    ">
+                                        {'▲' if delta >= 0 else '▼'} {abs(delta):.1f}% <span style="font-weight: normal; font-size: 0.8rem;">vs base</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div style="margin-top: 10px;">
-                                <h1 style="margin: 0; color: {color_exito}; font-size: 3rem; font-weight: 800; line-height: 1;">{index_val:.0f}</h1>
-                                <p style="margin: 2px 0; color: #666; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Index Size Impression</p>
-                                <div style="
-                                    display: inline-block;
-                                    margin-top: 8px;
-                                    padding: 4px 12px;
-                                    border-radius: 15px;
-                                    background-color: {bg_exito};
-                                    color: {color_exito};
-                                    font-size: 0.9rem;
-                                    font-weight: bold;
-                                ">
-                                    {'▲' if delta >= 0 else '▼'} {abs(delta):.1f}% <span style="font-weight: normal; font-size: 0.8rem;">vs base</span>
-                                </div>
-                            </div>
-                        </div>
-                    """, unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
 
-            # === GRÁFICO TÉCNICO ADAPTATIVO CON NAVEGACIÓN MEJORADA ===
+            # === GRÁFICO TÉCNICO ADAPTATIVO CON CONFIGURACIÓN PERSISTENTE ===
             if not df_editado.empty:
-                df_editado['Area'] = df_editado['Ancho (cm)'] * df_editado['Alto (cm)']
-                # Aseguramos la G mayúscula en el nombre de los productos
-                df_editado['Producto'] = df_editado['Producto'].str.upper()
+                df_editado_graf = df_editado.copy()
+                df_editado_graf['Area'] = df_editado_graf['Ancho (cm)'] * df_editado_graf['Alto (cm)']
+                df_editado_graf['Producto'] = df_editado_graf['Producto'].str.upper()
                 
                 orden_o = ["Bites", "Individual", "Hambre", "Compartir", "Familiar", "Reunión", "Fiesta", "Transformador"]
-                df_editado['Ocasión de Consumo'] = pd.Categorical(df_editado['Ocasión de Consumo'], categories=orden_o, ordered=True)
-                df_viz = df_editado.sort_values(['Ocasión de Consumo', 'Area'])
+                df_editado_graf['Ocasión de Consumo'] = pd.Categorical(
+                    df_editado_graf['Ocasión de Consumo'], 
+                    categories=orden_o, 
+                    ordered=True
+                )
+                df_viz = df_editado_graf.sort_values(['Ocasión de Consumo', 'Area'])
             
-                # === CONTROLES DE VISUALIZACIÓN MEJORADOS ===
+                # === CONTROLES DE VISUALIZACIÓN CON PERSISTENCIA ===
                 st.markdown("#### ⚙️ Controles de Visualización")
                 
                 col_ctrl1, col_ctrl2, col_ctrl3, col_ctrl4 = st.columns(4)
                 
                 with col_ctrl1:
-                    escala_base = st.slider("📏 Escala Base", 20, 80, 45, step=5, 
-                                           help="Aumenta para hacer los empaques más grandes")
+                    escala_base = st.slider(
+                        "📏 Escala Base", 20, 80, 
+                        st.session_state.size_imp_config['escala_base'], 
+                        step=5, 
+                        help="Aumenta para hacer los empaques más grandes",
+                        key="slider_escala"
+                    )
+                    st.session_state.size_imp_config['escala_base'] = escala_base
+                    
                 with col_ctrl2:
-                    gap_productos = st.slider("↔️ Separación", 5, 30, 12, 
-                                             help="Espacio entre productos")
+                    gap_productos = st.slider(
+                        "↔️ Separación", 5, 30, 
+                        st.session_state.size_imp_config['gap_productos'], 
+                        help="Espacio entre productos",
+                        key="slider_gap"
+                    )
+                    st.session_state.size_imp_config['gap_productos'] = gap_productos
+                    
                 with col_ctrl3:
-                    modo_vista = st.selectbox("👁️ Modo Vista", 
-                                              ["Automático", "Compacto", "Expandido", "Ultra Grande"])
+                    modo_vista = st.selectbox(
+                        "👁️ Modo Vista", 
+                        ["Automático", "Compacto", "Expandido", "Ultra Grande"],
+                        index=["Automático", "Compacto", "Expandido", "Ultra Grande"].index(
+                            st.session_state.size_imp_config['modo_vista']
+                        ),
+                        key="select_modo"
+                    )
+                    st.session_state.size_imp_config['modo_vista'] = modo_vista
+                    
                 with col_ctrl4:
-                    zoom_nivel = st.selectbox("🔍 Zoom Inicial",
-                                              ["100%", "125%", "150%", "175%", "200%"],
-                                              index=0)
+                    zoom_nivel = st.selectbox(
+                        "🔍 Zoom Inicial",
+                        ["100%", "125%", "150%", "175%", "200%"],
+                        index=["100%", "125%", "150%", "175%", "200%"].index(
+                            st.session_state.size_imp_config['zoom_nivel']
+                        ),
+                        key="select_zoom"
+                    )
+                    st.session_state.size_imp_config['zoom_nivel'] = zoom_nivel
             
                 # === CÁLCULO DE ESCALA INTELIGENTE ===
                 num_productos = len(df_viz)
@@ -2013,7 +2155,7 @@ if modo == "Price Ladder":
                         showarrow=False, font=dict(size=font_size_medidas, color="#333"), xanchor="right"
                     )
                     
-                    # === ÁREA EN EL CENTRO (SOLO TEXTO REFORZADO) ===
+                    # === ÁREA EN EL CENTRO ===
                     fig.add_annotation(
                         x=x_ptr+w/2, y=h/2, 
                         text=f"<b>{area:.0f}</b><br><span style='font-size:{int(font_size_area*0.6)}px;'>cm²</span>", 
@@ -2032,7 +2174,7 @@ if modo == "Price Ladder":
                     last_ocasion = r['Ocasión de Consumo']
                     x_ptr += w + gap_productos
             
-                # === ETIQUETAS DE OCASIÓN CON BADGE STYLE ===
+                # === ETIQUETAS DE OCASIÓN ===
                 for ocasion, pos in ocasion_positions.items():
                     center_x = (pos['start'] + pos['end']) / 2
                     fig.add_annotation(
@@ -2082,7 +2224,7 @@ if modo == "Price Ladder":
                     hovermode='closest'
                 )
                 
-                # === CONTENEDOR DEL GRÁFICO (CON BORDE Y SOMBRA) ===
+                # === CONTENEDOR DEL GRÁFICO ===
                 st.markdown(
                     """
                     <div style="
@@ -2155,6 +2297,7 @@ if modo == "Price Ladder":
                     - Aumenta "Escala Base" para agrandar
                     - "Zoom Inicial" 150% para presentar
                     - "Ultra Grande" para proyector
+                    - Los ajustes se mantienen al agregar SKUs
                     """)
 
 if modo == "Price and Volume":
