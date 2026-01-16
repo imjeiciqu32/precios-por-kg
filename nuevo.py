@@ -972,96 +972,533 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
 
     # --- MODO 1: PRICE LADDER (COMPARATIVAS 1 A 1) ---
     if modo == "Price Ladder":
-        st.subheader(f"📈 Comparativas Index ({modo})")
+        # === HEADER EJECUTIVO ===
+        st.markdown("""
+            <div style="
+                background: linear-gradient(135deg, #0B3C8C 0%, #1565C0 100%);
+                padding: 25px 30px;
+                border-radius: 15px;
+                margin-bottom: 30px;
+                box-shadow: 0 8px 20px rgba(11, 60, 140, 0.2);
+            ">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <h1 style="color: white; margin: 0; font-size: 2rem; font-weight: 900; letter-spacing: -0.5px;">
+                            📊 Comparativas Index
+                        </h1>
+                        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 1rem; font-weight: 400;">
+                            Análisis competitivo Price Ladder · Desembolso & Precio por Kg
+                        </p>
+                    </div>
+                    <div style="
+                        background: rgba(255,255,255,0.15);
+                        backdrop-filter: blur(10px);
+                        padding: 12px 20px;
+                        border-radius: 10px;
+                        border: 1px solid rgba(255,255,255,0.2);
+                    ">
+                        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1px;">Modo Activo</div>
+                        <div style="font-size: 1.1rem; color: white; font-weight: bold; margin-top: 2px;">Price Ladder</div>
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        
         df_comp["Lookup_Key"] = df_comp["Producto"]
         list_a = df_comp[df_comp["Fabricante"]=="BARCEL"]["Lookup_Key"].unique().tolist()
         list_b = df_comp[df_comp["Fabricante"]!="BARCEL"]["Lookup_Key"].unique().tolist()
         label_a, label_b = "Barcel", "Comp."
 
         if list_a and list_b:
+            # === PANEL DE SELECCIÓN CON DISEÑO PREMIUM ===
+            st.markdown("""
+                <div style="
+                    background: #F8F9FA;
+                    padding: 20px;
+                    border-radius: 12px;
+                    border: 2px solid #E0E4E9;
+                    margin-bottom: 25px;
+                ">
+                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                        <span style="font-size: 1.3rem; margin-right: 10px;">⚙️</span>
+                        <h3 style="margin: 0; color: #2C3E50; font-size: 1.1rem; font-weight: 700;">
+                            Configuración de Comparativas
+                        </h3>
+                    </div>
+                    <p style="color: #7F8C8D; font-size: 0.9rem; margin: 0 0 15px 0;">
+                        Selecciona hasta 4 pares de productos para realizar comparaciones simultáneas
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
+            
             sel_cols = st.columns(4)
             selections = []
             for i in range(4):
                 with sel_cols[i]:
-                    s_a = st.selectbox(f"{label_a}", list_a, key=f"sa{i}")
+                    st.markdown(f"""
+                        <div style="
+                            background: white;
+                            padding: 12px;
+                            border-radius: 10px;
+                            border: 1px solid #E0E4E9;
+                            margin-bottom: 10px;
+                            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+                        ">
+                            <div style="
+                                font-size: 0.7rem;
+                                font-weight: bold;
+                                color: #0B3C8C;
+                                text-transform: uppercase;
+                                letter-spacing: 1px;
+                                margin-bottom: 8px;
+                            ">
+                                🏢 Comparativa {i+1}
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    s_a = st.selectbox(f"🔵 {label_a}", list_a, key=f"sa{i}", label_visibility="visible")
                     idx_default = min(i+1, len(list_b)-1) if len(list_b) > 1 else 0
-                    s_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=idx_default)
+                    s_b = st.selectbox(f"🔴 {label_b}", list_b, key=f"sb{i}", index=idx_default, label_visibility="visible")
                     selections.append((s_a, s_b))
 
-            # Fila Desembolso
-            st.markdown("### 💰 Index Desembolso")
+            st.markdown("<div style='margin: 30px 0;'></div>", unsafe_allow_html=True)
+
+            # === SECCIÓN DESEMBOLSO CON DISEÑO PREMIUM ===
+            st.markdown("""
+                <div style="
+                    background: linear-gradient(to right, #27AE60, #229954);
+                    padding: 15px 25px;
+                    border-radius: 10px;
+                    margin-bottom: 20px;
+                    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.2);
+                ">
+                    <div style="display: flex; align-items: center;">
+                        <span style="font-size: 1.8rem; margin-right: 12px;">💰</span>
+                        <div>
+                            <h2 style="color: white; margin: 0; font-size: 1.4rem; font-weight: 800;">Index Desembolso</h2>
+                            <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 0.85rem;">
+                                Competitividad en precio de venta al consumidor
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+            
             des_cols = st.columns(4)
             for i, (sel_a, sel_b) in enumerate(selections):
                 v_a = df_comp[df_comp["Lookup_Key"] == sel_a]["Precio ($)"].iloc[0]
                 v_b = df_comp[df_comp["Lookup_Key"] == sel_b]["Precio ($)"].iloc[0]
                 idx = int((v_a / v_b * 100)) if v_b > 0 else 0
-                color = "#0B3C8C" if idx <= 100 else "#D32F2F"
+                color = "#27AE60" if idx <= 100 else "#E74C3C"
+                bg_gradient = "linear-gradient(135deg, #E8F8F5 0%, #D5F4E6 100%)" if idx <= 100 else "linear-gradient(135deg, #FADBD8 0%, #F5B7B1 100%)"
+                icon = "✅" if idx <= 100 else "⚠️"
+                
                 with des_cols[i]:
-                    st.markdown(f"""<div style="background:white; border:1px solid #ddd; border-top:5px solid {color}; border-radius:10px; padding:10px; text-align:center;">
-                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#666; margin-bottom:5px;"><span>{sel_a}</span><span>{sel_b}</span></div>
-                        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:10px;"><span>${v_a:.1f}</span><span style="color:#ccc; font-size:0.7rem;">vs</span><span>${v_b:.1f}</span></div>
-                        <div style="font-size:1.8rem; font-weight:900; color:{color};">{idx}</div><div style="font-size:0.6rem; font-weight:bold; color:#999;">Index Desembolso</div></div>""", unsafe_allow_html=True)
+                    st.markdown(f"""
+                        <div style="
+                            background: {bg_gradient};
+                            border: 2px solid {color};
+                            border-radius: 12px;
+                            padding: 18px 15px;
+                            text-align: center;
+                            box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+                            transition: transform 0.2s;
+                            height: 100%;
+                        ">
+                            <!-- Header con productos -->
+                            <div style="
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: flex-start;
+                                margin-bottom: 12px;
+                                padding-bottom: 12px;
+                                border-bottom: 1px solid rgba(0,0,0,0.1);
+                            ">
+                                <div style="text-align: left; width: 45%;">
+                                    <div style="font-size: 0.65rem; color: #7F8C8D; text-transform: uppercase; font-weight: 600; margin-bottom: 2px;">Barcel</div>
+                                    <div style="font-size: 0.75rem; color: #2C3E50; font-weight: 700; line-height: 1.2;">{sel_a}</div>
+                                </div>
+                                <div style="
+                                    background: rgba(0,0,0,0.05);
+                                    padding: 4px 8px;
+                                    border-radius: 6px;
+                                    font-size: 0.7rem;
+                                    color: #95A5A6;
+                                    font-weight: bold;
+                                ">vs</div>
+                                <div style="text-align: right; width: 45%;">
+                                    <div style="font-size: 0.65rem; color: #7F8C8D; text-transform: uppercase; font-weight: 600; margin-bottom: 2px;">Comp.</div>
+                                    <div style="font-size: 0.75rem; color: #2C3E50; font-weight: 700; line-height: 1.2;">{sel_b}</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Precios -->
+                            <div style="
+                                display: flex;
+                                justify-content: space-around;
+                                margin-bottom: 15px;
+                                padding: 10px;
+                                background: rgba(255,255,255,0.5);
+                                border-radius: 8px;
+                            ">
+                                <div>
+                                    <div style="font-size: 0.7rem; color: #7F8C8D; margin-bottom: 2px;">Precio</div>
+                                    <div style="font-size: 1.2rem; font-weight: 900; color: #2C3E50;">${v_a:.1f}</div>
+                                </div>
+                                <div style="width: 1px; background: rgba(0,0,0,0.1);"></div>
+                                <div>
+                                    <div style="font-size: 0.7rem; color: #7F8C8D; margin-bottom: 2px;">Precio</div>
+                                    <div style="font-size: 1.2rem; font-weight: 900; color: #2C3E50;">${v_b:.1f}</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Index prominente -->
+                            <div style="
+                                background: white;
+                                padding: 15px;
+                                border-radius: 10px;
+                                box-shadow: inset 0 2px 8px rgba(0,0,0,0.08);
+                            ">
+                                <div style="
+                                    font-size: 2.5rem;
+                                    font-weight: 900;
+                                    color: {color};
+                                    line-height: 1;
+                                    margin-bottom: 5px;
+                                ">{idx}</div>
+                                <div style="
+                                    font-size: 0.65rem;
+                                    font-weight: 700;
+                                    color: #95A5A6;
+                                    text-transform: uppercase;
+                                    letter-spacing: 1px;
+                                ">Index Desembolso</div>
+                                <div style="
+                                    margin-top: 8px;
+                                    font-size: 1.2rem;
+                                ">{icon}</div>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
 
-            # Fila $/Kg
-            st.markdown("### ⚖️ Index Precio por Kg")
+            st.markdown("<div style='margin: 35px 0;'></div>", unsafe_allow_html=True)
+
+            # === SECCIÓN PRECIO POR KG CON DISEÑO PREMIUM ===
+            st.markdown("""
+                <div style="
+                    background: linear-gradient(to right, #3498DB, #2E86C1);
+                    padding: 15px 25px;
+                    border-radius: 10px;
+                    margin-bottom: 20px;
+                    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+                ">
+                    <div style="display: flex; align-items: center;">
+                        <span style="font-size: 1.8rem; margin-right: 12px;">⚖️</span>
+                        <div>
+                            <h2 style="color: white; margin: 0; font-size: 1.4rem; font-weight: 800;">Index Precio por Kg</h2>
+                            <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 0.85rem;">
+                                Análisis de valor por unidad de peso
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+            
             pkg_cols = st.columns(4)
             for i, (sel_a, sel_b) in enumerate(selections):
                 v_a = df_comp[df_comp["Lookup_Key"] == sel_a]["Precio por Kg ($)"].iloc[0]
                 v_b = df_comp[df_comp["Lookup_Key"] == sel_b]["Precio por Kg ($)"].iloc[0]
                 idx = int((v_a / v_b * 100)) if v_b > 0 else 0
-                color = "#0B3C8C" if idx <= 100 else "#D32F2F"
+                color = "#3498DB" if idx <= 100 else "#E67E22"
+                bg_gradient = "linear-gradient(135deg, #EBF5FB 0%, #D6EAF8 100%)" if idx <= 100 else "linear-gradient(135deg, #FEF5E7 0%, #FAE5D3 100%)"
+                icon = "✅" if idx <= 100 else "⚠️"
+                
                 with pkg_cols[i]:
-                    st.markdown(f"""<div style="background:white; border:1px solid #ddd; border-top:5px solid {color}; border-radius:10px; padding:10px; text-align:center;">
-                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#666; margin-bottom:5px;"><span>{sel_a}</span><span>{sel_b}</span></div>
-                        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:10px;"><span>${int(v_a)}</span><span style="color:#ccc; font-size:0.7rem;">vs</span><span>${int(v_b)}</span></div>
-                        <div style="font-size:1.8rem; font-weight:900; color:{color};">{idx}</div><div style="font-size:0.6rem; font-weight:bold; color:#999;">Index $/Kg</div></div>""", unsafe_allow_html=True)
+                    st.markdown(f"""
+                        <div style="
+                            background: {bg_gradient};
+                            border: 2px solid {color};
+                            border-radius: 12px;
+                            padding: 18px 15px;
+                            text-align: center;
+                            box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+                            transition: transform 0.2s;
+                            height: 100%;
+                        ">
+                            <!-- Header con productos -->
+                            <div style="
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: flex-start;
+                                margin-bottom: 12px;
+                                padding-bottom: 12px;
+                                border-bottom: 1px solid rgba(0,0,0,0.1);
+                            ">
+                                <div style="text-align: left; width: 45%;">
+                                    <div style="font-size: 0.65rem; color: #7F8C8D; text-transform: uppercase; font-weight: 600; margin-bottom: 2px;">Barcel</div>
+                                    <div style="font-size: 0.75rem; color: #2C3E50; font-weight: 700; line-height: 1.2;">{sel_a}</div>
+                                </div>
+                                <div style="
+                                    background: rgba(0,0,0,0.05);
+                                    padding: 4px 8px;
+                                    border-radius: 6px;
+                                    font-size: 0.7rem;
+                                    color: #95A5A6;
+                                    font-weight: bold;
+                                ">vs</div>
+                                <div style="text-align: right; width: 45%;">
+                                    <div style="font-size: 0.65rem; color: #7F8C8D; text-transform: uppercase; font-weight: 600; margin-bottom: 2px;">Comp.</div>
+                                    <div style="font-size: 0.75rem; color: #2C3E50; font-weight: 700; line-height: 1.2;">{sel_b}</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Precios por Kg -->
+                            <div style="
+                                display: flex;
+                                justify-content: space-around;
+                                margin-bottom: 15px;
+                                padding: 10px;
+                                background: rgba(255,255,255,0.5);
+                                border-radius: 8px;
+                            ">
+                                <div>
+                                    <div style="font-size: 0.7rem; color: #7F8C8D; margin-bottom: 2px;">$/Kg</div>
+                                    <div style="font-size: 1.2rem; font-weight: 900; color: #2C3E50;">${int(v_a)}</div>
+                                </div>
+                                <div style="width: 1px; background: rgba(0,0,0,0.1);"></div>
+                                <div>
+                                    <div style="font-size: 0.7rem; color: #7F8C8D; margin-bottom: 2px;">$/Kg</div>
+                                    <div style="font-size: 1.2rem; font-weight: 900; color: #2C3E50;">${int(v_b)}</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Index prominente -->
+                            <div style="
+                                background: white;
+                                padding: 15px;
+                                border-radius: 10px;
+                                box-shadow: inset 0 2px 8px rgba(0,0,0,0.08);
+                            ">
+                                <div style="
+                                    font-size: 2.5rem;
+                                    font-weight: 900;
+                                    color: {color};
+                                    line-height: 1;
+                                    margin-bottom: 5px;
+                                ">{idx}</div>
+                                <div style="
+                                    font-size: 0.65rem;
+                                    font-weight: 700;
+                                    color: #95A5A6;
+                                    text-transform: uppercase;
+                                    letter-spacing: 1px;
+                                ">Index $/Kg</div>
+                                <div style="
+                                    margin-top: 8px;
+                                    font-size: 1.2rem;
+                                ">{icon}</div>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
 
     # --- MODO 2: MATRIZ DE ARQUITECTURA (VISTA PPT) / PRICE PACK ---
     else:
-        # Encabezado con leyenda a la derecha
-        col_tit, col_ley = st.columns([2, 1])
-        with col_tit:
-            st.markdown("<h2 style='color: #0B3C8C; margin:0;'>🏛️ Index del Price Pack Multibase</h2>", unsafe_allow_html=True)
-        with col_ley:
-            st.markdown("""<div style='text-align:right; padding-top:10px;'><span style='background:#f0f2f6; padding:5px 10px; border-radius:5px; font-size:14px; color:#555; border:1px solid #ddd;'><b>Nota:</b> Index Objetivo vs Detalle (Base 100)</span></div>""", unsafe_allow_html=True)
+        # === HEADER EJECUTIVO PARA PRICE PACK ===
+        st.markdown("""
+            <div style="
+                background: linear-gradient(135deg, #8E44AD 0%, #9B59B6 100%);
+                padding: 25px 30px;
+                border-radius: 15px;
+                margin-bottom: 30px;
+                box-shadow: 0 8px 20px rgba(142, 68, 173, 0.25);
+            ">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center;">
+                            <span style="font-size: 2.5rem; margin-right: 15px;">🏛️</span>
+                            <div>
+                                <h1 style="color: white; margin: 0; font-size: 2rem; font-weight: 900; letter-spacing: -0.5px;">
+                                    Index del Price Pack Multibase
+                                </h1>
+                                <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 1rem; font-weight: 400;">
+                                    Análisis de arquitectura competitiva por canal · Base Detalle 100
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="
+                        background: rgba(255,255,255,0.15);
+                        backdrop-filter: blur(10px);
+                        padding: 15px 25px;
+                        border-radius: 12px;
+                        border: 1px solid rgba(255,255,255,0.2);
+                        text-align: center;
+                        min-width: 220px;
+                    ">
+                        <div style="font-size: 0.7rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 5px;">📌 Metodología</div>
+                        <div style="font-size: 0.95rem; color: white; font-weight: 700; line-height: 1.3;">Index Objetivo vs Detalle<br/><span style="font-size: 0.85rem; font-weight: 500;">(Base 100)</span></div>
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
         
         # 1. Identificar Bases de Detalle y Colores
-        # Verificamos que la columna 'Canal' exista para evitar errores
         if "Canal" in df_comp.columns:
             skus_det_base = sorted(df_comp[df_comp["Canal"].str.upper() == "DETALLE"]["Producto"].unique().tolist())
-            colores_disponibles = ["#27AE60", "#8E44AD", "#2980B9", "#E67E22", "#D32F2F", "#7F8C8D"]
+            colores_disponibles = ["#27AE60", "#8E44AD", "#2980B9", "#E67E22", "#D32F2F", "#16A085", "#F39C12", "#C0392B"]
             dict_colores_base = {sku: colores_disponibles[i % len(colores_disponibles)] for i, sku in enumerate(skus_det_base)}
             dict_valores_base = {sku: df_comp[(df_comp["Canal"].str.upper() == "DETALLE") & (df_comp["Producto"] == sku)]["Precio por Kg ($)"].mean() for sku in skus_det_base}
 
             if skus_det_base:
-                with st.expander("⚙️ Configurar productos y bases de comparación"):
+                # === PANEL DE CONFIGURACIÓN PREMIUM ===
+                with st.expander("⚙️ Configurar productos y bases de comparación", expanded=False):
+                    st.markdown("""
+                        <div style="
+                            background: linear-gradient(to bottom, #F8F9FA, #FFFFFF);
+                            padding: 20px;
+                            border-radius: 10px;
+                            border: 2px dashed #BDC3C7;
+                            margin-bottom: 20px;
+                        ">
+                            <h3 style="color: #2C3E50; margin: 0 0 10px 0; font-size: 1.1rem; font-weight: 700;">
+                                📋 Instrucciones de Configuración
+                            </h3>
+                            <p style="color: #7F8C8D; font-size: 0.9rem; line-height: 1.6; margin: 0;">
+                                Selecciona los productos objetivo por canal y asigna la base de comparación (Detalle) correspondiente.
+                                Los índices de color te ayudarán a identificar rápidamente las comparaciones en la matriz.
+                            </p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
                     canales_ordenados = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "AUTOSERVICIOS", "CONVENIENCIA"]
-                    objetivos_canales = {"INSTITUCIONALES": "Index 60", "MAYOREO": "Index 70", "CLUBES": "Index 80", "AUTOSERVICIOS": "Index 110-120", "CONVENIENCIA": "Index 120-130"}
+                    objetivos_canales = {
+                        "INSTITUCIONALES": ("Index 60", "#E74C3C"),
+                        "MAYOREO": ("Index 70", "#E67E22"),
+                        "CLUBES": ("Index 80", "#F39C12"),
+                        "AUTOSERVICIOS": ("Index 110-120", "#27AE60"),
+                        "CONVENIENCIA": ("Index 120-130", "#3498DB")
+                    }
                     config_cols = st.columns(5)
                     selecciones_usuario = {}
 
                     for i, canal_n in enumerate(canales_ordenados):
+                        objetivo_txt, objetivo_color = objetivos_canales.get(canal_n, ("N/A", "#95A5A6"))
                         with config_cols[i]:
-                            st.markdown(f"**{canal_n}**")
+                            st.markdown(f"""
+                                <div style="
+                                    background: white;
+                                    border: 2px solid {objetivo_color};
+                                    border-radius: 10px;
+                                    padding: 15px 12px;
+                                    margin-bottom: 15px;
+                                    box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+                                ">
+                                    <div style="
+                                        font-size: 0.85rem;
+                                        font-weight: 800;
+                                        color: #2C3E50;
+                                        text-transform: uppercase;
+                                        letter-spacing: 0.5px;
+                                        margin-bottom: 8px;
+                                        text-align: center;
+                                    ">{canal_n}</div>
+                                    <div style="
+                                        background: {objetivo_color};
+                                        color: white;
+                                        padding: 6px 10px;
+                                        border-radius: 6px;
+                                        font-size: 0.75rem;
+                                        font-weight: 700;
+                                        text-align: center;
+                                        margin-bottom: 12px;
+                                    ">{objetivo_txt}</div>
+                                </div>
+                            """, unsafe_allow_html=True)
+                            
                             prods_canal = sorted(df_comp[df_comp["Canal"].str.upper() == canal_n]["Producto"].unique().tolist())
-                            seleccionados = st.multiselect(f"Seleccionar {canal_n}", prods_canal, key=f"ms_{canal_n}", label_visibility="collapsed")
+                            seleccionados = st.multiselect(
+                                f"Productos {canal_n}",
+                                prods_canal,
+                                key=f"ms_{canal_n}",
+                                label_visibility="collapsed"
+                            )
                             lista_configs = []
                             for p in seleccionados:
-                                base_sel = st.selectbox(f"Vs: {p}", skus_det_base, key=f"base_{canal_n}_{p}")
+                                base_sel = st.selectbox(
+                                    f"Base: {p}",
+                                    skus_det_base,
+                                    key=f"base_{canal_n}_{p}",
+                                    label_visibility="collapsed"
+                                )
                                 lista_configs.append((p, base_sel))
                             selecciones_usuario[canal_n] = lista_configs
 
-                st.write("")
+                st.markdown("<div style='margin: 30px 0;'></div>", unsafe_allow_html=True)
+                
+                # === MATRIZ DE RESULTADOS CON DISEÑO PREMIUM ===
+                st.markdown("""
+                    <div style="
+                        background: #F8F9FA;
+                        padding: 20px;
+                        border-radius: 12px;
+                        border: 2px solid #E0E4E9;
+                        margin-bottom: 25px;
+                    ">
+                        <h3 style="color: #2C3E50; margin: 0 0 8px 0; font-size: 1.2rem; font-weight: 700;">
+                            📊 Matriz de Resultados por Canal
+                        </h3>
+                        <p style="color: #7F8C8D; font-size: 0.9rem; margin: 0;">
+                            Visualización de índices competitivos respecto a bases de Detalle
+                        </p>
+                    </div>
+                """, unsafe_allow_html=True)
+                
                 viz_cols = st.columns(5)
                 bases_usadas_en_reporte = set()
 
                 for i, canal_n in enumerate(canales_ordenados):
+                    objetivo_txt, objetivo_color = objetivos_canales.get(canal_n, ("N/A", "#95A5A6"))
                     with viz_cols[i]:
                         st.markdown(f"""
-                            <div style="text-align:center; border-bottom:3px solid #0B3C8C; margin-bottom:15px; padding-bottom:8px;">
-                                <div style="font-size:16px; font-weight:900; color:#333; text-transform:uppercase; letter-spacing:1px;">{canal_n}</div>
-                                <div style="font-size:13px; color:#D32F2F; font-weight:bold; margin-top:4px;">{objetivos_canales.get(canal_n, '')}</div>
+                            <div style="
+                                background: linear-gradient(to bottom, {objetivo_color}, {objetivo_color}dd);
+                                padding: 18px 15px;
+                                border-radius: 12px 12px 0 0;
+                                margin-bottom: 0;
+                                box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+                            ">
+                                <div style="
+                                    font-size: 1rem;
+                                    font-weight: 900;
+                                    color: white;
+                                    text-transform: uppercase;
+                                    letter-spacing: 1px;
+                                    text-align: center;
+                                    margin-bottom: 8px;
+                                ">{canal_n}</div>
+                                <div style="
+                                    background: rgba(255,255,255,0.25);
+                                    padding: 6px 12px;
+                                    border-radius: 8px;
+                                    font-size: 0.8rem;
+                                    color: white;
+                                    font-weight: 700;
+                                    text-align: center;
+                                ">{objetivo_txt}</div>
                             </div>
+                        """, unsafe_allow_html=True)
+                        
+                        st.markdown("""
+                            <div style="
+                                background: white;
+                                padding: 15px;
+                                border-radius: 0 0 12px 12px;
+                                border: 2px solid #E0E4E9;
+                                border-top: none;
+                                min-height: 200px;
+                                box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+                            ">
                         """, unsafe_allow_html=True)
 
                         for p_name, b_name in selecciones_usuario.get(canal_n, []):
@@ -1072,88 +1509,169 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                             bases_usadas_en_reporte.add(b_name)
 
                             st.markdown(f"""
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; min-height:40px;">
-                                    <span style="font-size:13px; color:#222; font-weight:500; line-height:1.2; width:70%; font-family:Verdana;">{p_name}</span>
-                                    <span style="background:{color_pill}; color:white; padding:4px 8px; border-radius:6px; font-weight:900; font-size:15px; min-width:45px; text-align:center; box-shadow: 1px 1px 3px rgba(0,0,0,0.15);">{index_calc}</span>
+                                <div style="
+                                    display: flex;
+                                    justify-content: space-between;
+                                    align-items: center;
+                                    margin-bottom: 12px;
+                                    padding: 12px;
+                                    background: linear-gradient(to right, #F8F9FA, #FFFFFF);
+                                    border-radius: 8px;
+                                    border: 1px solid #E0E4E9;
+                                    transition: all 0.2s;
+                                ">
+                                    <div style="
+                                        font-size: 0.8rem;
+                                        color: #2C3E50;
+                                        font-weight: 600;
+                                        line-height: 1.3;
+                                        width: 65%;
+                                        font-family: 'Segoe UI', Verdana, sans-serif;
+                                    ">{p_name}</div>
+                                    <div style="
+                                        background: {color_pill};
+                                        color: white;
+                                        padding: 8px 14px;
+                                        border-radius: 8px;
+                                        font-weight: 900;
+                                        font-size: 1.1rem;
+                                        min-width: 60px;
+                                        text-align: center;
+                                        box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+                                        position: relative;
+                                    ">
+                                        {index_calc}
+                                        <div style="
+                                            font-size: 0.6rem;
+                                            font-weight: 600;
+                                            opacity: 0.9;
+                                            margin-top: 2px;
+                                        ">INDEX</div>
+                                    </div>
                                 </div>
                             """, unsafe_allow_html=True)
+                        
+                        st.markdown("</div>", unsafe_allow_html=True)
 
+                st.markdown("<div style='margin: 30px 0;'></div>", unsafe_allow_html=True)
+
+                # === LEYENDA PREMIUM ===
                 if bases_usadas_en_reporte:
-                    leyenda_items = "".join([f'<div style="display:inline-block; margin-right:25px; margin-bottom:10px;"><span style="color:{dict_colores_base[b]}; font-size:20px; vertical-align:middle;">●</span> <span style="font-weight:bold; font-size:14px; color:#444;">Vs {b}</span></div>' for b in sorted(list(bases_usadas_en_reporte))])
-                    st.markdown(f"""<div style="background:#F8F9FA; padding:15px; border-radius:8px; border:1px solid #CCC; margin-top:20px;"><div style="font-size:12px; font-weight:bold; color:#888; margin-bottom:10px; text-transform:uppercase;">Leyenda de Comparación (Bases Detalle):</div>{leyenda_items}</div>""", unsafe_allow_html=True)
+                    st.markdown("""
+                        <div style="
+                            background: linear-gradient(135deg, #F8F9FA 0%, #FFFFFF 100%);
+                            padding: 25px 30px;
+                            border-radius: 12px;
+                            border: 2px solid #E0E4E9;
+                            box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+                        ">
+                            <div style="display: flex; align-items: center; margin-bottom: 18px;">
+                                <span style="font-size: 1.5rem; margin-right: 12px;">🎨</span>
+                                <div>
+                                    <h3 style="margin: 0; color: #2C3E50; font-size: 1.1rem; font-weight: 700;">
+                                        Leyenda de Comparación
+                                    </h3>
+                                    <p style="margin: 4px 0 0 0; color: #7F8C8D; font-size: 0.85rem;">
+                                        Bases de Detalle utilizadas en esta matriz
+                                    </p>
+                                </div>
+                            </div>
+                            <div style="
+                                display: grid;
+                                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                                gap: 15px;
+                            ">
+                    """, unsafe_allow_html=True)
+                    
+                    for b in sorted(list(bases_usadas_en_reporte)):
+                        color_b = dict_colores_base[b]
+                        st.markdown(f"""
+                            <div style="
+                                display: flex;
+                                align-items: center;
+                                background: white;
+                                padding: 12px 16px;
+                                border-radius: 10px;
+                                border: 2px solid {color_b};
+                                box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+                            ">
+                                <div style="
+                                    width: 16px;
+                                    height: 16px;
+                                    background: {color_b};
+                                    border-radius: 50%;
+                                    margin-right: 12px;
+                                    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+                                "></div>
+                                <div>
+                                    <div style="
+                                        font-size: 0.7rem;
+                                        color: #95A5A6;
+                                        text-transform: uppercase;
+                                        letter-spacing: 0.5px;
+                                        margin-bottom: 2px;
+                                    ">Vs Base</div>
+                                    <div style="
+                                        font-weight: 700;
+                                        font-size: 0.85rem;
+                                        color: #2C3E50;
+                                        line-height: 1.2;
+                                    ">{b}</div>
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    
+                    st.markdown("</div></div>", unsafe_allow_html=True)
             else:
-                st.warning("No hay datos en el canal DETALLE para realizar comparaciones.")
-        else:
-            st.error("⚠️ El formato de datos actual no es compatible con la Matriz (Falta columna 'Canal').")
-
-# --- FIN DE SECCIÓN 8 ---
-        
-
-# --- 10. PIRÁMIDE DE POSICIONAMIENTO (SOLO LADDER) ---
-# Movimos el título y la lógica dentro del condicional para que no aparezca en Price Pack
-if modo == "Price Ladder" and not st.session_state.data.empty:
-    st.divider()
-    
-    # === CONTROL DE DESPLEGADO Y OPTIMIZACIÓN ===
-    col_header_pyr, col_toggle_pyr = st.columns([3, 1])
-    with col_header_pyr:
-        st.subheader("🏔️ Pirámide de Posicionamiento por Tier de $ x KG")
-    with col_toggle_pyr:
-        activar_piramide = st.toggle("Activar Pirámide", value=False, help="Despliega el análisis de posicionamiento por Tiers.")
-
-    if not activar_piramide:
-        st.info("💡 La sección está contraída para mejorar el rendimiento. Activa el interruptor para ver los datos.")
-    else:
-        # Usamos la función procesar_datos_piramide que fija el Index 100 en el mayor SOM
-        df_pyramid = procesar_datos_piramide(st.session_state.data)
-        
-        # Selector de ocasión
-        sel_ocasion = st.selectbox("Seleccionar Segmento para Pirámide:", df_pyramid["Ocasión"].unique())
-        
-        # Filtrar por ocasión y ordenar por Index de mayor a menor
-        df_f = df_pyramid[df_pyramid["Ocasión"] == sel_ocasion].sort_values("Idx_P", ascending=False)
-        
-        tier_colors = {
-            "PREMIUM": "#1A237E", 
-            "UPPER MAINSTREAM": "#0D47A1", 
-            "MAINSTREAM": "#0B3C8C", 
-            "MAINSTREAM LOW": "#1976D2", 
-            "VALUE": "#42A5F5"
-        }
-
-        # Renderizado de la Pirámide
-        for tier in ["PREMIUM", "UPPER MAINSTREAM", "MAINSTREAM", "MAINSTREAM LOW", "VALUE"]:
-            productos_tier = df_f[df_f["Tier"] == tier]
-            if not productos_tier.empty:
-                c1, c2 = st.columns([1, 4])
-                
-                # Etiqueta visual del Tier
-                c1.markdown(f"""
-                    <div style="background-color:{tier_colors[tier]}; color:white; padding:15px; 
-                    border-radius:10px; text-align:center; font-weight:bold; height:100%; 
-                    display:flex; align-items:center; justify-content:center; min-height:80px;">
-                        {tier}
+                st.markdown("""
+                    <div style="
+                        background: #FFF3CD;
+                        border: 2px solid #FFC107;
+                        border-left: 6px solid #FFC107;
+                        padding: 20px 25px;
+                        border-radius: 10px;
+                        margin: 20px 0;
+                    ">
+                        <div style="display: flex; align-items: center;">
+                            <span style="font-size: 2rem; margin-right: 15px;">⚠️</span>
+                            <div>
+                                <h4 style="margin: 0 0 5px 0; color: #856404; font-size: 1.1rem; font-weight: 700;">
+                                    Sin datos en canal DETALLE
+                                </h4>
+                                <p style="margin: 0; color: #856404; font-size: 0.9rem;">
+                                    No se encontraron productos en el canal DETALLE para establecer bases de comparación.
+                                    Por favor, verifica que tus datos incluyan productos clasificados en este canal.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
-                
-                # Construcción de tarjetas horizontales
-                cards_html = ""
-                for _, r in productos_tier.iterrows():
-                    # Borde morado para destacar Barcel/Propuesta (Respetando G en nombres si aplica)
-                    b_color = "#4B207E" if r["Fabricante"] in ["BARCEL", "PROPUESTA"] else "#CCCCCC"
-                    
-                    cards_html += f"""
-                    <div style="display:inline-block; border: 2px solid {b_color}; border-radius: 10px; 
-                    padding: 10px; background: white; min-width: 160px; margin: 5px; 
-                    vertical-align: top; box-shadow: 1px 1px 3px rgba(0,0,0,0.1);">
-                        <div style="font-weight:bold; font-size:0.9rem; color:#333; margin-bottom:4px;">{r['Producto']}</div>
-                        <div style="color:#666; font-size:0.8rem;">Index: {int(r['Idx_P'])}</div>
-                        <div style="font-weight:bold; font-size:1rem; color:#111; margin-top:4px;">${r['Precio ($)']:,.1f} ({int(r['Gramaje (g)'])}g)</div>
-                    </div>"""
-                
-                with c2:
-                    st.markdown(f'<div style="display: block; width: 100%;">{cards_html}</div>', unsafe_allow_html=True)
-                st.write("")
+        else:
+            st.markdown("""
+                <div style="
+                    background: #F8D7DA;
+                    border: 2px solid #DC3545;
+                    border-left: 6px solid #DC3545;
+                    padding: 20px 25px;
+                    border-radius: 10px;
+                    margin: 20px 0;
+                ">
+                    <div style="display: flex; align-items: center;">
+                        <span style="font-size: 2rem; margin-right: 15px;">❌</span>
+                        <div>
+                            <h4 style="margin: 0 0 5px 0; color: #721C24; font-size: 1.1rem; font-weight: 700;">
+                                Formato de datos incompatible
+                            </h4>
+                            <p style="margin: 0; color: #721C24; font-size: 0.9rem;">
+                                El formato actual no contiene la columna <strong>'Canal'</strong> requerida para la Matriz de Price Pack Multibase.
+                                Por favor, asegúrate de que tu dataset incluya esta columna con los canales correspondientes.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+
+# --- FIN DE SECCIÓN 8 ---
 
 # --- 11. MAPA DE VALOR ESTRATÉGICO (DISEÑO CLEAN) ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
