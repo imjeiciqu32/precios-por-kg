@@ -493,7 +493,7 @@ with st.sidebar:
 # --- 5. PANEL PRINCIPAL ---
 
 # Header con diseño mejorado
-col1, col2, col3 = st.columns([2, 3, 1])
+col1 = st.columns([1])
 
 with col1:
     # Icono según el modo
@@ -505,19 +505,6 @@ with col1:
     icono = iconos_modo.get(modo.lower(), "📊")
     st.title(f"{icono} {modo.upper()}")
 
-with col2:
-    # Descripción del modo actual
-    descripciones = {
-        "price ladder": "Gestión de precios escalonados por producto",
-        "price pack": "Análisis de paquetes y promociones",
-        "price and volume": "Correlación precio-volumen"
-    }
-    st.markdown(f"**{descripciones.get(modo.lower(), 'Análisis de precios')}**")
-
-with col3:
-    st.markdown("###")  # Espaciador
-    if st.button("🔄 Actualizar", use_container_width=True, type="secondary"):
-        st.rerun()
 
 # Línea separadora
 st.divider()
