@@ -491,7 +491,38 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # --- 5. PANEL PRINCIPAL ---
-st.title(f"📊 {modo.upper()}")
+
+# Header con diseño mejorado
+col1, col2, col3 = st.columns([2, 3, 1])
+
+with col1:
+    # Icono según el modo
+    iconos_modo = {
+        "price ladder": "🪜",
+        "price pack": "📦",
+        "price and volume": "📊"
+    }
+    icono = iconos_modo.get(modo.lower(), "📊")
+    st.title(f"{icono} {modo.upper()}")
+
+with col2:
+    # Descripción del modo actual
+    descripciones = {
+        "price ladder": "Gestión de precios escalonados por producto",
+        "price pack": "Análisis de paquetes y promociones",
+        "price and volume": "Correlación precio-volumen"
+    }
+    st.markdown(f"**{descripciones.get(modo.lower(), 'Análisis de precios')}**")
+    st.caption(f"📅 Última actualización: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+
+with col3:
+    st.markdown("###")  # Espaciador
+    if st.button("🔄 Actualizar", use_container_width=True, type="secondary"):
+        st.rerun()
+
+# Línea separadora
+st.divider()
+            
 
 
 # --- 5. FORMULARIOS DE AGREGAR ---
