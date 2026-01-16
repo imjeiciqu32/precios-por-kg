@@ -972,7 +972,38 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
 
     # --- MODO 1: PRICE LADDER (COMPARATIVAS 1 A 1) ---
     if modo == "Price Ladder":
-        st.subheader(f"📈 Comparativas Index ({modo})")
+        # === HEADER EJECUTIVO ===
+        st.markdown("""
+            <div style="
+                background: linear-gradient(135deg, #0B3C8C 0%, #1565C0 100%);
+                padding: 25px 30px;
+                border-radius: 15px;
+                margin-bottom: 30px;
+                box-shadow: 0 8px 20px rgba(11, 60, 140, 0.2);
+            ">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <h1 style="color: white; margin: 0; font-size: 2rem; font-weight: 900; letter-spacing: -0.5px;">
+                            📊 Comparativas Index
+                        </h1>
+                        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 1rem; font-weight: 400;">
+                            Análisis competitivo Price Ladder · Desembolso & Precio por Kg
+                        </p>
+                    </div>
+                    <div style="
+                        background: rgba(255,255,255,0.15);
+                        backdrop-filter: blur(10px);
+                        padding: 12px 20px;
+                        border-radius: 10px;
+                        border: 1px solid rgba(255,255,255,0.2);
+                    ">
+                        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1px;">Modo Activo</div>
+                        <div style="font-size: 1.1rem; color: white; font-weight: bold; margin-top: 2px;">Price Ladder</div>
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        
         df_comp["Lookup_Key"] = df_comp["Producto"]
         list_a = df_comp[df_comp["Fabricante"]=="BARCEL"]["Lookup_Key"].unique().tolist()
         list_b = df_comp[df_comp["Fabricante"]!="BARCEL"]["Lookup_Key"].unique().tolist()
@@ -1019,11 +1050,44 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
     # --- MODO 2: MATRIZ DE ARQUITECTURA (VISTA PPT) / PRICE PACK ---
     else:
         # Encabezado con leyenda a la derecha
-        col_tit, col_ley = st.columns([2, 1])
-        with col_tit:
-            st.markdown("<h2 style='color: #0B3C8C; margin:0;'>🏛️ Index del Price Pack Multibase</h2>", unsafe_allow_html=True)
-        with col_ley:
-            st.markdown("""<div style='text-align:right; padding-top:10px;'><span style='background:#f0f2f6; padding:5px 10px; border-radius:5px; font-size:14px; color:#555; border:1px solid #ddd;'><b>Nota:</b> Index Objetivo vs Detalle (Base 100)</span></div>""", unsafe_allow_html=True)
+        # === HEADER EJECUTIVO PARA PRICE PACK ===
+        st.markdown("""
+            <div style="
+                background: linear-gradient(135deg, #8E44AD 0%, #9B59B6 100%);
+                padding: 25px 30px;
+                border-radius: 15px;
+                margin-bottom: 30px;
+                box-shadow: 0 8px 20px rgba(142, 68, 173, 0.25);
+            ">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center;">
+                            <span style="font-size: 2.5rem; margin-right: 15px;">🏛️</span>
+                            <div>
+                                <h1 style="color: white; margin: 0; font-size: 2rem; font-weight: 900; letter-spacing: -0.5px;">
+                                    Index del Price Pack Multibase
+                                </h1>
+                                <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 1rem; font-weight: 400;">
+                                    Análisis de arquitectura competitiva por canal · Base Detalle 100
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="
+                        background: rgba(255,255,255,0.15);
+                        backdrop-filter: blur(10px);
+                        padding: 15px 25px;
+                        border-radius: 12px;
+                        border: 1px solid rgba(255,255,255,0.2);
+                        text-align: center;
+                        min-width: 220px;
+                    ">
+                        <div style="font-size: 0.7rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 5px;">📌 Metodología</div>
+                        <div style="font-size: 0.95rem; color: white; font-weight: 700; line-height: 1.3;">Index Objetivo vs Detalle<br/><span style="font-size: 0.85rem; font-weight: 500;">(Base 100)</span></div>
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
         
         # 1. Identificar Bases de Detalle y Colores
         # Verificamos que la columna 'Canal' exista para evitar errores
