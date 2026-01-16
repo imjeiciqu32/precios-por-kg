@@ -1344,8 +1344,9 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
         mapa_rivales = {
             "TAKIS": ["DORITO","doritos", "DINAMITA"],
             "CHIPS": ["SABRITA", "RECETA CRUJIENTE"],
+            "TOSTACHOS": ["TOSTITOS","TOSTITO"]
             "PAPAS BARCEL": ["SABRITA", "RECETA CRUJIENTE"],
-            "CHIPOTLES": ["RANCHERITO", "FRITO"],
+            "CHIPOTLES": ["RANCHERITO"],
             "RUNNERS": ["FRITO", "RANCHERITO"],
             "BIG MIX": ["PAKETAXO"],
             "POP KARAMELADAS": ["ACT II"],
