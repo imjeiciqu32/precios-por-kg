@@ -103,7 +103,7 @@ def mostrar_glosario():
     st.write("Esta sección detalla la metodología técnica utilizada para el análisis de Pricing en Barcel.")
     
     st.divider()
-
+    
     # --- SECCIÓN: PRICE LADDER ---
     st.info("#### **1. Price Ladder (Escalera de Precios)**")
     st.markdown("""
@@ -114,7 +114,7 @@ def mostrar_glosario():
     """)
     
     st.divider()
-
+    
     # --- SECCIÓN: PRICE ARCHITECTURE ---
     st.success("#### **2. Price Architecture (Arquitectura de Precios)**")
     st.markdown("""
@@ -125,9 +125,9 @@ def mostrar_glosario():
     * **Curvas de Precio:** Facilita el análisis de las curvas de valor para identificar desviaciones y asegurar una transición suave entre diferentes tamaños (gramajes) y desembolsos.
     * **Benchmarking Inter-Canal:** Mediante la comparación de los **Index por Kilo ($/Kg)**, podemos evaluar cómo "jugamos" en cada canal, garantizando que nuestra competitividad sea consistente y evitando la canibalización interna entre canales de venta.
     """)
-
+    
     st.divider()
-
+    
     # --- SECCIÓN: PRECIO POR KILO E INDEX ---
     st.warning("#### **3. Precio por Kilo ($/Kg) e Index**")
     st.markdown("""    
@@ -139,10 +139,30 @@ def mostrar_glosario():
     
     Esta métrica es vital para definir si nuestra estrategia de precio está alineada con el posicionamiento de marca (Premium vs. Value) frente a la competencia.
     """)
+    
+    st.divider()
+    
+    # --- SECCIÓN: PRICE AND VOLUME ANALYTICS ---
+    st.info("#### **4. Price & Volume Analytics (Análisis de Precio y Volumen)**")
+    st.markdown("""
+    Es el módulo de **análisis temporal** que evalúa el desempeño comercial mediante el seguimiento semanal de las métricas clave del negocio. Permite comprender la dinámica entre las decisiones de pricing y la respuesta del mercado.
+    
+    **Indicadores de Performance:**
+    * **Evolución de Ventas en Valor:** Monitoreo del ingreso total generado semana a semana, identificando tendencias y períodos de crecimiento o contracción.
+    * **Evolución de Ventas en Volumen:** Seguimiento de las unidades vendidas para entender la rotación real de los productos de manera Sell In.
+    * **Tendencias de Precio:** Análisis de la variación promedio del precio para poder observar cuando fue el cambio de precios de determinado producto.
+    
+    **Análisis de Sensibilidad al Precio:**
+    * **Variación Valor vs. Volumen:** Cuantificación del cambio porcentual en ventas valor y unidades vendidas entre períodos.
+    * **Elasticidad Precio-Demanda:** Medición del impacto que tienen los ajustes de precio sobre el volumen de ventas, permitiendo calcular la **sensibilidad del consumidor** ante cambios en la estrategia de pricing.
+    * **Identificación de Períodos Críticos:** Reconocimiento de semanas donde las variaciones de precio generaron impactos significativos (positivos o negativos) en el desempeño comercial.
 
-    if st.button("Entendido", use_container_width=True):
+    """)
+    
+    st.divider()
+    
+    if st.button("✅ Entendido", use_container_width=True):
         st.rerun()
-
 # --- 1. NAVEGACIÓN Y CONFIGURACIÓN ---
 with st.sidebar:
     st.header("🚀 Modo de Visualización")
