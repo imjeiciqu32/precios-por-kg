@@ -513,7 +513,6 @@ with col2:
         "price and volume": "Correlación precio-volumen"
     }
     st.markdown(f"**{descripciones.get(modo.lower(), 'Análisis de precios')}**")
-    st.caption(f"📅 Última actualización: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
 
 with col3:
     st.markdown("###")  # Espaciador
