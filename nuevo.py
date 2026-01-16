@@ -149,7 +149,7 @@ with st.sidebar:
     # Agregamos el nuevo modo a la lista
     modo = st.radio(
         "Seleccionar Herramienta:", 
-        ["Price Ladder", "Price Pack", "Price and Volumen"], 
+        ["Price Ladder", "Price Pack", "Price and Volume"], 
         label_visibility="collapsed"
     )
     
@@ -160,7 +160,7 @@ with st.sidebar:
         else:
             st.info("Función de glosario no definida aún.")
             
-# LÓGICA DE MODOS (Actualizada con Price and Volumen)
+# LÓGICA DE MODOS (Actualizada con Price and Volume)
 if modo == "Price Ladder":
     DB_FILE = "historico_productos.csv"
     label_agru = "Ocasión"
@@ -175,7 +175,7 @@ elif modo == "Price Pack":
     fuente_plantillas = PLANTILLAS_PP if 'PLANTILLAS_PP' in globals() else {}
     columnas_tabla = ["Producto", "Familia", "Canal", "Precio ($)", "Gramaje (g)"]
 
-else: # MODO: Price and Volumen
+else: # MODO: Price and Volume
     DB_FILE = "historico_ventas_semanales.csv"
     label_agru = "Semana" # Aquí agruparemos por número de semana
     
@@ -207,7 +207,7 @@ def calcular_pkg(df, modo_actual):
         if "Fabricante" not in df.columns: 
             df["Fabricante"] = "OTROS"
             
-    elif modo_actual == "Price and Volumen":
+    elif modo_actual == "Price and Volume":
         # Para este modo, solo aseguramos que las columnas de valor y volumen sean numéricas
         cols_pv = ["Precio ($)", "Venta Volumen (Pzas)","Venta Valor ($)"]
         for col in cols_pv:
@@ -301,8 +301,8 @@ with st.sidebar:
                     # Convertimos a DataFrame
                     df_nuevo = pd.DataFrame(fuente_plantillas[nombre_plantilla])
                     
-                    # CARGA INDEPENDIENTE: Evitamos pasar por calcular_pkg si es Price and Volumen
-                    if modo == "Price and Volumen":
+                    # CARGA INDEPENDIENTE: Evitamos pasar por calcular_pkg si es Price and Volume
+                    if modo == "Price and Volume":
                         st.session_state.data = df_nuevo
                     else:
                         # Ladder y Pack sí necesitan calcular $/kg
@@ -475,7 +475,7 @@ st.title(f"📊 {modo.upper()}")
 
 
 # --- 5. FORMULARIOS DE AGREGAR ---
-# Solo mostramos el formulario si no estamos en el modo "Price and Volumen"
+# Solo mostramos el formulario si no estamos en el modo "Price and Volume"
 if modo in ["Price Ladder", "Price Pack"]:
     with st.expander(f"➕ Agregar nuevo SKU a {modo}", expanded=False):
         with st.form("form_nuevo_sku", clear_on_submit=True):
@@ -526,7 +526,7 @@ if modo in ["Price Ladder", "Price Pack"]:
                     
                     
 # --- 6. EDITOR DE TABLA CON FUNCIÓN DE ELIMINAR ---
-# Solo mostramos la gestión de portafolio si no estamos en el modo "Price and Volumen"
+# Solo mostramos la gestión de portafolio si no estamos en el modo "Price and Volume"
 if modo in ["Price Ladder", "Price Pack"]:
     st.markdown("### 📝 Gestión de Portafolio")
 
@@ -941,7 +941,7 @@ if not st.session_state.data.empty:
                 
 # --- 8. COMPARATIVAS INDEX (UNIFICADO: LADDER + ARQUITECTURA PPT) ---
 # Agregamos la condición para que esta sección solo se ejecute en los modos que usan Index
-if modo != "Price and Volumen" and not st.session_state.data.empty:
+if modo != "Price and Volume" and not st.session_state.data.empty:
     st.divider()
     df_comp = st.session_state.data.copy()
     
@@ -1230,8 +1230,8 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
 
 # --- 12. ANALISTA MAESTRO INTEGRAL: LADDER ULTRA 2.6 + ARQUITECTURA PRO ---
-# Ajuste: No mostrar en el modo de Volumen para evitar KeyErrors
-if modo != "Price and Volumen" and not st.session_state.data.empty:
+# Ajuste: No mostrar en el modo de Volume para evitar KeyErrors
+if modo != "Price and Volume" and not st.session_state.data.empty:
     st.divider()
     
     # 1. PREPARACIÓN DE DATOS (Común para ambos modos)
@@ -1452,7 +1452,7 @@ if modo != "Price and Volumen" and not st.session_state.data.empty:
 
 # --- 12. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO ---
 # Ajuste: No mostrar en el modo de Volumen para evitar errores de compilación de hallazgos
-if modo != "Price and Volumen" and not st.session_state.data.empty:
+if modo != "Price and Volume" and not st.session_state.data.empty:
     st.divider()
     
     # Título dinámico según el modo
@@ -2137,7 +2137,7 @@ if modo == "Price Ladder":
                     - "Ultra Grande" para proyector
                     """)
 
-if modo == "Price and Volumen":
+if modo == "Price and Volume":
     if st.session_state.data.empty:
         st.info("ℹ️ Por favor, selecciona una plantilla en la barra lateral y presiona 'Cargar Datos'.")
     else:
@@ -2147,7 +2147,7 @@ if modo == "Price and Volumen":
             st.dataframe(st.session_state.data.head())
             
 # --- 15. ANÁLISIS DE ELASTICIDAD: PRICE & VOLUME (VERSIÓN PRO CON FEATURES AVANZADAS) ---
-if modo == "Price and Volumen" and not st.session_state.data.empty:
+if modo == "Price and Volume" and not st.session_state.data.empty:
     st.divider()
     st.markdown("""
         <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
