@@ -1927,7 +1927,7 @@ if modo == "Price Ladder":
         st.info("💡 La sección está contraída para mejorar el rendimiento. Activa el interruptor para ver los datos.")
     else:
         # === 1. FORMULARIO DE ALTA (NUEVO SKU) - SIN RERUN ===
-        with st.expander("➕ Añadir un Nuevo SKU en la Simulación", expanded=False):
+        with st.expander("➕ Añadir un Nuevo SKU", expanded=False):
             with st.form("nuevo_sku_form", clear_on_submit=True):
                 c1, c2, c3 = st.columns(3)
                 nuevo_p = c1.text_input("Nombre Completo (Producto)", placeholder="Ej. Takis Fuego 240g")
@@ -3193,7 +3193,7 @@ if modo == "Indicadores Macro":
                 if len(serie) >= 2:
                     val, prev = serie.iloc[-1], serie.iloc[-2]
                     delta = val - prev
-                    kpi_data.append({'titulo': 'TIIE 1 Día', 'valor': f'{val:.2f}%', 
+                    kpi_data.append({'titulo': 'Tasa de Interés (1 día)', 'valor': f'{val:.2f}%', 
                                    'delta': f'{"↑" if delta > 0 else "↓"} {abs(delta):.2f} pp', 'icon': '💰'})
             
             if "Exp_TasaDesocupacion_Media" in df_macro.columns:
