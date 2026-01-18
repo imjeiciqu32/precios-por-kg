@@ -3898,11 +3898,4 @@ if modo == "Indicadores Macro":
                     )
     else:
         st.error("❌ Error al conectar con Banxico")
-                        y=1.02,
-                        xanchor="center",
-                        x=0.5
-                    )
-                )
-                st.plotly_chart(fig, use_container_width=True)
-                st.caption("Fuente: Encuesta de Expectativas - Banxico")
-            
+
