@@ -3130,49 +3130,44 @@ if modo == "Indicadores Macro":
             # ==================== FILTRO DE FECHAS PRO ====================
             st.markdown("### 📅 Filtro de Fechas")
             
-            min_date = df_macro.index.min().date()
-            max_date = df_macro.index.max().date()
+            # Definir tus constantes de reset
+            FECHA_INICIO_DEFECTO = pd.to_datetime("2020-01-01").date()
+            FECHA_FIN_DEFECTO = pd.to_datetime("2025-12-31").date()
             
-            # Inicializar session_state si no existe
-            if 'reset_dates' not in st.session_state:
-                st.session_state.reset_dates = False
+            # Límites absolutos del DataFrame
+            min_date_df = df_macro.index.min().date()
+            max_date_df = df_macro.index.max().date()
             
-            # Si se presionó resetear, usar las fechas por defecto
-            if st.session_state.reset_dates:
-                default_inicio = min_date
-                default_fin = max_date
-                st.session_state.reset_dates = False
-            else:
-                default_inicio = min_date
-                default_fin = max_date
+            # Lógica de Reset
+            if st.button("🔄 Resetear Fechas"):
+                # Limpiamos los valores guardados en los widgets para que vuelvan al 'value' inicial
+                if 'fecha_inicio_input' in st.session_state:
+                    del st.session_state['fecha_inicio_input']
+                if 'fecha_fin_input' in st.session_state:
+                    del st.session_state['fecha_fin_input']
+                st.rerun()
             
-            col_f1, col_f2, col_f3 = st.columns([2, 2, 1])
+            col_f1, col_f2 = st.columns(2)
             
             with col_f1:
                 fecha_inicio = st.date_input(
                     "Fecha Inicio", 
-                    value=default_inicio,
-                    min_value=min_date, 
-                    max_value=max_date,
+                    value=FECHA_INICIO_DEFECTO,
+                    min_value=min_date_df, 
+                    max_value=max_date_df,
                     key='fecha_inicio_input'
                 )
+            
             with col_f2:
                 fecha_fin = st.date_input(
                     "Fecha Fin", 
-                    value=default_fin,
-                    min_value=min_date, 
-                    max_value=max_date,
+                    value=FECHA_FIN_DEFECTO,
+                    min_value=min_date_df, 
+                    max_value=max_date_df,
                     key='fecha_fin_input'
                 )
-            with col_f3:
-                st.markdown("")
-                st.markdown("")
-                if st.button("🔄 Resetear", use_container_width=True):
-                    st.session_state.reset_dates = True
-                    st.rerun()
             
-            # Aplicar filtro
-            
+            # Aplicar filtro al DataFrame
             df_macro = df_macro[(df_macro.index.date >= fecha_inicio) & (df_macro.index.date <= fecha_fin)]
             
             st.divider()
