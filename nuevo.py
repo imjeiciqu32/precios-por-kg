@@ -204,37 +204,6 @@ with st.sidebar:
         else:
             st.info("Función de glosario no definida aún.")
 
-# --- FUNCIÓN DE CONSULTA BANXICO CON CACHÉ ---
-# Se define aquí para que esté disponible cuando se seleccione el modo
-@st.cache_data(ttl=86400)
-def importar_datos_macro(token, series_lista):
-    headers = {"Accept": "application/json", "Bmx-Token": token}
-    lista_dfs = []
-    
-    # Usamos un mensaje temporal mientras descarga las 31 series
-    for id_serie, nombre_columna in series_lista:
-        url = f"https://www.banxico.org.mx/SieAPIRest/service/v1/series/{id_serie}/datos"
-        try:
-            response = requests.get(url, headers=headers, timeout=10)
-            if response.status_code == 200:
-                observaciones = response.json()['bmx']['series'][0]['datos']
-                df_t = pd.DataFrame(observaciones)
-                df_t['fecha'] = pd.to_datetime(df_t['fecha'], dayfirst=True)
-                df_t['dato'] = pd.to_numeric(df_t['dato'].str.replace(',', ''), errors='coerce')
-                df_t = df_t.rename(columns={'fecha': 'Fecha', 'dato': nombre_columna})
-                df_t = df_t.set_index('Fecha').resample('M').last()
-                lista_dfs.append(df_t)
-        except:
-            continue
-            
-    if lista_dfs:
-        df_f = pd.concat(lista_dfs, axis=1).sort_index()
-        # Relleno de expectativas (ffill) como en tu código original
-        cols_exp = [c for c in df_f.columns if c.startswith("Exp_")]
-        if cols_exp:
-            df_f[cols_exp] = df_f[cols_exp].ffill()
-        return df_f
-    return None
 
 # --- LÓGICA DE MODOS (Configuración de variables) ---
 if modo == "Price Ladder":
