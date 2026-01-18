@@ -259,37 +259,53 @@ elif modo == "Price and Volume":
     columnas_tabla = ["Semana", "Producto", "Fabricante", "Precio ($)", "Venta Volumen (Pzas)","Venta Valor ($)"]
 
 else: # MODO: Indicadores Macro
+    # 1. Definimos DB_FILE como None para evitar el NameError en el resto del script
+    DB_FILE = None 
+    
     st.title("🇲🇽 Monitor Macroeconómico")
-    st.info("Visualización de las 31 series económicas oficiales de Banxico")
+    st.info("Visualización de las series económicas oficiales de Banxico")
     
     with st.spinner("Consultando API de Banxico..."):
-        # Usamos tu TOKEN y SERIES_A_CONSULTAR que pasaste anteriormente
+        # Llamada a la función de importación (con caché)
         df_macro = importar_datos_macro(TOKEN_BANXICO, SERIES_A_CONSULTAR)
         
     if df_macro is not None:
-        # Filtro de fecha aplicado al DataFrame resultante
+        # 2. Filtro de fechas
         df_macro = df_macro[(df_macro.index >= FECHA_INICIO_FILTRO) & (df_macro.index <= FECHA_FIN_FILTRO)]
         
-        # Dashboard Rápido (Inflación y TC)
+        # 3. ELIMINAR COLUMNAS VACÍAS: Si la API no devolvió datos para una serie, se quita
+        df_macro = df_macro.dropna(axis=1, how='all')
+        
+        # 4. DASHBOARD RÁPIDO (Métricas principales)
         c1, c2 = st.columns(2)
         if "INPC_Inflacion_Anual" in df_macro.columns:
-            val_inf = df_macro["INPC_Inflacion_Anual"].dropna().iloc[-1]
-            c1.metric("Inflación Anual", f"{val_inf}%")
+            # Obtenemos el último valor no nulo
+            serie_inf = df_macro["INPC_Inflacion_Anual"].dropna()
+            if not serie_inf.empty:
+                c1.metric("Inflación Anual", f"{serie_inf.iloc[-1]}%")
+                
         if "TipoCambio_Cotizacion_Maxima" in df_macro.columns:
-            val_tc = df_macro["TipoCambio_Cotizacion_Maxima"].dropna().iloc[-1]
-            c2.metric("Tipo de Cambio", f"${val_tc:.2f}")
+            serie_tc = df_macro["TipoCambio_Cotizacion_Maxima"].dropna()
+            if not serie_tc.empty:
+                c2.metric("Tipo de Cambio (Max)", f"${serie_tc.iloc[-1]:.2f}")
             
         st.divider()
         
-        # Selector para graficar cualquiera de las 31 series
+        # 5. SELECTOR Y GRÁFICO (Solo muestra columnas con datos)
         serie_sel = st.selectbox("Selecciona Serie para Graficar:", df_macro.columns)
         st.line_chart(df_macro[serie_sel])
         
+        # 6. TABLA DE DATOS FORMATEADA
         with st.expander("Ver Tabla de Datos Completa"):
-            st.dataframe(df_macro, use_container_width=True)
+            # Creamos una copia para visualización y convertimos el índice a solo fecha
+            df_visual = df_macro.copy()
+            df_visual.index = df_visual.index.date 
+            
+            st.dataframe(df_visual, use_container_width=True)
+            
     else:
-        st.error("Error al conectar con Banxico. Verifica tu Token.")
-
+        st.error("Error al conectar con Banxico. Verifica tu Token o conexión.")
+        
 # --- 2. FUNCIONES CORE (Mantenidas intactas) ---
 def calcular_pkg(df, modo_actual):
     if df.empty: 
