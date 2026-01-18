@@ -3115,6 +3115,7 @@ if modo == "Price and Volume" and not st.session_state.data.empty:
 if modo == "Indicadores Macro":
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
+    import datetime
     
     st.title("🇲🇽 Monitor Macroeconómico de México")
     st.caption("Datos oficiales del Banco de México actualizados en tiempo real")
@@ -3129,7 +3130,30 @@ if modo == "Indicadores Macro":
         if df_macro.empty:
             st.warning("No hay datos disponibles para el rango seleccionado.")
         else:
-            # ==================== KPIs CON HTML ====================
+            # ==================== FILTRO DE FECHAS PRO ====================
+            st.markdown("### 📅 Filtro de Fechas")
+            col_f1, col_f2, col_f3 = st.columns([2, 2, 1])
+            
+            min_date = df_macro.index.min().date()
+            max_date = df_macro.index.max().date()
+            
+            with col_f1:
+                fecha_inicio = st.date_input("Fecha Inicio", min_date, min_value=min_date, max_value=max_date)
+            with col_f2:
+                fecha_fin = st.date_input("Fecha Fin", max_date, min_value=min_date, max_value=max_date)
+            with col_f3:
+                st.markdown("")
+                st.markdown("")
+                if st.button("🔄 Resetear", use_container_width=True):
+                    fecha_inicio = min_date
+                    fecha_fin = max_date
+            
+            # Aplicar filtro
+            df_macro = df_macro[(df_macro.index.date >= fecha_inicio) & (df_macro.index.date <= fecha_fin)]
+            
+            st.divider()
+            
+            # ==================== KPIs CORPORATIVOS ====================
             st.markdown("### 📊 Indicadores Clave")
             
             kpi_data = []
@@ -3166,18 +3190,22 @@ if modo == "Indicadores Macro":
                     kpi_data.append({'titulo': 'Desocupación', 'valor': f'{val:.2f}%', 
                                    'delta': f'{"↑" if delta > 0 else "↓"} {abs(delta):.2f} pp', 'icon': '👥'})
             
+            if "Salario_Minimo_General" in df_macro.columns:
+                serie = df_macro["Salario_Minimo_General"].dropna()
+                if len(serie) >= 2:
+                    val, prev = serie.iloc[-1], serie.iloc[-2]
+                    delta = val - prev
+                    kpi_data.append({'titulo': 'Salario Mínimo', 'valor': f'${val:.2f}', 
+                                   'delta': f'{"↑" if delta > 0 else "↓"} ${abs(delta):.2f}', 'icon': '💵'})
+            
             kpi_html = """<style>
-.kpi-container {display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;}
-.kpi-card {flex: 1; min-width: 200px; border-radius: 12px; padding: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.3s ease;}
-.kpi-card:hover {transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.15);}
-.kpi-card:nth-child(1) {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);}
-.kpi-card:nth-child(2) {background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);}
-.kpi-card:nth-child(3) {background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);}
-.kpi-card:nth-child(4) {background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);}
-.kpi-icon {font-size: 32px; margin-bottom: 8px;}
-.kpi-titulo {color: rgba(255,255,255,0.9); font-size: 14px; font-weight: 500; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;}
-.kpi-valor {color: white; font-size: 36px; font-weight: 700; margin-bottom: 8px; line-height: 1;}
-.kpi-delta {font-size: 14px; font-weight: 600; padding: 4px 12px; border-radius: 20px; display: inline-block; background: rgba(255,255,255,0.2); color: white;}
+.kpi-container {display: flex; gap: 16px; margin-bottom: 30px; flex-wrap: wrap;}
+.kpi-card {flex: 1; min-width: 180px; background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: all 0.3s ease;}
+.kpi-card:hover {box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-color: #667eea;}
+.kpi-icon {font-size: 28px; margin-bottom: 8px;}
+.kpi-titulo {color: #666; font-size: 12px; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;}
+.kpi-valor {color: #1a1a1a; font-size: 32px; font-weight: 700; margin-bottom: 8px; line-height: 1;}
+.kpi-delta {font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 4px; display: inline-block; background: #f5f5f5; color: #666;}
 </style><div class="kpi-container">"""
             
             for kpi in kpi_data:
