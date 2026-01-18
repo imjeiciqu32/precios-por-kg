@@ -284,14 +284,14 @@ def procesar_datos_piramide(df):
 
 # --- FUNCIÓN DE CONSULTA CON CACHÉ ---
 @st.cache_data(ttl=86400) # Se actualiza cada 24 horas
-def importar_datos_macro():
-    headers = {"Accept": "application/json", "Bmx-Token": TOKEN_BANXICO}
+def importar_datos_macro(token, series_lista):
+    headers = {"Accept": "application/json", "Bmx-Token": token}
     lista_dfs = []
 
-    for id_serie, nombre_columna in SERIES_A_CONSULTAR:
+    for id_serie, nombre_columna in series_lista:
         url = f"https://www.banxico.org.mx/SieAPIRest/service/v1/series/{id_serie}/datos"
         try:
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             observaciones = response.json()['bmx']['series'][0]['datos']
             
@@ -307,9 +307,7 @@ def importar_datos_macro():
 
     if lista_dfs:
         df_final = pd.concat(lista_dfs, axis=1).sort_index()
-        df_final = df_final[(df_final.index >= FECHA_INICIO_FILTRO) & (df_final.index <= FECHA_FIN_FILTRO)]
-        
-        # Relleno de expectativas
+        # Relleno de expectativas (ffill) para evitar huecos en la visualización
         cols_exp = [c for c in df_final.columns if c.startswith("Exp_")]
         if cols_exp:
             df_final[cols_exp] = df_final[cols_exp].ffill()
@@ -3071,21 +3069,23 @@ if modo == "Price and Volume" and not st.session_state.data.empty:
     else:
         st.error("❌ Error: Faltan columnas necesarias en el dataset.")
 
-# --- SECCIÓN FINAL: VISUALIZACIÓN DE INDICADORES MACRO ---
+# --- APARTADO DE VISUALIZACIÓN: INDICADORES MACRO ---
 if modo == "Indicadores Macro":
     st.title("🇲🇽 Monitor Macroeconómico")
     st.info("Visualización de las series económicas oficiales de Banxico")
     
     with st.spinner("Consultando API de Banxico..."):
-        # Llamamos a la función con los dos parámetros requeridos
+        # Usamos las constantes que ya tienes definidas en tu otra parte del código
         df_macro = importar_datos_macro(TOKEN_BANXICO, SERIES_A_CONSULTAR)
         
     if df_macro is not None:
-        # Filtro de fechas y limpieza de columnas vacías
+        # Filtro de fechas usando tus constantes globales
         df_macro = df_macro[(df_macro.index >= FECHA_INICIO_FILTRO) & (df_macro.index <= FECHA_FIN_FILTRO)]
+        
+        # Limpieza: Eliminamos columnas que no trajeron datos
         df_macro = df_macro.dropna(axis=1, how='all')
         
-        # Dashboard Rápido (Métricas principales)
+        # Métricas rápidas en la parte superior
         c1, c2 = st.columns(2)
         if "INPC_Inflacion_Anual" in df_macro.columns:
             serie_inf = df_macro["INPC_Inflacion_Anual"].dropna()
@@ -3099,17 +3099,16 @@ if modo == "Indicadores Macro":
             
         st.divider()
         
-        # Selector y Gráfico dinámico
+        # Gráfica interactiva y Tabla
         if not df_macro.empty:
             serie_sel = st.selectbox("Selecciona Serie para Graficar:", df_macro.columns)
             st.line_chart(df_macro[serie_sel])
             
-            # Tabla formateada (Solo fechas YYYY-MM-DD)
             with st.expander("Ver Tabla de Datos Completa"):
                 df_visual = df_macro.copy()
-                df_visual.index = df_visual.index.date
+                df_visual.index = df_visual.index.date # Solo fecha, sin hora
                 st.dataframe(df_visual, use_container_width=True)
         else:
             st.warning("No hay datos disponibles para el rango seleccionado.")
     else:
-        st.error("Error al conectar con Banxico. Verifica tu Token o conexión.")
+        st.error("Error al conectar con Banxico. Revisa la consola o tu Token.")
