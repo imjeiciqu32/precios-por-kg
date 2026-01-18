@@ -3477,6 +3477,7 @@ if modo == "Indicadores Macro":
                 st.caption("Fuente: Banco de México")
             
             st.divider()
+
             
             # ==================== CLIMA NEGOCIOS ====================
             st.markdown("### 🏢 Expectativas y Clima de Negocios")
@@ -3533,8 +3534,51 @@ if modo == "Indicadores Macro":
                 st.plotly_chart(fig, use_container_width=True)
                 st.caption("Fuente: Encuesta de Expectativas - Banxico")
             
-            st.divider()
+            st.markdown("")
             
+            st.markdown("**Situación Económica vs Hace un Año**")
+            series = ["Exp_EconActual_Mejor", "Exp_EconActual_Peor"]
+            if all(s in df_macro.columns for s in series):
+                df_plot = df_macro[series].dropna()
+                fig = go.Figure()
+                fig.add_trace(go.Bar(
+                    x=df_plot.index, 
+                    y=df_plot[series[0]], 
+                    name='Mejor', 
+                    marker_color='rgba(76, 201, 240, 0.8)',
+                    text=[f"{v:.0f}%" if v > 5 else "" for v in df_plot[series[0]]], 
+                    textposition='inside',
+                    textfont=dict(size=10, color='white'),
+                    hovertemplate='Mejor<br>%{x}<br>%{y:.1f}%<extra></extra>'
+                ))
+                fig.add_trace(go.Bar(
+                    x=df_plot.index, 
+                    y=df_plot[series[1]], 
+                    name='Peor', 
+                    marker_color='rgba(255, 154, 162, 0.8)',
+                    text=[f"{v:.0f}%" if v > 5 else "" for v in df_plot[series[1]]], 
+                    textposition='inside',
+                    textfont=dict(size=10, color='white'),
+                    hovertemplate='Peor<br>%{x}<br>%{y:.1f}%<extra></extra>'
+                ))
+                fig.update_layout(
+                    barmode='stack', 
+                    height=450, 
+                    hovermode='x unified', 
+                    yaxis_title="(%)", 
+                    xaxis_title="Fecha", 
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="center",
+                        x=0.5
+                    )
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                st.caption("Fuente: Encuesta de Expectativas - Banxico")
+            
+            st.divider()
             # ==================== BILLETES Y MONEDAS ====================
             st.markdown("### 💵 Circulante: Billetes y Monedas")
             tab1, tab2 = st.tabs(["💵 Billetes", "🪙 Monedas"])
@@ -3654,9 +3698,7 @@ if modo == "Indicadores Macro":
                     ("2", "$2", "🪙", "#F48FB1"),
                     ("5", "$5", "🪙", "#81D4FA"),
                     ("10", "$10", "🪙", "#A5D6A7"),
-                    ("20", "$20", "🪙", "#FFE082"),
-                    ("50", "$50", "🪙", "#FFAB91"),
-                    ("100", "$100", "🪙", "#CE93D8")
+                    ("20", "$20", "🪙", "#FFE082")
                 ]
                 cols = st.columns(len(denoms))
                 for i, (key, label, icon, color) in enumerate(denoms):
