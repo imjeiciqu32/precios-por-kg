@@ -259,8 +259,10 @@ elif modo == "Price and Volume":
     columnas_tabla = ["Semana", "Producto", "Fabricante", "Precio ($)", "Venta Volumen (Pzas)","Venta Valor ($)"]
 
 else: # MODO: Indicadores Macro
-    # 1. Definimos DB_FILE como None para evitar el NameError en el resto del script
-    DB_FILE = None 
+    # 1. Definimos variables para evitar NameError en el resto del script
+    DB_FILE = None
+    fuente_plantillas = {}  # Soluciona el error de la línea 434
+    columnas_tabla = []
     
     st.title("🇲🇽 Monitor Macroeconómico")
     st.info("Visualización de las series económicas oficiales de Banxico")
@@ -273,13 +275,12 @@ else: # MODO: Indicadores Macro
         # 2. Filtro de fechas
         df_macro = df_macro[(df_macro.index >= FECHA_INICIO_FILTRO) & (df_macro.index <= FECHA_FIN_FILTRO)]
         
-        # 3. ELIMINAR COLUMNAS VACÍAS: Si la API no devolvió datos para una serie, se quita
+        # 3. ELIMINAR COLUMNAS VACÍAS: Si la API no devolvió datos, se quita la columna
         df_macro = df_macro.dropna(axis=1, how='all')
         
         # 4. DASHBOARD RÁPIDO (Métricas principales)
         c1, c2 = st.columns(2)
         if "INPC_Inflacion_Anual" in df_macro.columns:
-            # Obtenemos el último valor no nulo
             serie_inf = df_macro["INPC_Inflacion_Anual"].dropna()
             if not serie_inf.empty:
                 c1.metric("Inflación Anual", f"{serie_inf.iloc[-1]}%")
@@ -291,20 +292,21 @@ else: # MODO: Indicadores Macro
             
         st.divider()
         
-        # 5. SELECTOR Y GRÁFICO (Solo muestra columnas con datos)
-        serie_sel = st.selectbox("Selecciona Serie para Graficar:", df_macro.columns)
-        st.line_chart(df_macro[serie_sel])
-        
-        # 6. TABLA DE DATOS FORMATEADA
-        with st.expander("Ver Tabla de Datos Completa"):
-            # Creamos una copia para visualización y convertimos el índice a solo fecha
-            df_visual = df_macro.copy()
-            df_visual.index = df_visual.index.date 
+        # 5. SELECTOR Y GRÁFICO (Dinámico: solo muestra lo que tiene datos)
+        if not df_macro.empty:
+            serie_sel = st.selectbox("Selecciona Serie para Graficar:", df_macro.columns)
+            st.line_chart(df_macro[serie_sel])
             
-            st.dataframe(df_visual, use_container_width=True)
+            # 6. TABLA DE DATOS FORMATEADA (Solo fechas AAAA-MM-DD)
+            with st.expander("Ver Tabla de Datos Completa"):
+                df_visual = df_macro.copy()
+                df_visual.index = df_visual.index.date # Quita el 00:00:00
+                st.dataframe(df_visual, use_container_width=True)
+        else:
+            st.warning("No hay datos disponibles para el rango seleccionado.")
             
     else:
-        st.error("Error al conectar con Banxico. Verifica tu Token o conexión.")
+        st.error("Error al conectar con Banxico. Verifica tu Token.")
         
 # --- 2. FUNCIONES CORE (Mantenidas intactas) ---
 def calcular_pkg(df, modo_actual):
