@@ -12,22 +12,64 @@ FECHA_INICIO_FILTRO = "2020-01-01"
 FECHA_FIN_FILTRO = "2025-12-31"
 
 SERIES_A_CONSULTAR = [
+    # =====================================================================
+    # 1. INPC / INPP Y MACRO (Originales)
+    # =====================================================================
     ("SP30577", "INPC_Inflacion_Mensual"), ("SP30579", "INPC_Inflacion_Acumulada"),
     ("SP30578", "INPC_Inflacion_Anual"), ("SP1", "INPC_Nivel_Historico"),
     ("SP6", "INPP_Mercancias_Servicios_ExPetroleo"), ("SP5", "INPP_Mercancias_Servicios_ConPetroleo"),
-    ("SP10543", "Aceites_Grasas_Comestibles"), ("SP10545", "Alimentos_para_Animales"),
-    ("SP10547", "Otros_Productos_Alimenticios"), ("SP10620", "Petroleo_y_Derivados_INPP"),
-    ("SP68201", "Maiz_INPP"), ("SP68213", "Cacahuate_INPP"),
-    ("SP66556", "Papa_INPP"), ("SP66608", "Petroleo_Crudo_INPP"),
-    ("SP66609", "Gas_Natural_INPP"), ("SF17890", "TipoCambio_Cotizacion_Minima"),
-    ("SF17891", "TipoCambio_Cotizacion_Maxima"), ("SF331450", "TIIE_Fondeo_1Dia"),
+    
+    # Mercado Cambiario y Monetario
+    ("SF17890", "TipoCambio_Cotizacion_Minima"), ("SF17891", "TipoCambio_Cotizacion_Maxima"),
+    ("SF331450", "TIIE_Fondeo_1Dia"),
+    
+    # Mercado Laboral
     ("SL11298", "Salario_Minimo_General"), ("SL1", "Tasa_Desocupacion_Nacional"),
+
+    # Expectativas de la Encuesta de Especialistas (Medias y Extremos)
     ("SR14222", "Exp_Inflacion_Media"), ("SR14226", "Exp_Inflacion_Minima"),
     ("SR14227", "Exp_Inflacion_Maxima"), ("SR14790", "Exp_TipoCambio_Media"),
     ("SR14794", "Exp_TipoCambio_Minima"), ("SR14795", "Exp_TipoCambio_Maxima"),
+
     ("SR14658", "Exp_TasaFondeo_Media"), ("SR14662", "Exp_TasaFondeo_Minima"),
     ("SR14663", "Exp_TasaFondeo_Maxima"), ("SR14902", "Exp_TasaDesocupacion_Media"),
-    ("SR14906", "Exp_TasaDesocupacion_Minima"), ("SR14907", "Exp_TasaDesocupacion_Maxima")
+    ("SR14906", "Exp_TasaDesocupacion_Minima"), ("SR14907", "Exp_TasaDesocupacion_Maxima"),
+
+    # =====================================================================
+    # 2. NUEVAS SERIES AGREGADAS (Clima de Negocios, Billetes y Monedas)
+    # =====================================================================
+
+    # Encuesta de Expectativas de Clima de Negocios
+    ("SR15028", "Exp_ClimaNegocios_Mejorara"),     # Clima de negocios próximos 6 meses: Mejorará
+    ("SR15029", "Exp_ClimaNegocios_Igual"),        # Clima de negocios próximos 6 meses: Permanecerá igual
+    ("SR15030", "Exp_ClimaNegocios_Empeorara"),    # Clima de negocios próximos 6 meses: Empeorará
+    ("SR16207", "Exp_ClimaNegocios_NumRespuestas"), # Número de respuestas
+    
+    # Encuesta de Expectativas de Situación Económica Actual
+    ("SR15031", "Exp_EconActual_Mejor"),           # Economía mejor que hace un año: Sí
+    ("SR15032", "Exp_EconActual_Peor"),            # Economía mejor que hace un año: No
+    ("SR16208", "Exp_EconActual_NumRespuestas"),  # Número de respuestas
+
+    # Billetes en Circulación (Totales, Millones de Pesos)
+    ("SM1472", "Billete_20_Circulacion"),
+    ("SM1478", "Billete_50_Circulacion"),
+    ("SM1479", "Billete_100_Circulacion"),
+    ("SM1480", "Billete_200_Circulacion"),
+    ("SM1481", "Billete_500_Circulacion"),
+    ("SM1482", "Billete_1000_Circulacion"),
+
+    # Monedas en Circulación (Totales, Millones de Pesos)
+    ("SM9", "Moneda_05C_Circulacion"),
+    ("SM10", "Moneda_10C_Circulacion"),
+    ("SM11", "Moneda_20C_Circulacion"),
+    ("SM12", "Moneda_50C_Circulacion"),
+    ("SM13", "Moneda_1_Circulacion"),
+    ("SM14", "Moneda_2_Circulacion"),
+    ("SM15", "Moneda_5_Circulacion"),
+    ("SM16", "Moneda_10_Circulacion"),
+    ("SM17", "Moneda_20_Circulacion"),
+    ("SM18", "Moneda_50_Circulacion"),
+    ("SM19", "Moneda_100_Circulacion"),
 ]
 
 # --- 1. CONFIGURACIÓN Y CARGA DE PLANTILLAS ---
