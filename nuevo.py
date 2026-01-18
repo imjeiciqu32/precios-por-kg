@@ -3113,6 +3113,9 @@ if modo == "Price and Volume" and not st.session_state.data.empty:
 
 # --- APARTADO DE VISUALIZACIÓN: INDICADORES MACRO ---
 if modo == "Indicadores Macro":
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    
     st.title("🇲🇽 Monitor Macroeconómico de México")
     st.caption("Datos oficiales del Banco de México actualizados en tiempo real")
     
@@ -3120,468 +3123,345 @@ if modo == "Indicadores Macro":
         df_macro = importar_datos_macro(TOKEN_BANXICO, SERIES_A_CONSULTAR)
         
     if df_macro is not None:
-        # Filtro de fechas
         df_macro = df_macro[(df_macro.index >= FECHA_INICIO_FILTRO) & (df_macro.index <= FECHA_FIN_FILTRO)]
         df_macro = df_macro.dropna(axis=1, how='all')
         
         if df_macro.empty:
             st.warning("No hay datos disponibles para el rango seleccionado.")
         else:
-            # ==================== SECCIÓN: KPIs PRINCIPALES ====================
+            # ==================== KPIs CON HTML ====================
             st.markdown("### 📊 Indicadores Clave")
             
-            kpi_cols = st.columns(4)
+            kpi_data = []
             
-            # KPI 1: Inflación Anual
-            with kpi_cols[0]:
-                if "INPC_Inflacion_Anual" in df_macro.columns:
-                    serie_inf = df_macro["INPC_Inflacion_Anual"].dropna()
-                    if len(serie_inf) >= 2:
-                        valor_actual = serie_inf.iloc[-1]
-                        valor_anterior = serie_inf.iloc[-2]
-                        delta = valor_actual - valor_anterior
-                        st.metric(
-                            label="Inflación Anual",
-                            value=f"{valor_actual:.2f}%",
-                            delta=f"{delta:+.2f} pp"
-                        )
+            if "INPC_Inflacion_Anual" in df_macro.columns:
+                serie = df_macro["INPC_Inflacion_Anual"].dropna()
+                if len(serie) >= 2:
+                    val, prev = serie.iloc[-1], serie.iloc[-2]
+                    delta = val - prev
+                    kpi_data.append({'titulo': 'Inflación Anual', 'valor': f'{val:.2f}%', 
+                                   'delta': f'{"↑" if delta > 0 else "↓"} {abs(delta):.2f} pp', 'icon': '📈'})
             
-            # KPI 2: Tipo de Cambio
-            with kpi_cols[1]:
-                if "TipoCambio_Cotizacion_Maxima" in df_macro.columns:
-                    serie_tc = df_macro["TipoCambio_Cotizacion_Maxima"].dropna()
-                    if len(serie_tc) >= 2:
-                        valor_actual = serie_tc.iloc[-1]
-                        valor_anterior = serie_tc.iloc[-2]
-                        delta = valor_actual - valor_anterior
-                        st.metric(
-                            label="Tipo de Cambio",
-                            value=f"${valor_actual:.2f}",
-                            delta=f"{delta:+.2f} MXN"
-                        )
+            if "TipoCambio_Cotizacion_Maxima" in df_macro.columns:
+                serie = df_macro["TipoCambio_Cotizacion_Maxima"].dropna()
+                if len(serie) >= 2:
+                    val, prev = serie.iloc[-1], serie.iloc[-2]
+                    delta = val - prev
+                    kpi_data.append({'titulo': 'Tipo de Cambio', 'valor': f'${val:.2f}', 
+                                   'delta': f'{"↑" if delta > 0 else "↓"} {abs(delta):.2f} MXN', 'icon': '💱'})
             
-            # KPI 3: TIIE
-            with kpi_cols[2]:
-                if "TIIE_Fondeo_1Dia" in df_macro.columns:
-                    serie_tiie = df_macro["TIIE_Fondeo_1Dia"].dropna()
-                    if len(serie_tiie) >= 2:
-                        valor_actual = serie_tiie.iloc[-1]
-                        valor_anterior = serie_tiie.iloc[-2]
-                        delta = valor_actual - valor_anterior
-                        st.metric(
-                            label="TIIE 1 Día",
-                            value=f"{valor_actual:.2f}%",
-                            delta=f"{delta:+.2f} pp"
-                        )
+            if "TIIE_Fondeo_1Dia" in df_macro.columns:
+                serie = df_macro["TIIE_Fondeo_1Dia"].dropna()
+                if len(serie) >= 2:
+                    val, prev = serie.iloc[-1], serie.iloc[-2]
+                    delta = val - prev
+                    kpi_data.append({'titulo': 'TIIE 1 Día', 'valor': f'{val:.2f}%', 
+                                   'delta': f'{"↑" if delta > 0 else "↓"} {abs(delta):.2f} pp', 'icon': '💰'})
             
-            # KPI 4: Desocupación
-            with kpi_cols[3]:
-                if "Tasa_Desocupacion_Nacional" in df_macro.columns:
-                    serie_desoc = df_macro["Tasa_Desocupacion_Nacional"].dropna()
-                    if len(serie_desoc) >= 2:
-                        valor_actual = serie_desoc.iloc[-1]
-                        valor_anterior = serie_desoc.iloc[-2]
-                        delta = valor_actual - valor_anterior
-                        st.metric(
-                            label="Desocupación",
-                            value=f"{valor_actual:.2f}%",
-                            delta=f"{delta:+.2f} pp",
-                            delta_color="inverse"
-                        )
+            if "Tasa_Desocupacion_Nacional" in df_macro.columns:
+                serie = df_macro["Tasa_Desocupacion_Nacional"].dropna()
+                if len(serie) >= 2:
+                    val, prev = serie.iloc[-1], serie.iloc[-2]
+                    delta = val - prev
+                    kpi_data.append({'titulo': 'Desocupación', 'valor': f'{val:.2f}%', 
+                                   'delta': f'{"↑" if delta > 0 else "↓"} {abs(delta):.2f} pp', 'icon': '👥'})
             
+            kpi_html = """<style>
+.kpi-container {display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;}
+.kpi-card {flex: 1; min-width: 200px; border-radius: 12px; padding: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.3s ease;}
+.kpi-card:hover {transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.15);}
+.kpi-card:nth-child(1) {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);}
+.kpi-card:nth-child(2) {background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);}
+.kpi-card:nth-child(3) {background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);}
+.kpi-card:nth-child(4) {background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);}
+.kpi-icon {font-size: 32px; margin-bottom: 8px;}
+.kpi-titulo {color: rgba(255,255,255,0.9); font-size: 14px; font-weight: 500; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;}
+.kpi-valor {color: white; font-size: 36px; font-weight: 700; margin-bottom: 8px; line-height: 1;}
+.kpi-delta {font-size: 14px; font-weight: 600; padding: 4px 12px; border-radius: 20px; display: inline-block; background: rgba(255,255,255,0.2); color: white;}
+</style><div class="kpi-container">"""
+            
+            for kpi in kpi_data:
+                kpi_html += f'<div class="kpi-card"><div class="kpi-icon">{kpi["icon"]}</div><div class="kpi-titulo">{kpi["titulo"]}</div><div class="kpi-valor">{kpi["valor"]}</div><div class="kpi-delta">{kpi["delta"]}</div></div>'
+            
+            kpi_html += "</div>"
+            st.markdown(kpi_html, unsafe_allow_html=True)
             st.divider()
             
-            # ==================== SECCIÓN: INFLACIÓN ====================
+            # ==================== INFLACIÓN ====================
             st.markdown("### 📈 Análisis de Inflación")
-            
-            tab_inf1, tab_inf2 = st.tabs(["📊 Evolución Histórica", "🔮 Expectativas de Especialistas"])
+            tab_inf1, tab_inf2 = st.tabs(["📊 Evolución Histórica", "🔮 Expectativas"])
             
             with tab_inf1:
-                col_inf1, col_inf2 = st.columns([7, 3])
-                
-                with col_inf1:
-                    st.markdown("**Indicador Nacional de Precios al Consumidor (INPC)**")
-                    series_inflacion = [col for col in df_macro.columns if "INPC_Inflacion" in col and "Exp_" not in col]
-                    if series_inflacion:
-                        df_inf_plot = df_macro[series_inflacion].copy()
-                        # Renombrar para mejor visualización
-                        rename_dict = {
-                            'INPC_Inflacion_Mensual': 'Mensual',
-                            'INPC_Inflacion_Acumulada': 'Acumulada',
-                            'INPC_Inflacion_Anual': 'Anual'
-                        }
-                        df_inf_plot = df_inf_plot.rename(columns=rename_dict)
-                        st.line_chart(df_inf_plot, height=380)
-                        st.caption("Fuente: Banco de México | Variación porcentual del INPC")
-                
-                with col_inf2:
-                    st.markdown("**Componentes del INPC**")
-                    st.markdown("")
-                    
+                col1, col2 = st.columns([7, 3])
+                with col1:
+                    st.markdown("**INPC - Inflación Anual y Nivel Histórico**")
+                    if "INPC_Inflacion_Anual" in df_macro.columns and "INPC_Nivel_Historico" in df_macro.columns:
+                        df_plot = df_macro[["INPC_Inflacion_Anual", "INPC_Nivel_Historico"]].dropna()
+                        fig = make_subplots(specs=[[{"secondary_y": True}]])
+                        fig.add_trace(go.Bar(x=df_plot.index, y=df_plot["INPC_Inflacion_Anual"], name="Inflación Anual (%)",
+                                           marker_color='rgba(102, 126, 234, 0.7)', text=[f"{v:.1f}%" for v in df_plot["INPC_Inflacion_Anual"]],
+                                           textposition='outside', hovertemplate='%{x}<br>%{y:.2f}%<extra></extra>'), secondary_y=False)
+                        fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot["INPC_Nivel_Historico"], name="Nivel Histórico",
+                                               line=dict(color='rgb(255, 75, 75)', width=3), hovertemplate='%{x}<br>%{y:.2f}<extra></extra>'), secondary_y=True)
+                        fig.update_xaxes(title_text="Fecha")
+                        fig.update_yaxes(title_text="Inflación (%)", secondary_y=False)
+                        fig.update_yaxes(title_text="Nivel (Base 2018)", secondary_y=True)
+                        fig.update_layout(hovermode='x unified', height=400, legend=dict(orientation="h", y=1.02, x=1))
+                        st.plotly_chart(fig, use_container_width=True)
+                        st.caption("Fuente: Banco de México")
+                with col2:
+                    st.markdown("**Componentes**")
                     if "INPC_Inflacion_Mensual" in df_macro.columns:
-                        serie = df_macro["INPC_Inflacion_Mensual"].dropna()
-                        if not serie.empty:
-                            st.metric("💠 Mensual", f"{serie.iloc[-1]:.2f}%")
-                    
+                        st.metric("💠 Mensual", f"{df_macro['INPC_Inflacion_Mensual'].dropna().iloc[-1]:.2f}%")
                     if "INPC_Inflacion_Acumulada" in df_macro.columns:
-                        serie = df_macro["INPC_Inflacion_Acumulada"].dropna()
-                        if not serie.empty:
-                            st.metric("💠 Acumulada", f"{serie.iloc[-1]:.2f}%")
-                    
-                    if "INPC_Nivel_Historico" in df_macro.columns:
-                        serie = df_macro["INPC_Nivel_Historico"].dropna()
-                        if not serie.empty:
-                            st.metric("💠 Nivel (Base 2018)", f"{serie.iloc[-1]:.2f}")
-                    
-                    st.markdown("---")
-                    st.caption("Los valores representan la última observación disponible")
+                        st.metric("💠 Acumulada", f"{df_macro['INPC_Inflacion_Acumulada'].dropna().iloc[-1]:.2f}%")
             
             with tab_inf2:
-                col_exp1, col_exp2 = st.columns([7, 3])
-                
-                with col_exp1:
-                    st.markdown("**Expectativas de Inflación - Encuesta de Especialistas**")
-                    series_exp_inf = [col for col in df_macro.columns if "Exp_Inflacion" in col]
-                    if series_exp_inf:
-                        df_exp_plot = df_macro[series_exp_inf].copy()
-                        rename_dict = {
-                            'Exp_Inflacion_Media': 'Media',
-                            'Exp_Inflacion_Minima': 'Mínima',
-                            'Exp_Inflacion_Maxima': 'Máxima'
-                        }
-                        df_exp_plot = df_exp_plot.rename(columns=rename_dict)
-                        st.area_chart(df_exp_plot, height=380)
-                        st.caption("Fuente: Encuesta de Expectativas - Banco de México")
-                
-                with col_exp2:
-                    st.markdown("**Rango de Expectativas**")
-                    st.markdown("")
-                    
-                    if "Exp_Inflacion_Media" in df_macro.columns:
-                        serie = df_macro["Exp_Inflacion_Media"].dropna()
-                        if not serie.empty:
-                            st.metric("📊 Media", f"{serie.iloc[-1]:.2f}%")
-                    
-                    if "Exp_Inflacion_Minima" in df_macro.columns:
-                        serie = df_macro["Exp_Inflacion_Minima"].dropna()
-                        if not serie.empty:
-                            st.metric("📉 Mínima", f"{serie.iloc[-1]:.2f}%")
-                    
-                    if "Exp_Inflacion_Maxima" in df_macro.columns:
-                        serie = df_macro["Exp_Inflacion_Maxima"].dropna()
-                        if not serie.empty:
-                            st.metric("📈 Máxima", f"{serie.iloc[-1]:.2f}%")
-                    
-                    st.markdown("---")
-                    st.caption("Proyección de especialistas para el cierre del año")
+                col1, col2 = st.columns([7, 3])
+                with col1:
+                    st.markdown("**Expectativas de Inflación**")
+                    series = [c for c in df_macro.columns if "Exp_Inflacion" in c]
+                    if series:
+                        df_plot = df_macro[series].dropna()
+                        fig = go.Figure()
+                        colors = {'Exp_Inflacion_Media': 'rgb(102, 126, 234)', 'Exp_Inflacion_Minima': 'rgb(67, 233, 123)', 'Exp_Inflacion_Maxima': 'rgb(255, 75, 75)'}
+                        names = {'Exp_Inflacion_Media': 'Media', 'Exp_Inflacion_Minima': 'Mínima', 'Exp_Inflacion_Maxima': 'Máxima'}
+                        for col in df_plot.columns:
+                            fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot[col], name=names.get(col, col),
+                                                   line=dict(color=colors.get(col, 'blue'), width=2), fill='tonexty' if col != 'Exp_Inflacion_Maxima' else None,
+                                                   hovertemplate='%{x}<br>%{y:.1f}%<extra></extra>'))
+                        fig.update_layout(hovermode='x unified', height=380, yaxis_title="(%)", legend=dict(orientation="h", y=1.02, x=1))
+                        st.plotly_chart(fig, use_container_width=True)
+                        st.caption("Fuente: Encuesta Banxico")
+                with col2:
+                    st.markdown("**Rango**")
+                    for s, l in [("Exp_Inflacion_Media", "📊 Media"), ("Exp_Inflacion_Minima", "📉 Mín"), ("Exp_Inflacion_Maxima", "📈 Máx")]:
+                        if s in df_macro.columns:
+                            st.metric(l, f"{df_macro[s].dropna().iloc[-1]:.2f}%")
             
             st.divider()
             
-            # ==================== SECCIÓN: MERCADO CAMBIARIO Y MONETARIO ====================
-            st.markdown("### 💱 Mercado Cambiario y Tasas de Interés")
+            # ==================== MERCADO CAMBIARIO ====================
+            st.markdown("### 💱 Mercado Cambiario y Tasas")
+            tab1, tab2 = st.tabs(["💵 Tipo de Cambio", "📊 Tasas"])
             
-            tab_cam1, tab_cam2 = st.tabs(["💵 Tipo de Cambio", "📊 Tasas de Interés"])
+            with tab1:
+                col1, col2 = st.columns([7, 3])
+                with col1:
+                    st.markdown("**Tipo de Cambio USD/MXN**")
+                    if "TipoCambio_Cotizacion_Minima" in df_macro.columns:
+                        df_plot = df_macro[["TipoCambio_Cotizacion_Minima", "TipoCambio_Cotizacion_Maxima"]].dropna()
+                        fig = go.Figure()
+                        fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot["TipoCambio_Cotizacion_Minima"], name="Mínima",
+                                               line=dict(color='rgb(67, 233, 123)', width=2), mode='lines+markers',
+                                               text=[f"${v:.1f}" for v in df_plot["TipoCambio_Cotizacion_Minima"]], hovertemplate='%{x}<br>$%{y:.2f}<extra></extra>'))
+                        fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot["TipoCambio_Cotizacion_Maxima"], name="Máxima",
+                                               line=dict(color='rgb(255, 75, 75)', width=2), mode='lines+markers',
+                                               text=[f"${v:.1f}" for v in df_plot["TipoCambio_Cotizacion_Maxima"]], hovertemplate='%{x}<br>$%{y:.2f}<extra></extra>'))
+                        fig.update_layout(hovermode='x unified', height=330, yaxis_title="MXN/USD", legend=dict(orientation="h", y=1.02, x=1))
+                        st.plotly_chart(fig, use_container_width=True)
+                        st.caption("Fuente: Banco de México")
+                with col2:
+                    st.markdown("**Expectativas**")
+                    for s, l in [("Exp_TipoCambio_Media", "📊 Media"), ("Exp_TipoCambio_Minima", "📉 Mín"), ("Exp_TipoCambio_Maxima", "📈 Máx")]:
+                        if s in df_macro.columns:
+                            st.metric(l, f"${df_macro[s].dropna().iloc[-1]:.2f}")
             
-            with tab_cam1:
-                col_tc1, col_tc2 = st.columns([7, 3])
-                
-                with col_tc1:
-                    st.markdown("**Tipo de Cambio USD/MXN - Cotización Interbancaria**")
-                    series_tc = [col for col in df_macro.columns if "TipoCambio" in col and "Exp_" not in col]
-                    if series_tc:
-                        df_tc_plot = df_macro[series_tc].copy()
-                        rename_dict = {
-                            'TipoCambio_Cotizacion_Minima': 'Cotización Mínima',
-                            'TipoCambio_Cotizacion_Maxima': 'Cotización Máxima'
-                        }
-                        df_tc_plot = df_tc_plot.rename(columns=rename_dict)
-                        st.line_chart(df_tc_plot, height=330)
-                        st.caption("Fuente: Banco de México | Pesos por dólar")
-                
-                with col_tc2:
-                    st.markdown("**Expectativas de TC**")
-                    st.markdown("")
-                    
-                    if "Exp_TipoCambio_Media" in df_macro.columns:
-                        serie = df_macro["Exp_TipoCambio_Media"].dropna()
-                        if not serie.empty:
-                            st.metric("📊 Media", f"${serie.iloc[-1]:.2f}")
-                    
-                    if "Exp_TipoCambio_Minima" in df_macro.columns:
-                        serie = df_macro["Exp_TipoCambio_Minima"].dropna()
-                        if not serie.empty:
-                            st.metric("📉 Mínima", f"${serie.iloc[-1]:.2f}")
-                    
-                    if "Exp_TipoCambio_Maxima" in df_macro.columns:
-                        serie = df_macro["Exp_TipoCambio_Maxima"].dropna()
-                        if not serie.empty:
-                            st.metric("📈 Máxima", f"${serie.iloc[-1]:.2f}")
-                    
-                    st.markdown("---")
-                    st.caption("Expectativas de especialistas")
-            
-            with tab_cam2:
-                col_tasa1, col_tasa2 = st.columns([7, 3])
-                
-                with col_tasa1:
-                    st.markdown("**Tasa de Interés Interbancaria de Equilibrio (TIIE)**")
-                    series_tasas = [col for col in df_macro.columns if "TIIE" in col or ("TasaFondeo" in col and "Exp_" not in col)]
-                    if series_tasas:
-                        df_tasas_plot = df_macro[series_tasas].copy()
-                        st.line_chart(df_tasas_plot, height=330)
-                        st.caption("Fuente: Banco de México | Tasa porcentual anual")
-                
-                with col_tasa2:
-                    st.markdown("**Expectativas de Fondeo**")
-                    st.markdown("")
-                    
-                    if "Exp_TasaFondeo_Media" in df_macro.columns:
-                        serie = df_macro["Exp_TasaFondeo_Media"].dropna()
-                        if not serie.empty:
-                            st.metric("📊 Media", f"{serie.iloc[-1]:.2f}%")
-                    
-                    if "Exp_TasaFondeo_Minima" in df_macro.columns:
-                        serie = df_macro["Exp_TasaFondeo_Minima"].dropna()
-                        if not serie.empty:
-                            st.metric("📉 Mínima", f"{serie.iloc[-1]:.2f}%")
-                    
-                    if "Exp_TasaFondeo_Maxima" in df_macro.columns:
-                        serie = df_macro["Exp_TasaFondeo_Maxima"].dropna()
-                        if not serie.empty:
-                            st.metric("📈 Máxima", f"{serie.iloc[-1]:.2f}%")
-                    
-                    st.markdown("---")
-                    st.caption("Expectativas de tasa objetivo")
+            with tab2:
+                col1, col2 = st.columns([7, 3])
+                with col1:
+                    st.markdown("**TIIE 1 Día**")
+                    if "TIIE_Fondeo_1Dia" in df_macro.columns:
+                        df_plot = df_macro[["TIIE_Fondeo_1Dia"]].dropna()
+                        fig = go.Figure()
+                        fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot["TIIE_Fondeo_1Dia"], name="TIIE",
+                                               line=dict(color='rgb(102, 126, 234)', width=3), hovertemplate='%{x}<br>%{y:.2f}%<extra></extra>'))
+                        fig.update_layout(hovermode='x', height=330, yaxis_title="(%)")
+                        st.plotly_chart(fig, use_container_width=True)
+                        st.caption("Fuente: Banco de México")
+                with col2:
+                    st.markdown("**Expectativas**")
+                    for s, l in [("Exp_TasaFondeo_Media", "📊 Media"), ("Exp_TasaFondeo_Minima", "📉 Mín"), ("Exp_TasaFondeo_Maxima", "📈 Máx")]:
+                        if s in df_macro.columns:
+                            st.metric(l, f"{df_macro[s].dropna().iloc[-1]:.2f}%")
             
             st.divider()
             
-            # ==================== SECCIÓN: CLIMA DE NEGOCIOS ====================
+            # ==================== CLIMA NEGOCIOS - BARRAS APILADAS ====================
             st.markdown("### 🏢 Expectativas y Clima de Negocios")
+            col1, col2 = st.columns(2)
             
-            col_clima1, col_clima2 = st.columns(2)
-            
-            with col_clima1:
+            with col1:
                 st.markdown("**Clima de Negocios - Próximos 6 Meses**")
-                series_clima = ["Exp_ClimaNegocios_Mejorara", "Exp_ClimaNegocios_Igual", "Exp_ClimaNegocios_Empeorara"]
-                series_clima_disponibles = [col for col in series_clima if col in df_macro.columns]
-                
-                if series_clima_disponibles:
-                    df_clima_plot = df_macro[series_clima_disponibles].copy()
-                    rename_dict = {
-                        'Exp_ClimaNegocios_Mejorara': 'Mejorará',
-                        'Exp_ClimaNegocios_Igual': 'Permanecerá Igual',
-                        'Exp_ClimaNegocios_Empeorara': 'Empeorará'
-                    }
-                    df_clima_plot = df_clima_plot.rename(columns=rename_dict)
-                    st.line_chart(df_clima_plot, height=280)
-                    st.caption("Fuente: Encuesta de Expectativas - Banco de México | Porcentaje de respuestas")
+                series = ["Exp_ClimaNegocios_Mejorara", "Exp_ClimaNegocios_Igual", "Exp_ClimaNegocios_Empeorara"]
+                if all(s in df_macro.columns for s in series):
+                    df_plot = df_macro[series].dropna()
+                    fig = go.Figure()
+                    fig.add_trace(go.Bar(x=df_plot.index, y=df_plot[series[0]], name='Mejorará', marker_color='rgb(67, 233, 123)',
+                                       text=[f"{v:.1f}%" for v in df_plot[series[0]]], textposition='inside', hovertemplate='%{x}<br>%{y:.1f}%<extra></extra>'))
+                    fig.add_trace(go.Bar(x=df_plot.index, y=df_plot[series[1]], name='Igual', marker_color='rgb(102, 126, 234)',
+                                       text=[f"{v:.1f}%" for v in df_plot[series[1]]], textposition='inside', hovertemplate='%{x}<br>%{y:.1f}%<extra></extra>'))
+                    fig.add_trace(go.Bar(x=df_plot.index, y=df_plot[series[2]], name='Empeorará', marker_color='rgb(255, 75, 75)',
+                                       text=[f"{v:.1f}%" for v in df_plot[series[2]]], textposition='inside', hovertemplate='%{x}<br>%{y:.1f}%<extra></extra>'))
+                    fig.update_layout(barmode='stack', height=300, hovermode='x unified', yaxis_title="(%)", legend=dict(orientation="h", y=1.02, x=1))
+                    st.plotly_chart(fig, use_container_width=True)
+                    st.caption("Fuente: Encuesta Banxico")
             
-            with col_clima2:
+            with col2:
                 st.markdown("**Situación Económica vs Hace un Año**")
-                series_econ = ["Exp_EconActual_Mejor", "Exp_EconActual_Peor"]
-                series_econ_disponibles = [col for col in series_econ if col in df_macro.columns]
-                
-                if series_econ_disponibles:
-                    df_econ_plot = df_macro[series_econ_disponibles].copy()
-                    rename_dict = {
-                        'Exp_EconActual_Mejor': 'Mejor que hace un año',
-                        'Exp_EconActual_Peor': 'Peor que hace un año'
-                    }
-                    df_econ_plot = df_econ_plot.rename(columns=rename_dict)
-                    st.line_chart(df_econ_plot, height=280)
-                    st.caption("Fuente: Encuesta de Expectativas - Banco de México | Porcentaje de respuestas")
+                series = ["Exp_EconActual_Mejor", "Exp_EconActual_Peor"]
+                if all(s in df_macro.columns for s in series):
+                    df_plot = df_macro[series].dropna()
+                    fig = go.Figure()
+                    fig.add_trace(go.Bar(x=df_plot.index, y=df_plot[series[0]], name='Mejor', marker_color='rgb(67, 233, 123)',
+                                       text=[f"{v:.1f}%" for v in df_plot[series[0]]], textposition='inside', hovertemplate='%{x}<br>%{y:.1f}%<extra></extra>'))
+                    fig.add_trace(go.Bar(x=df_plot.index, y=df_plot[series[1]], name='Peor', marker_color='rgb(255, 75, 75)',
+                                       text=[f"{v:.1f}%" for v in df_plot[series[1]]], textposition='inside', hovertemplate='%{x}<br>%{y:.1f}%<extra></extra>'))
+                    fig.update_layout(barmode='stack', height=300, hovermode='x unified', yaxis_title="(%)", legend=dict(orientation="h", y=1.02, x=1))
+                    st.plotly_chart(fig, use_container_width=True)
+                    st.caption("Fuente: Encuesta Banxico")
             
             st.divider()
             
-            # ==================== SECCIÓN: BILLETES Y MONEDAS ====================
+            # ==================== BILLETES Y MONEDAS ====================
             st.markdown("### 💵 Circulante: Billetes y Monedas")
+            tab1, tab2 = st.tabs(["💵 Billetes", "🪙 Monedas"])
             
-            tab_circ1, tab_circ2 = st.tabs(["💵 Billetes en Circulación", "🪙 Monedas en Circulación"])
-            
-            with tab_circ1:
-                col_bill1, col_bill2 = st.columns([7, 3])
-                
-                with col_bill1:
-                    st.markdown("**Evolución de Billetes en Circulación**")
-                    series_billetes = [col for col in df_macro.columns if "Billete_" in col]
-                    if series_billetes:
-                        df_billetes = df_macro[series_billetes].copy()
-                        # Renombrar para mejor visualización
-                        rename_dict = {}
-                        for col in series_billetes:
+            with tab1:
+                col1, col2 = st.columns([7, 3])
+                with col1:
+                    st.markdown("**Evolución de Billetes**")
+                    series = [c for c in df_macro.columns if "Billete_" in c]
+                    if series:
+                        df_plot = df_macro[series].dropna()
+                        fig = go.Figure()
+                        colors = {'Billete_20_Circulacion': '#FFE082', 'Billete_50_Circulacion': '#FF80AB', 
+                                'Billete_100_Circulacion': '#8080FF', 'Billete_200_Circulacion': '#80DEEA',
+                                'Billete_500_Circulacion': '#A5D6A7', 'Billete_1000_Circulacion': '#CE93D8'}
+                        for col in series:
                             denom = col.replace("Billete_", "").replace("_Circulacion", "")
-                            rename_dict[col] = f"${denom}"
-                        df_billetes = df_billetes.rename(columns=rename_dict)
-                        st.area_chart(df_billetes, height=330)
-                        st.caption("Fuente: Banco de México | Millones de pesos")
-                
-                with col_bill2:
+                            fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot[col], name=f"${denom}",
+                                                   line=dict(color=colors.get(col, 'blue'), width=2), stackgroup='one',
+                                                   hovertemplate=f'${denom}<br>%{{x}}<br>%{{y:,.0f}} MDP<extra></extra>'))
+                        fig.update_layout(hovermode='x unified', height=330, yaxis_title="Millones de Pesos", legend=dict(orientation="h", y=1.02, x=1))
+                        st.plotly_chart(fig, use_container_width=True)
+                        st.caption("Fuente: Banco de México")
+                with col2:
                     st.markdown("**Última Observación**")
                     st.caption("Millones de Pesos")
-                    st.markdown("")
-                    
-                    denominaciones_orden = ["20", "50", "100", "200", "500", "1000"]
-                    for denom in denominaciones_orden:
-                        serie_nombre = f"Billete_{denom}_Circulacion"
-                        if serie_nombre in df_macro.columns:
-                            datos = df_macro[serie_nombre].dropna()
-                            if not datos.empty:
-                                st.metric(f"💵 ${denom}", f"{datos.iloc[-1]:,.0f}")
+                    for denom in ["20", "50", "100", "200", "500", "1000"]:
+                        s = f"Billete_{denom}_Circulacion"
+                        if s in df_macro.columns:
+                            val = df_macro[s].dropna().iloc[-1]
+                            st.markdown(f"**💵 ${denom}:** {val:,.0f}")
             
-            with tab_circ2:
-                col_mon1, col_mon2 = st.columns([7, 3])
-                
-                with col_mon1:
-                    st.markdown("**Evolución de Monedas en Circulación**")
-                    series_monedas = [col for col in df_macro.columns if "Moneda_" in col]
-                    if series_monedas:
-                        df_monedas = df_macro[series_monedas].copy()
-                        # Renombrar para mejor visualización
-                        rename_dict = {}
-                        for col in series_monedas:
+            with tab2:
+                col1, col2 = st.columns([7, 3])
+                with col1:
+                    st.markdown("**Evolución de Monedas**")
+                    series = [c for c in df_macro.columns if "Moneda_" in c]
+                    if series:
+                        df_plot = df_macro[series].dropna()
+                        fig = go.Figure()
+                        for col in series:
                             denom = col.replace("Moneda_", "").replace("_Circulacion", "")
-                            if "C" in denom:
-                                rename_dict[col] = f"{denom}¢"
-                            else:
-                                rename_dict[col] = f"${denom}"
-                        df_monedas = df_monedas.rename(columns=rename_dict)
-                        st.area_chart(df_monedas, height=330)
-                        st.caption("Fuente: Banco de México | Millones de pesos")
-                
-                with col_mon2:
+                            label = f"{denom}¢" if "C" in denom else f"${denom}"
+                            fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot[col], name=label, stackgroup='one',
+                                                   hovertemplate=f'{label}<br>%{{x}}<br>%{{y:,.0f}} MDP<extra></extra>'))
+                        fig.update_layout(hovermode='x unified', height=330, yaxis_title="Millones de Pesos", legend=dict(orientation="h", y=1.02, x=1))
+                        st.plotly_chart(fig, use_container_width=True)
+                        st.caption("Fuente: Banco de México")
+                with col2:
                     st.markdown("**Última Observación**")
                     st.caption("Millones de Pesos")
-                    st.markdown("")
-                    
-                    denominaciones_monedas = [
-                        ("05C", "50¢"), ("10C", "10¢"), ("20C", "20¢"), ("50C", "50¢"),
-                        ("1", "$1"), ("2", "$2"), ("5", "$5"), ("10", "$10"),
-                        ("20", "$20"), ("50", "$50"), ("100", "$100")
-                    ]
-                    
-                    for denom_key, denom_label in denominaciones_monedas:
-                        serie_nombre = f"Moneda_{denom_key}_Circulacion"
-                        if serie_nombre in df_macro.columns:
-                            datos = df_macro[serie_nombre].dropna()
-                            if not datos.empty:
-                                st.metric(f"🪙 {denom_label}", f"{datos.iloc[-1]:,.0f}")
+                    denoms = [("05C", "50¢"), ("10C", "10¢"), ("20C", "20¢"), ("50C", "50¢"),
+                            ("1", "$1"), ("2", "$2"), ("5", "$5"), ("10", "$10"), ("20", "$20"), ("50", "$50"), ("100", "$100")]
+                    for key, label in denoms:
+                        s = f"Moneda_{key}_Circulacion"
+                        if s in df_macro.columns:
+                            val = df_macro[s].dropna().iloc[-1]
+                            st.markdown(f"**🪙 {label}:** {val:,.0f}")
             
             st.divider()
             
-            # ==================== SECCIÓN: MERCADO LABORAL ====================
+            # ==================== MERCADO LABORAL ====================
             st.markdown("### 👥 Mercado Laboral")
+            tab1, tab2 = st.tabs(["💰 Salario Mínimo", "📊 Desocupación"])
             
-            tab_lab1, tab_lab2 = st.tabs(["💰 Salario Mínimo", "📊 Tasa de Desocupación"])
-            
-            with tab_lab1:
-                col_sal1, col_sal2 = st.columns([7, 3])
-                
-                with col_sal1:
+            with tab1:
+                col1, col2 = st.columns([7, 3])
+                with col1:
                     st.markdown("**Salario Mínimo General**")
                     if "Salario_Minimo_General" in df_macro.columns:
-                        df_salario = df_macro[["Salario_Minimo_General"]].copy()
-                        df_salario = df_salario.rename(columns={'Salario_Minimo_General': 'Salario Mínimo'})
-                        st.line_chart(df_salario, height=330)
-                        st.caption("Fuente: Banco de México | Pesos diarios")
-                
-                with col_sal2:
+                        df_plot = df_macro[["Salario_Minimo_General"]].dropna()
+                        fig = go.Figure()
+                        fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot["Salario_Minimo_General"], name="Salario Mínimo",
+                                               line=dict(color='rgb(102, 126, 234)', width=3), mode='lines+markers',
+                                               hovertemplate='%{x}<br>$%{y:.2f}<extra></extra>'))
+                        fig.update_layout(hovermode='x', height=330, yaxis_title="Pesos Diarios")
+                        st.plotly_chart(fig, use_container_width=True)
+                        st.caption("Fuente: Banco de México")
+                with col2:
                     st.markdown("**Salario Actual**")
-                    st.markdown("")
-                    
                     if "Salario_Minimo_General" in df_macro.columns:
-                        serie = df_macro["Salario_Minimo_General"].dropna()
-                        if not serie.empty:
-                            salario_actual = serie.iloc[-1]
-                            st.metric("💰 Diario", f"${salario_actual:.2f}")
-                            st.metric("📅 Mensual (30 días)", f"${salario_actual * 30:,.2f}")
-                            st.metric("📆 Anual", f"${salario_actual * 365:,.2f}")
+                        val = df_macro["Salario_Minimo_General"].dropna().iloc[-1]
+                        st.metric("💰 Diario", f"${val:.2f}")
+                        st.metric("📅 Mensual", f"${val * 30:,.2f}")
+                        st.metric("📆 Anual", f"${val * 365:,.2f}")
             
-            with tab_lab2:
-                col_des1, col_des2 = st.columns([7, 3])
-                
-                with col_des1:
+            with tab2:
+                col1, col2 = st.columns([7, 3])
+                with col1:
                     st.markdown("**Tasa de Desocupación Nacional**")
-                    series_desocupacion = [col for col in df_macro.columns if "Desocupacion" in col and "Exp_" not in col]
-                    if series_desocupacion:
-                        df_desoc = df_macro[series_desocupacion].copy()
-                        st.line_chart(df_desoc, height=330)
-                        st.caption("Fuente: Banco de México | Porcentaje de la PEA")
-                
-                with col_des2:
+                    series = [c for c in df_macro.columns if "Desocupacion" in c and "Exp_" not in c]
+                    if series:
+                        df_plot = df_macro[series].dropna()
+                        fig = go.Figure()
+                        fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot[series[0]], name="Desocupación",
+                                               line=dict(color='rgb(255, 75, 75)', width=3), mode='lines+markers',
+                                               hovertemplate='%{x}<br>%{y:.1f}%<extra></extra>'))
+                        fig.update_layout(hovermode='x', height=330, yaxis_title="(%) de PEA")
+                        st.plotly_chart(fig, use_container_width=True)
+                        st.caption("Fuente: Banco de México")
+                with col2:
                     st.markdown("**Indicadores**")
-                    st.markdown("")
-                    
                     if "Tasa_Desocupacion_Nacional" in df_macro.columns:
-                        serie = df_macro["Tasa_Desocupacion_Nacional"].dropna()
-                        if not serie.empty:
-                            st.metric("📊 Actual", f"{serie.iloc[-1]:.2f}%")
-                    
+                        st.metric("📊 Actual", f"{df_macro['Tasa_Desocupacion_Nacional'].dropna().iloc[-1]:.2f}%")
                     st.markdown("**Expectativas**")
-                    
-                    if "Exp_TasaDesocupacion_Media" in df_macro.columns:
-                        serie = df_macro["Exp_TasaDesocupacion_Media"].dropna()
-                        if not serie.empty:
-                            st.metric("🔮 Media", f"{serie.iloc[-1]:.2f}%")
-                    
-                    if "Exp_TasaDesocupacion_Minima" in df_macro.columns:
-                        serie = df_macro["Exp_TasaDesocupacion_Minima"].dropna()
-                        if not serie.empty:
-                            st.metric("📉 Mínima", f"{serie.iloc[-1]:.2f}%")
-                    
-                    if "Exp_TasaDesocupacion_Maxima" in df_macro.columns:
-                        serie = df_macro["Exp_TasaDesocupacion_Maxima"].dropna()
-                        if not serie.empty:
-                            st.metric("📈 Máxima", f"{serie.iloc[-1]:.2f}%")
+                    for s, l in [("Exp_TasaDesocupacion_Media", "🔮 Media"), ("Exp_TasaDesocupacion_Minima", "📉 Mín"), ("Exp_TasaDesocupacion_Maxima", "📈 Máx")]:
+                        if s in df_macro.columns:
+                            st.metric(l, f"{df_macro[s].dropna().iloc[-1]:.2f}%")
             
             st.divider()
             
-            # ==================== SECCIÓN: EXPLORADOR DE DATOS ====================
-            with st.expander("🔍 Explorador Avanzado de Series", expanded=False):
-                st.markdown("**Análisis Detallado y Descarga de Datos**")
-                
-                col_exp1, col_exp2 = st.columns([7, 3])
-                
-                with col_exp1:
-                    series_seleccionadas = st.multiselect(
-                        "Selecciona series para análisis personalizado:",
-                        options=df_macro.columns.tolist(),
-                        default=[df_macro.columns[0]] if len(df_macro.columns) > 0 else []
-                    )
-                    
-                    if series_seleccionadas:
-                        st.line_chart(df_macro[series_seleccionadas], height=400)
-                        st.caption("Visualización personalizada de series seleccionadas")
-                
-                with col_exp2:
-                    if series_seleccionadas:
-                        st.markdown("**Estadísticas Descriptivas**")
-                        for serie in series_seleccionadas:
-                            datos = df_macro[serie].dropna()
-                            if not datos.empty:
-                                st.markdown(f"**{serie}**")
-                                st.caption(f"📍 Último: {datos.iloc[-1]:.2f}")
-                                st.caption(f"📊 Promedio: {datos.mean():.2f}")
-                                st.caption(f"📈 Máximo: {datos.max():.2f}")
-                                st.caption(f"📉 Mínimo: {datos.min():.2f}")
-                                st.caption(f"📏 Desv. Est.: {datos.std():.2f}")
+            # ==================== EXPLORADOR ====================
+            with st.expander("🔍 Explorador Avanzado"):
+                st.markdown("**Análisis Personalizado**")
+                col1, col2 = st.columns([7, 3])
+                with col1:
+                    selected = st.multiselect("Series:", df_macro.columns.tolist(), default=[df_macro.columns[0]] if len(df_macro.columns) > 0 else [])
+                    if selected:
+                        fig = go.Figure()
+                        for s in selected:
+                            fig.add_trace(go.Scatter(x=df_macro.index, y=df_macro[s], name=s, mode='lines', hovertemplate='%{x}<br>%{y:.2f}<extra></extra>'))
+                        fig.update_layout(hovermode='x unified', height=400, legend=dict(orientation="h", y=1.02, x=1))
+                        st.plotly_chart(fig, use_container_width=True)
+                with col2:
+                    if selected:
+                        st.markdown("**Estadísticas**")
+                        for s in selected:
+                            data = df_macro[s].dropna()
+                            if not data.empty:
+                                st.markdown(f"**{s}**")
+                                st.caption(f"Último: {data.iloc[-1]:.2f}")
+                                st.caption(f"Prom: {data.mean():.2f}")
+                                st.caption(f"Máx: {data.max():.2f}")
+                                st.caption(f"Mín: {data.min():.2f}")
                                 st.markdown("---")
                 
-                # Tabla de datos completa
-                st.markdown("**📋 Tabla de Datos Históricos**")
                 df_visual = df_macro.copy()
                 df_visual.index = df_visual.index.date
                 st.dataframe(df_visual, use_container_width=True, height=400)
-                
-                # Descarga
-                col_down1, col_down2 = st.columns([2, 8])
-                with col_down1:
-                    csv = df_visual.to_csv()
-                    st.download_button(
-                        label="📥 Descargar CSV",
-                        data=csv,
-                        file_name="datos_macro_banxico.csv",
-                        mime="text/csv"
-                    )
-    
+                st.download_button("📥 Descargar CSV", df_visual.to_csv(), "datos_macro.csv", "text/csv")
     else:
-        st.error("❌ Error al conectar con la API de Banxico. Verifica tu token y conexión a internet.")
+        st.error("❌ Error al conectar con Banxico")
