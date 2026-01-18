@@ -3650,15 +3650,16 @@ if modo == "Indicadores Macro":
                 
                 st.markdown("#### 📌 Monedas en Circulación (MDP)")
                 denoms = [
-                    ("05C", "50¢", "🪙", "#FFB74D"),
-                    ("10C", "10¢", "🪙", "#FF8A65"),
-                    ("20C", "20¢", "🪙", "#AED581"),
-                    ("50C", "50¢", "🪙", "#64B5F6"),
                     ("1", "$1", "🪙", "#9575CD"),
-                    ("2", "$2", "🪙", "#F48FB1")
+                    ("2", "$2", "🪙", "#F48FB1"),
+                    ("5", "$5", "🪙", "#81D4FA"),
+                    ("10", "$10", "🪙", "#A5D6A7"),
+                    ("20", "$20", "🪙", "#FFE082"),
+                    ("50", "$50", "🪙", "#FFAB91"),
+                    ("100", "$100", "🪙", "#CE93D8")
                 ]
-                cols = st.columns(6)
-                for i, (key, label, icon, color) in enumerate(denoms[:6]):
+                cols = st.columns(len(denoms))
+                for i, (key, label, icon, color) in enumerate(denoms):
                     s = f"Moneda_{key}_Circulacion"
                     if s in df_macro.columns:
                         val = df_macro[s].dropna().iloc[-1]
