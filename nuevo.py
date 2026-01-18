@@ -3102,46 +3102,45 @@ if modo == "Price and Volume" and not st.session_state.data.empty:
     else:
         st.error("❌ Error: Faltan columnas necesarias en el dataset.")
 
-
-# --- APARTADO DE VISUALIZACIÓN: INDICADORES MACRO ---
+# --- SECCIÓN FINAL: VISUALIZACIÓN DE INDICADORES MACRO ---
 if modo == "Indicadores Macro":
     st.title("🇲🇽 Monitor Macroeconómico")
     st.info("Visualización de las series económicas oficiales de Banxico")
     
-    # Intentamos cargar datos
-    try:
-        with st.spinner("Descargando indicadores de Banxico..."):
-            # Aseguramos que pasamos los parámetros correctamente
-            df_macro = importar_datos_macro(str(TOKEN_BANXICO), list(SERIES_A_CONSULTAR))
+    with st.spinner("Consultando API de Banxico..."):
+        # Llamamos a la función con los dos parámetros requeridos
+        df_macro = importar_datos_macro(TOKEN_BANXICO, SERIES_A_CONSULTAR)
+        
+    if df_macro is not None:
+        # Filtro de fechas y limpieza de columnas vacías
+        df_macro = df_macro[(df_macro.index >= FECHA_INICIO_FILTRO) & (df_macro.index <= FECHA_FIN_FILTRO)]
+        df_macro = df_macro.dropna(axis=1, how='all')
+        
+        # Dashboard Rápido (Métricas principales)
+        c1, c2 = st.columns(2)
+        if "INPC_Inflacion_Anual" in df_macro.columns:
+            serie_inf = df_macro["INPC_Inflacion_Anual"].dropna()
+            if not serie_inf.empty:
+                c1.metric("Inflación Anual", f"{serie_inf.iloc[-1]}%")
+                
+        if "TipoCambio_Cotizacion_Maxima" in df_macro.columns:
+            serie_tc = df_macro["TipoCambio_Cotizacion_Maxima"].dropna()
+            if not serie_tc.empty:
+                c2.metric("Tipo de Cambio (Max)", f"${serie_tc.iloc[-1]:.2f}")
             
-        if df_macro is not None and not df_macro.empty:
-            # 1. Filtros y Limpieza
-            df_macro = df_macro[(df_macro.index >= FECHA_INICIO_FILTRO) & (df_macro.index <= FECHA_FIN_FILTRO)]
-            df_macro = df_macro.dropna(axis=1, how='all')
-            
-            # 2. Métricas destacadas
-            c1, c2 = st.columns(2)
-            if "INPC_Inflacion_Anual" in df_macro.columns:
-                val = df_macro["INPC_Inflacion_Anual"].dropna().iloc[-1]
-                c1.metric("Inflación Anual", f"{val}%")
-            if "TipoCambio_Cotizacion_Maxima" in df_macro.columns:
-                val = df_macro["TipoCambio_Cotizacion_Maxima"].dropna().iloc[-1]
-                c2.metric("Tipo de Cambio", f"${val:.2f}")
-            
-            st.divider()
-            
-            # 3. Gráfica interactiva
-            serie_sel = st.selectbox("Selecciona indicador para analizar:", df_macro.columns)
+        st.divider()
+        
+        # Selector y Gráfico dinámico
+        if not df_macro.empty:
+            serie_sel = st.selectbox("Selecciona Serie para Graficar:", df_macro.columns)
             st.line_chart(df_macro[serie_sel])
             
-            # 4. Tabla formateada
-            with st.expander("Ver detalle de datos"):
-                df_vis = df_macro.copy()
-                df_vis.index = df_vis.index.date
-                st.dataframe(df_vis, use_container_width=True)
+            # Tabla formateada (Solo fechas YYYY-MM-DD)
+            with st.expander("Ver Tabla de Datos Completa"):
+                df_visual = df_macro.copy()
+                df_visual.index = df_visual.index.date
+                st.dataframe(df_visual, use_container_width=True)
         else:
-            st.warning("No se recibieron datos. Verifica tu conexión o el rango de fechas.")
-            
-    except Exception as e:
-        st.error(f"Error técnico al procesar la caché: {e}")
-        st.info("Prueba reiniciando la app o limpiando la caché de Streamlit.")
+            st.warning("No hay datos disponibles para el rango seleccionado.")
+    else:
+        st.error("Error al conectar con Banxico. Verifica tu Token o conexión.")
