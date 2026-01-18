@@ -391,10 +391,17 @@ def importar_datos_macro():
     
 # --- 3. GESTIÓN DE ESTADO ---
 if "data" not in st.session_state or st.session_state.get("last_modo") != modo:
-    if os.path.exists(DB_FILE):
+    # Agregamos la condición: que DB_FILE no sea None Y que exista el archivo
+    if DB_FILE is not None and os.path.exists(DB_FILE):
         st.session_state.data = calcular_pkg(pd.read_csv(DB_FILE), modo)
+    elif modo == "Indicadores Macro":
+        # Para el modo macro, inicializamos un DataFrame vacío o lo manejamos por separado
+        # ya que df_macro se gestiona con su propia función de caché
+        st.session_state.data = pd.DataFrame() 
     else:
+        # Si es un modo de tabla (Ladder, Pack, PV) pero no hay archivo, creamos tabla vacía
         st.session_state.data = pd.DataFrame(columns=columnas_tabla)
+    
     st.session_state.last_modo = modo
 
 # --- 4. BARRA LATERAL (GESTIÓN MEJORADA CON DISEÑO PREMIUM) ---
