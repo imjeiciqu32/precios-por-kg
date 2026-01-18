@@ -3182,8 +3182,8 @@ if modo == "Indicadores Macro":
                     kpi_data.append({'titulo': 'TIIE 1 Día', 'valor': f'{val:.2f}%', 
                                    'delta': f'{"↑" if delta > 0 else "↓"} {abs(delta):.2f} pp', 'icon': '💰'})
             
-            if "Tasa_Desocupacion_Nacional" in df_macro.columns:
-                serie = df_macro["Tasa_Desocupacion_Nacional"].dropna()
+            if "Exp_TasaDesocupacion_Media" in df_macro.columns:
+                serie = df_macro["Exp_TasaDesocupacion_Media"].dropna()
                 if len(serie) >= 2:
                     val, prev = serie.iloc[-1], serie.iloc[-2]
                     delta = val - prev
@@ -3436,18 +3436,18 @@ if modo == "Indicadores Macro":
             
             with tab2:
                 st.markdown("**Tasa de Desocupación Nacional**")
-                if "Tasa_Desocupacion_Nacional" in df_macro.columns:
-                    df_plot = df_macro[["Tasa_Desocupacion_Nacional"]].dropna()
+                if "Exp_TasaDesocupacion_Media" in df_macro.columns:
+                    df_plot = df_macro[["Exp_TasaDesocupacion_Media"]].dropna()
                     fig = go.Figure()
-                    fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot["Tasa_Desocupacion_Nacional"], name="Desocupación",
+                    fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot["Exp_TasaDesocupacion_Media"], name="Desocupación",
                                            line=dict(color='rgb(255, 75, 75)', width=3), mode='lines+markers',
                                            hovertemplate='%{x}<br>%{y:.1f}%<extra></extra>'))
                     fig.update_layout(hovermode='x', height=450, yaxis_title="(%) de PEA", xaxis_title="Fecha")
                     st.plotly_chart(fig, use_container_width=True)
                     
                     col1, col2, col3, col4 = st.columns(4)
-                    if "Tasa_Desocupacion_Nacional" in df_macro.columns:
-                        col1.metric("📊 Actual", f"{df_macro['Tasa_Desocupacion_Nacional'].dropna().iloc[-1]:.2f}%")
+                    if "Exp_TasaDesocupacion_Media" in df_macro.columns:
+                        col1.metric("📊 Actual", f"{df_macro['Exp_TasaDesocupacion_Media'].dropna().iloc[-1]:.2f}%")
                     if "Exp_TasaDesocupacion_Media" in df_macro.columns:
                         col2.metric("🔮 Media Esperada", f"{df_macro['Exp_TasaDesocupacion_Media'].dropna().iloc[-1]:.2f}%")
                     if "Exp_TasaDesocupacion_Minima" in df_macro.columns:
