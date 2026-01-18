@@ -67,9 +67,7 @@ SERIES_A_CONSULTAR = [
     ("SM14", "Moneda_2_Circulacion"),
     ("SM15", "Moneda_5_Circulacion"),
     ("SM16", "Moneda_10_Circulacion"),
-    ("SM17", "Moneda_20_Circulacion"),
-    ("SM18", "Moneda_50_Circulacion"),
-    ("SM19", "Moneda_100_Circulacion"),
+    ("SM17", "Moneda_20_Circulacion")
 ]
 
 # --- 1. CONFIGURACIÓN Y CARGA DE PLANTILLAS ---
@@ -3117,7 +3115,6 @@ if modo == "Indicadores Macro":
     from plotly.subplots import make_subplots
     import datetime
     
-    st.title("🇲🇽 Monitor Macroeconómico de México")
     st.caption("Datos oficiales del Banco de México actualizados en tiempo real")
     
     with st.spinner("Consultando API de Banxico..."):
@@ -3132,23 +3129,50 @@ if modo == "Indicadores Macro":
         else:
             # ==================== FILTRO DE FECHAS PRO ====================
             st.markdown("### 📅 Filtro de Fechas")
-            col_f1, col_f2, col_f3 = st.columns([2, 2, 1])
             
             min_date = df_macro.index.min().date()
             max_date = df_macro.index.max().date()
             
+            # Inicializar session_state si no existe
+            if 'reset_dates' not in st.session_state:
+                st.session_state.reset_dates = False
+            
+            # Si se presionó resetear, usar las fechas por defecto
+            if st.session_state.reset_dates:
+                default_inicio = min_date
+                default_fin = max_date
+                st.session_state.reset_dates = False
+            else:
+                default_inicio = min_date
+                default_fin = max_date
+            
+            col_f1, col_f2, col_f3 = st.columns([2, 2, 1])
+            
             with col_f1:
-                fecha_inicio = st.date_input("Fecha Inicio", min_date, min_value=min_date, max_value=max_date)
+                fecha_inicio = st.date_input(
+                    "Fecha Inicio", 
+                    value=default_inicio,
+                    min_value=min_date, 
+                    max_value=max_date,
+                    key='fecha_inicio_input'
+                )
             with col_f2:
-                fecha_fin = st.date_input("Fecha Fin", max_date, min_value=min_date, max_value=max_date)
+                fecha_fin = st.date_input(
+                    "Fecha Fin", 
+                    value=default_fin,
+                    min_value=min_date, 
+                    max_value=max_date,
+                    key='fecha_fin_input'
+                )
             with col_f3:
                 st.markdown("")
                 st.markdown("")
                 if st.button("🔄 Resetear", use_container_width=True):
-                    fecha_inicio = min_date
-                    fecha_fin = max_date
+                    st.session_state.reset_dates = True
+                    st.rerun()
             
             # Aplicar filtro
+            
             df_macro = df_macro[(df_macro.index.date >= fecha_inicio) & (df_macro.index.date <= fecha_fin)]
             
             st.divider()
