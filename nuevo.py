@@ -3128,50 +3128,41 @@ if modo == "Indicadores Macro":
             st.warning("No hay datos disponibles para el rango seleccionado.")
         else:
             # ==================== FILTRO DE FECHAS PRO ====================
+            # ==================== FILTRO DE FECHAS ====================
             st.markdown("### 📅 Filtro de Fechas")
             
-            # 1. Límites reales de tus datos
+            # 1. Definir los límites reales según tu DataFrame
             min_date_df = df_macro.index.min().date()
             max_date_df = df_macro.index.max().date()
             
-            # 2. Definir los valores deseados (tus constantes)
+            # 2. Definir tus fechas deseadas
             FECHA_INICIO_OBJETIVO = pd.to_datetime("2020-01-01").date()
             FECHA_FIN_OBJETIVO = pd.to_datetime("2025-12-31").date()
             
-            # 3. AJUSTE DE SEGURIDAD: 
-            # Si tu objetivo es 2020 pero el DF empieza en 2022, usamos 2022 para evitar el error.
+            # 3. Ajuste automático para evitar errores de rango
+            # Esto asegura que: min_date <= value <= max_date
             default_inicio = max(FECHA_INICIO_OBJETIVO, min_date_df)
             default_fin = min(FECHA_FIN_OBJETIVO, max_date_df)
-            
-            # Lógica de Reset
-            if st.button("🔄 Resetear Fechas"):
-                if 'fecha_inicio_input' in st.session_state:
-                    del st.session_state['fecha_inicio_input']
-                if 'fecha_fin_input' in st.session_state:
-                    del st.session_state['fecha_fin_input']
-                st.rerun()
             
             col_f1, col_f2 = st.columns(2)
             
             with col_f1:
                 fecha_inicio = st.date_input(
                     "Fecha Inicio", 
-                    value=default_inicio, # Valor ajustado
+                    value=default_inicio,
                     min_value=min_date_df, 
-                    max_value=max_date_df,
-                    key='fecha_inicio_input'
+                    max_value=max_date_df
                 )
             
             with col_f2:
                 fecha_fin = st.date_input(
                     "Fecha Fin", 
-                    value=default_fin, # Valor ajustado
+                    value=default_fin,
                     min_value=min_date_df, 
-                    max_value=max_date_df,
-                    key='fecha_fin_input'
+                    max_value=max_date_df
                 )
             
-            # Aplicar filtro final
+            # 4. Aplicar el filtro al DataFrame
             df_macro = df_macro[(df_macro.index.date >= fecha_inicio) & (df_macro.index.date <= fecha_fin)]
             
             st.divider()
