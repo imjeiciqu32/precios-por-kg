@@ -145,7 +145,7 @@ PLANTILLAS = {
       {"Producto": "Kacang Cubierto 130g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 25.0, "Gramaje (g)": 130, "SOM (%)": 17.0},
       {"Producto": "Hot Nuts 115g", "Fabricante": "BARCEL", "Ocasión": "COMPARTIR", "Precio ($)": 25.0, "Gramaje (g)": 115, "SOM (%)": 14.4}
   ],
- # 10. PLANTILLA PARA CACAHUATE JAPONÉS
+ # 10. PLANTILLA PARA CACAHUATE JAPONÉS 
   "DT - CACAHUATE JAPONÉS": [
       {"Producto": "Encanto 60g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 10.0, "Gramaje (g)": 60, "SOM (%)": 0.4},
       {"Producto": "Karate 65g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 13.0, "Gramaje (g)": 65, "SOM (%)": 12.2},
