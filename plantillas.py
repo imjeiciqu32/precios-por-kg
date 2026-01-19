@@ -33,7 +33,7 @@ PLANTILLAS = {
     {"Producto": "Wapas 52g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 18.0, "Gramaje (g)": 52, "SOM (%)": 0.5},
     {"Producto": "Papa Barcel 45g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 18.0, "Gramaje (g)": 45, "SOM (%)": 1.2},
     {"Producto": "Receta Crujiente 57g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 57, "SOM (%)": 5.8},
-    {"Producto": "Chips 52g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 52, "SOM (%)": 1.1},
+    {"Producto": "Chips 52g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 52, "SOM (%)": 16.1},
     {"Producto": "Ruffles Mega Crunch 50g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 50, "SOM (%)": 4.1},
     {"Producto": "Ruffles 48g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 48, "SOM (%)": 15.3},
     {"Producto": "Sabritas 42g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 42, "SOM (%)": 22.6},
