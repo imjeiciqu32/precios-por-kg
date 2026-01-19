@@ -545,7 +545,7 @@ PLANTILLAS = {
        {"Producto": "Cheetos Torciditos 240g", "Fabricante": "SABRITAS", "Ocasión": "FAMILIAR", "Precio ($)": 64.0, "Gramaje (g)": 240, "SOM (%)": 5.8}
    ],
       # 25. PLANTILLA COMPLETA PARA CNV - CHICHARRÓN
-   "DT - CHICHARRÓN CNV": [
+   "CNV - CHICHARRÓN ": [
       {"Producto": "Leo Chicharron De Cerdo 30g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 22.0, "Gramaje (g)": 30, "SOM (%)": 1.8},
       {"Producto": "Bokados Chicharron De Cerdo 30g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 22.0, "Gramaje (g)": 30, "SOM (%)": 12.3},
       {"Producto": "Sabritas Chicharron De Cerdo 30g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 26.0, "Gramaje (g)": 30, "SOM (%)": 1.3},
@@ -560,7 +560,7 @@ PLANTILLAS = {
       {"Producto": "Bokados Chicharron De Cerdo 115g", "Fabricante": "OTROS", "Ocasión": "COMPARTIR", "Precio ($)": 75.0, "Gramaje (g)": 115, "SOM (%)": 5.9},
       {"Producto": "Leo Chicharron De Cerdo 130g", "Fabricante": "OTROS", "Ocasión": "COMPARTIR", "Precio ($)": 75.0, "Gramaje (g)": 130, "SOM (%)": 3.7}
   ],
-      "DT - PALOMITAS DULCE CNV": [
+      "CNV - PALOMITAS DULCE": [
       {"Producto": "Slim Pop Sweet & Salty 25g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 13.0, "Gramaje (g)": 25, "SOM (%)": 0.1},
       {"Producto": "Act Ii Delix 70g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 25.0, "Gramaje (g)": 70, "SOM (%)": 0.0},
       {"Producto": "Act Ii Caramelo 95g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 26.0, "Gramaje (g)": 95, "SOM (%)": 7.5},
