@@ -791,6 +791,29 @@ if modo == "Price Ladder" and not df_p.empty:
 if not st.session_state.data.empty:
     df_p = st.session_state.data.copy()
     
+    # ✅ INICIALIZACIÓN MOVIDA AQUÍ (ANTES DEL SIDEBAR)
+    # Inicialización SOLO la primera vez (cuando no existe la key)
+    if "slider_nombres" not in st.session_state:
+        st.session_state["slider_nombres"] = 14
+    if "slider_precios" not in st.session_state:
+        st.session_state["slider_precios"] = 18
+    if "slider_pkg" not in st.session_state:
+        st.session_state["slider_pkg"] = 16
+    if "slider_som" not in st.session_state:
+        st.session_state["slider_som"] = 13
+    if "slider_ancho" not in st.session_state:
+        st.session_state["slider_ancho"] = 0.6
+    if "slider_opacidad" not in st.session_state:
+        st.session_state["slider_opacidad"] = 1.0
+    if "slider_alto" not in st.session_state:
+        st.session_state["slider_alto"] = 950
+    if "slider_espacio" not in st.session_state:
+        st.session_state["slider_espacio"] = 0.03
+    if "slider_margen_b" not in st.session_state:
+        st.session_state["slider_margen_b"] = 400
+    if "slider_angulo" not in st.session_state:
+        st.session_state["slider_angulo"] = -90
+    
     # --- CONFIGURACIÓN DE INTERFAZ EN SIDEBAR ---
     with st.sidebar:
         st.divider()
@@ -801,7 +824,7 @@ if not st.session_state.data.empty:
             st.session_state["slider_nombres"] = 14
             st.session_state["slider_precios"] = 18
             st.session_state["slider_pkg"] = 16
-            st.session_state["slider_som"] = 13 # <--- NUEVO
+            st.session_state["slider_som"] = 13
             st.session_state["slider_ancho"] = 0.6
             st.session_state["slider_opacidad"] = 1.0
             st.session_state["slider_alto"] = 950
@@ -811,30 +834,6 @@ if not st.session_state.data.empty:
 
         if st.button("Resetear Todo el Diseño"):
             reset_diseno()
-        
-        # Inicialización de estados (Safe Check)
-        # ✅ ESTO MANTIENE LOS VALORES DESPUÉS DE AGREGAR PRODUCTOS
-        # Inicialización SOLO la primera vez (cuando no existe la key)
-        if "slider_nombres" not in st.session_state:
-            st.session_state["slider_nombres"] = 14
-        if "slider_precios" not in st.session_state:
-            st.session_state["slider_precios"] = 18
-        if "slider_pkg" not in st.session_state:
-            st.session_state["slider_pkg"] = 16
-        if "slider_som" not in st.session_state:
-            st.session_state["slider_som"] = 13
-        if "slider_ancho" not in st.session_state:
-            st.session_state["slider_ancho"] = 0.6
-        if "slider_opacidad" not in st.session_state:
-            st.session_state["slider_opacidad"] = 1.0
-        if "slider_alto" not in st.session_state:
-            st.session_state["slider_alto"] = 950
-        if "slider_espacio" not in st.session_state:
-            st.session_state["slider_espacio"] = 0.03
-        if "slider_margen_b" not in st.session_state:
-            st.session_state["slider_margen_b"] = 400
-        if "slider_angulo" not in st.session_state:
-            st.session_state["slider_angulo"] = -90
 
         # Agrupadores por Expander para limpieza visual
         with st.expander("📏 Dimensiones y Espaciado"):
@@ -883,7 +882,7 @@ if not st.session_state.data.empty:
                 line=dict(color="#BBBBBB", width=1.5), 
                 marker=dict(size=30, color="#E5E5E5", symbol="square", line=dict(color="#CCCCCC", width=1)), 
                 text=[f"<b>{row['SOM (%)']}%</b>" for _, row in df_p.iterrows()],
-                textposition="middle center", textfont=dict(size=t_som, color="black"), # <--- t_som APLICADO
+                textposition="middle center", textfont=dict(size=t_som, color="black"),
             ), row=1, col=1)
 
             # --- TRACE 2: BARRAS DE PRECIO ---
@@ -958,14 +957,12 @@ if not st.session_state.data.empty:
                     'filename': 'Price_Ladder_Export',
                     'height': alto_grafico,
                     'width': 1950,
-                    'scale': 2 # Alta resolución
+                    'scale': 2
                 }
             })
 
         else:
             # --- 6.9 FILTROS DINÁMICOS PARA PRICE PACK ---
-            # --- 6.9 FILTROS DINÁMICOS PARA PRICE PACK ---
-            # Envolvemos TODO el bloque para que solo exista en el modo Price Pack
             if modo == "Price Pack":
                 st.write("") 
                 with st.container(border=True):
@@ -1101,8 +1098,6 @@ if not st.session_state.data.empty:
                             st.info("Utiliza los filtros para visualizar los datos del Price Pack.")
                     else:
                         st.warning("La base de datos actual no corresponde al formato de Price Pack (Falta columna 'Canal').")
-            
-            # --- FIN DEL MODO PRICE PACK ---
                 
 # --- 8. COMPARATIVAS INDEX (UNIFICADO: LADDER + ARQUITECTURA PPT) ---
 # Agregamos la condición para que esta sección solo se ejecute en los modos que usan Index
