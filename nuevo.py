@@ -297,7 +297,7 @@ else: # MODO: Indicadores Macro
     DB_FILE = None
     label_agru = None
     opciones_agru = []
-    fuente_plantillas = {} # Esto soluciona el NameError de la línea 434
+    fuente_plantillas = {}
     columnas_tabla = []
         
 # --- 2. FUNCIONES CORE (Mantenidas intactas) ---
@@ -349,7 +349,7 @@ def procesar_datos_piramide(df):
     return df_py
 
 # --- FUNCIÓN DE CONSULTA CON CACHÉ ---
-@st.cache_data(ttl=86400) # Se actualiza cada 24 horas
+@st.cache_data(ttl=86400)
 def importar_datos_macro(token, series_lista):
     headers = {"Accept": "application/json", "Bmx-Token": token}
     lista_dfs = []
@@ -373,7 +373,6 @@ def importar_datos_macro(token, series_lista):
 
     if lista_dfs:
         df_final = pd.concat(lista_dfs, axis=1).sort_index()
-        # Relleno de expectativas (ffill) para evitar huecos en la visualización
         cols_exp = [c for c in df_final.columns if c.startswith("Exp_")]
         if cols_exp:
             df_final[cols_exp] = df_final[cols_exp].ffill()
@@ -383,20 +382,43 @@ def importar_datos_macro(token, series_lista):
     
 # --- 3. GESTIÓN DE ESTADO ---
 if "data" not in st.session_state or st.session_state.get("last_modo") != modo:
-    # Agregamos la condición: que DB_FILE no sea None Y que exista el archivo
     if DB_FILE is not None and os.path.exists(DB_FILE):
         st.session_state.data = calcular_pkg(pd.read_csv(DB_FILE), modo)
     elif modo == "Indicadores Macro":
-        # Para el modo macro, inicializamos un DataFrame vacío o lo manejamos por separado
-        # ya que df_macro se gestiona con su propia función de caché
         st.session_state.data = pd.DataFrame() 
     else:
-        # Si es un modo de tabla (Ladder, Pack, PV) pero no hay archivo, creamos tabla vacía
         st.session_state.data = pd.DataFrame(columns=columnas_tabla)
     
     st.session_state.last_modo = modo
 
-
+# ============================================
+# INICIALIZACIÓN DE SLIDERS Y ESTADOS
+# ============================================
+if 'form_success' not in st.session_state:
+    st.session_state.form_success = False
+if "slider_nombres" not in st.session_state:
+    st.session_state["slider_nombres"] = 14
+if "slider_precios" not in st.session_state:
+    st.session_state["slider_precios"] = 18
+if "slider_pkg" not in st.session_state:
+    st.session_state["slider_pkg"] = 16
+if "slider_som" not in st.session_state:
+    st.session_state["slider_som"] = 13
+if "slider_ancho" not in st.session_state:
+    st.session_state["slider_ancho"] = 0.6
+if "slider_opacidad" not in st.session_state:
+    st.session_state["slider_opacidad"] = 1.0
+if "slider_alto" not in st.session_state:
+    st.session_state["slider_alto"] = 950
+if "slider_espacio" not in st.session_state:
+    st.session_state["slider_espacio"] = 0.03
+if "slider_margen_b" not in st.session_state:
+    st.session_state["slider_margen_b"] = 400
+if "slider_angulo" not in st.session_state:
+    st.session_state["slider_angulo"] = -90
+# Inicializar colores personalizados
+if "custom_colors" not in st.session_state:
+    st.session_state["custom_colors"] = {}
 
 # --- 4. BARRA LATERAL (GESTIÓN MEJORADA CON DISEÑO PREMIUM) ---
 with st.sidebar:
@@ -429,7 +451,6 @@ with st.sidebar:
             label_visibility="collapsed"
         )
         
-        # Mostrar preview de la plantilla seleccionada
         if nombre_plantilla != "-- Seleccionar --":
             df_preview = pd.DataFrame(fuente_plantillas[nombre_plantilla])
             num_productos = len(df_preview['Producto'].unique()) if 'Producto' in df_preview.columns else 0
@@ -453,14 +474,11 @@ with st.sidebar:
         if st.button("🚀 Cargar Datos", use_container_width=True, type="primary"):
             if nombre_plantilla != "-- Seleccionar --":
                 with st.spinner("⏳ Procesando datos..."):
-                    # Convertimos a DataFrame
                     df_nuevo = pd.DataFrame(fuente_plantillas[nombre_plantilla])
                     
-                    # CARGA INDEPENDIENTE: Evitamos pasar por calcular_pkg si es Price and Volume
                     if modo == "Price and Volume":
                         st.session_state.data = df_nuevo
                     else:
-                        # Ladder y Pack sí necesitan calcular $/kg
                         st.session_state.data = calcular_pkg(df_nuevo, modo)
                     
                     st.session_state.data.to_csv(DB_FILE, index=False)
@@ -470,7 +488,6 @@ with st.sidebar:
             else:
                 st.warning("⚠️ Por favor selecciona una plantilla válida")
     
-
     # --- SECCIÓN 2: EXPORTACIÓN ---
     if not st.session_state.data.empty:
         st.markdown("<br>", unsafe_allow_html=True)
@@ -488,14 +505,11 @@ with st.sidebar:
         """, unsafe_allow_html=True)
         
         with st.container(border=True):
-            # Función mejorada de exportación con múltiples formatos
             def to_excel(df):
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    # Hoja principal con todos los datos
                     df.to_excel(writer, index=False, sheet_name='Datos_Completos')
                     
-                    # Si hay columnas de producto, crear hoja de resumen
                     if 'Producto' in df.columns and 'Venta Valor ($)' in df.columns:
                         resumen = df.groupby('Producto').agg({
                             'Venta Valor ($)': 'sum',
@@ -505,7 +519,6 @@ with st.sidebar:
                         resumen = resumen.sort_values('Total Ventas ($)', ascending=False)
                         resumen.to_excel(writer, index=False, sheet_name='Resumen_por_Producto')
                     
-                    # Metadata
                     metadata = pd.DataFrame({
                         'Información': ['Fecha de Exportación', 'Modo de Análisis', 'Total Registros', 'Productos Únicos'],
                         'Valor': [
@@ -519,7 +532,6 @@ with st.sidebar:
                 
                 return output.getvalue()
             
-            # Botón de descarga Excel con icono mejorado
             excel_data = to_excel(st.session_state.data)
             timestamp = pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')
             
@@ -532,7 +544,6 @@ with st.sidebar:
                 type="primary"
             )
             
-            # Opción adicional: Descargar CSV
             csv_data = st.session_state.data.to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="📄 Descargar CSV",
@@ -554,7 +565,94 @@ with st.sidebar:
                 </div>
             """, unsafe_allow_html=True)
     
-    # --- SECCIÓN 3: HERRAMIENTAS AVANZADAS ---
+    # --- SECCIÓN 3: CONTROLES DE DISEÑO (MOVIDOS ANTES DEL FOOTER) ---
+    if not st.session_state.data.empty:
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.divider()
+        st.subheader("🎨 Controles de Diseño")
+        
+        def reset_diseno():
+            st.session_state["slider_nombres"] = 14
+            st.session_state["slider_precios"] = 18
+            st.session_state["slider_pkg"] = 16
+            st.session_state["slider_som"] = 13
+            st.session_state["slider_ancho"] = 0.6
+            st.session_state["slider_opacidad"] = 1.0
+            st.session_state["slider_alto"] = 950
+            st.session_state["slider_espacio"] = 0.03
+            st.session_state["slider_margen_b"] = 400
+            st.session_state["slider_angulo"] = -90
+            st.session_state["custom_colors"] = {}
+
+        if st.button("Resetear Todo el Diseño"):
+            reset_diseno()
+            st.rerun()
+
+        with st.expander("📏 Dimensiones y Espaciado"):
+            alto_grafico = st.slider("Alto del Gráfico", 400, 1500, value=st.session_state["slider_alto"], key="slider_alto")
+            espacio_v = st.slider("Espacio entre Gráficos", 0.0, 0.2, value=st.session_state["slider_espacio"], key="slider_espacio")
+            margen_b = st.slider("Margen Inferior (Nombres)", 50, 600, value=st.session_state["slider_margen_b"], key="slider_margen_b")
+            ancho_barras = st.slider("Ancho de Barras", 0.1, 1.0, value=st.session_state["slider_ancho"], key="slider_ancho")
+            opacidad_barras = st.slider("Opacidad Barras", 0.1, 1.0, value=st.session_state["slider_opacidad"], key="slider_opacidad")
+        
+        with st.expander("🔡 Tipografía y Texto"):
+            t_nombres = st.slider("Tamaño Nombres", 8, 30, value=st.session_state["slider_nombres"], key="slider_nombres")
+            t_precios = st.slider("Tamaño Precios ($)", 10, 40, value=st.session_state["slider_precios"], key="slider_precios")
+            t_pkg = st.slider("Tamaño $/Kg", 10, 40, value=st.session_state["slider_pkg"], key="slider_pkg")
+            t_som = st.slider("Tamaño SOM (%)", 8, 25, value=st.session_state["slider_som"], key="slider_som")
+            angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, value=st.session_state["slider_angulo"], key="slider_angulo")
+        
+        # ✨ NUEVO: Selector de colores personalizados
+        with st.expander("🎨 Colores Personalizados (Opcional)"):
+            st.markdown("**Selecciona un producto para cambiar su color:**")
+            
+            if "Producto" in st.session_state.data.columns:
+                productos_disponibles = sorted(st.session_state.data["Producto"].unique().tolist())
+                
+                producto_seleccionado = st.selectbox(
+                    "Producto a personalizar:",
+                    ["-- Ninguno --"] + productos_disponibles,
+                    key="color_picker_producto"
+                )
+                
+                if producto_seleccionado != "-- Ninguno --":
+                    # Color de la barra
+                    color_barra = st.color_picker(
+                        "Color de barra",
+                        value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("barra", "#FF0000"),
+                        key=f"color_barra_{producto_seleccionado}"
+                    )
+                    
+                    # Color del texto
+                    color_texto = st.color_picker(
+                        "Color de texto (Precio)",
+                        value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("texto", "#000000"),
+                        key=f"color_texto_{producto_seleccionado}"
+                    )
+                    
+                    # Guardar colores personalizados
+                    if producto_seleccionado not in st.session_state["custom_colors"]:
+                        st.session_state["custom_colors"][producto_seleccionado] = {}
+                    
+                    st.session_state["custom_colors"][producto_seleccionado]["barra"] = color_barra
+                    st.session_state["custom_colors"][producto_seleccionado]["texto"] = color_texto
+                    
+                    st.success(f"✅ Colores personalizados aplicados a: {producto_seleccionado}")
+                    
+                    # Botón para quitar personalización
+                    if st.button(f"🗑️ Quitar personalización de {producto_seleccionado}"):
+                        if producto_seleccionado in st.session_state["custom_colors"]:
+                            del st.session_state["custom_colors"][producto_seleccionado]
+                            st.rerun()
+                
+                # Mostrar productos personalizados
+                if st.session_state["custom_colors"]:
+                    st.markdown("---")
+                    st.markdown("**Productos con colores personalizados:**")
+                    for prod in st.session_state["custom_colors"].keys():
+                        st.caption(f"• {prod}")
+    
+    # --- SECCIÓN 4: HERRAMIENTAS AVANZADAS ---
     st.markdown("<br>", unsafe_allow_html=True)
     
     st.markdown("""
@@ -570,11 +668,9 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     
     with st.container(border=True):
-        # Botón para limpiar filtros (si aplicable)
         if st.button("🔄 Refrescar Vista", use_container_width=True):
             st.rerun()
         
-        # Información del sistema
         with st.expander("ℹ️ Información del Sistema"):
             st.markdown(f"""
                 **Modo Actual:** {modo}  
@@ -583,7 +679,6 @@ with st.sidebar:
                 **Última actualización:** {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
             """)
         
-        # Reset con confirmación mejorada
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("""
             <div style='background: #FEF2F2; 
@@ -596,7 +691,6 @@ with st.sidebar:
             </div>
         """, unsafe_allow_html=True)
         
-        # Checkbox de confirmación antes del reset
         confirmar_reset = st.checkbox("Confirmar eliminación de datos", value=False)
         
         if st.button(
@@ -614,7 +708,7 @@ with st.sidebar:
             else:
                 st.warning("⚠️ Debes confirmar la acción marcando la casilla")
     
-    # --- FOOTER ---
+    # --- FOOTER (AHORA AL FINAL) ---
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("""
         <div style='text-align: center; padding: 1rem; border-top: 1px solid #E2E8F0;'>
@@ -626,7 +720,6 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # --- 5. PANEL PRINCIPAL ---
-# Icono según el modo
 iconos_modo = {
     "price ladder": "🪜",
     "price pack": "📦",
@@ -634,18 +727,11 @@ iconos_modo = {
 }
 icono = iconos_modo.get(modo.lower(), "📊")
 st.title(f"{icono} {modo.upper()}")
-
-# Línea separadora
 st.divider()
-            
-
 
 # --- 5. FORMULARIOS DE AGREGAR ---
-
-# Solo mostramos el formulario si no estamos en el modo "Price and Volume"
 if modo in ["Price Ladder", "Price Pack"]:
     
-    # Mostrar mensaje de éxito si se agregó un producto
     if st.session_state.form_success:
         st.success("✅ ¡Producto agregado exitosamente!")
         st.session_state.form_success = False
@@ -678,7 +764,7 @@ if modo in ["Price Ladder", "Price Pack"]:
                     st.session_state.form_success = True
                     st.rerun()
             
-            else: # Price Pack Architecture
+            else:
                 f_fam = col2.text_input("Familia").upper()
                 f_can = col3.selectbox("Canal", opciones_agru)
                 col4, col5 = st.columns(2)
@@ -698,19 +784,15 @@ if modo in ["Price Ladder", "Price Pack"]:
                     st.session_state.data.to_csv(DB_FILE, index=False)
                     st.session_state.form_success = True
                     st.rerun()
-                    
-                    
+
 # --- 6. EDITOR DE TABLA CON FUNCIÓN DE ELIMINAR ---
-# Solo mostramos la gestión de portafolio si no estamos en el modo "Price and Volume"
 if modo in ["Price Ladder", "Price Pack"]:
     st.markdown("### 📝 Gestión de Portafolio")
 
-    # Creamos una columna temporal para selección si queremos borrado masivo
     df_with_selections = st.session_state.data.copy()
     if "Select" not in df_with_selections.columns:
         df_with_selections.insert(0, "Select", False)
 
-    # El editor de datos
     edited_df = st.data_editor(
         df_with_selections, 
         num_rows="dynamic",
@@ -719,28 +801,23 @@ if modo in ["Price Ladder", "Price Pack"]:
         hide_index=True
     )
 
-    # Lógica para guardar cambios o procesar eliminaciones
     col_btn1, col_btn2 = st.columns([1, 4])
 
     with col_btn1:
-        # Botón para eliminar las filas que el usuario marcó en el checkbox
         if st.button("🗑️ Eliminar seleccionados", type="secondary"):
-            # Filtramos para quedarnos solo con lo que NO está seleccionado
             df_final = edited_df[edited_df["Select"] == False].drop(columns=["Select"])
             st.session_state.data = calcular_pkg(df_final, modo)
             st.session_state.data.to_csv(DB_FILE, index=False)
             st.success("Filas eliminadas correctamente")
             st.rerun()
 
-    # Lógica para detectar si hubo cambios manuales en las celdas
     current_data_no_select = edited_df.drop(columns=["Select"])
     if not current_data_no_select.equals(st.session_state.data):
         st.session_state.data = calcular_pkg(current_data_no_select, modo)
         st.session_state.data.to_csv(DB_FILE, index=False)
         st.rerun()
 
-
-# --- 6.5 FILTROS DINÁMICOS UNIFICADOS (PRICE LADDER Y PRICE PACK) ---
+# --- 6.5 FILTROS DINÁMICOS UNIFICADOS ---
 sel_fab, sel_oca, sel_prod = [], [], []
 sel_canal_pp, sel_prod_pp = [], []
 
@@ -778,10 +855,8 @@ elif modo == "Price Pack":
                 lista_prod_pp = sorted(st.session_state.data["Producto"].unique().tolist())
                 sel_prod_pp = st.multiselect("Filtrar por Producto", lista_prod_pp, key="filter_pp_prod")
 
-
-# --- 6.8 PANEL EJECUTIVO (FORMATO TABLA EJECUTIVA) ---
+# --- 6.8 PANEL EJECUTIVO ---
 if modo == "Price Ladder" and not st.session_state.data.empty:
-    # Aplicar filtros primero
     df_filtered = st.session_state.data.copy()
     if sel_fab:
         df_filtered = df_filtered[df_filtered["Fabricante"].isin(sel_fab)]
@@ -793,80 +868,32 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
     if not df_filtered.empty:
         st.write("### 📈 Resumen de Mercado por Ocasión")
         
-        # Agrupamos y preparamos los datos
         resumen_oca = df_filtered.groupby("Ocasión").agg({
             "Producto": "count",
             "Precio ($)": "mean",
             "Precio por Kg ($)": "mean"
         }).reset_index()
 
-        # Orden lógico de las ocasiones
         ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5, "REUNIÓN": 6, "FIESTA": 7, "TRANSFORMADOR": 8}
         resumen_oca["Orden"] = resumen_oca["Ocasión"].str.upper().map(ord_oca).fillna(99)
         resumen_oca = resumen_oca.sort_values("Orden")
 
-        # Mostramos la tabla con Formato Ejecutivo
         st.dataframe(
             resumen_oca[["Ocasión", "Producto", "Precio ($)", "Precio por Kg ($)"]],
             column_config={
                 "Ocasión": st.column_config.TextColumn("Segmento / Ocasión"),
                 "Producto": st.column_config.NumberColumn("SKUs", help="Cantidad de SKUs analizados"),
-                "Precio ($)": st.column_config.NumberColumn(
-                    "Desembolso Prom.",
-                    format="$%.1f",
-                ),
-                "Precio por Kg ($)": st.column_config.NumberColumn(
-                    "$/KG Promedio",
-                    format="$%d",
-                ),
+                "Precio ($)": st.column_config.NumberColumn("Desembolso Prom.", format="$%.1f"),
+                "Precio por Kg ($)": st.column_config.NumberColumn("$/KG Promedio", format="$%d"),
             },
             hide_index=True,
             use_container_width=True
         )
         st.write("")
 
-    
-# --- 7. GRÁFICO FINAL (CON FILTROS DINÁMICOS INTEGRADOS) ---
-
+# --- 7. GRÁFICO FINAL ---
 if not st.session_state.data.empty:
     
-    # --- CONFIGURACIÓN DE INTERFAZ EN SIDEBAR ---
-    with st.sidebar:
-        st.divider()
-        st.subheader("🎨 Controles de Diseño")
-        
-        # Lógica de reseteo funcional
-        def reset_diseno():
-            st.session_state["slider_nombres"] = 14
-            st.session_state["slider_precios"] = 18
-            st.session_state["slider_pkg"] = 16
-            st.session_state["slider_som"] = 13
-            st.session_state["slider_ancho"] = 0.6
-            st.session_state["slider_opacidad"] = 1.0
-            st.session_state["slider_alto"] = 950
-            st.session_state["slider_espacio"] = 0.03
-            st.session_state["slider_margen_b"] = 400
-            st.session_state["slider_angulo"] = -90
-
-        if st.button("Resetear Todo el Diseño"):
-            reset_diseno()
-
-        # Agrupadores por Expander para limpieza visual
-        with st.expander("📏 Dimensiones y Espaciado"):
-            alto_grafico = st.slider("Alto del Gráfico", 400, 1500, value=st.session_state["slider_alto"], key="slider_alto")
-            espacio_v = st.slider("Espacio entre Gráficos", 0.0, 0.2, value=st.session_state["slider_espacio"], key="slider_espacio")
-            margen_b = st.slider("Margen Inferior (Nombres)", 50, 600, value=st.session_state["slider_margen_b"], key="slider_margen_b")
-            ancho_barras = st.slider("Ancho de Barras", 0.1, 1.0, value=st.session_state["slider_ancho"], key="slider_ancho")
-            opacidad_barras = st.slider("Opacidad Barras", 0.1, 1.0, value=st.session_state["slider_opacidad"], key="slider_opacidad")
-        
-        with st.expander("🔡 Tipografía y Texto"):
-            t_nombres = st.slider("Tamaño Nombres", 8, 30, value=st.session_state["slider_nombres"], key="slider_nombres")
-            t_precios = st.slider("Tamaño Precios ($)", 10, 40, value=st.session_state["slider_precios"], key="slider_precios")
-            t_pkg = st.slider("Tamaño $/Kg", 10, 40, value=st.session_state["slider_pkg"], key="slider_pkg")
-            t_som = st.slider("Tamaño SOM (%)", 8, 25, value=st.session_state["slider_som"], key="slider_som")
-            angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, value=st.session_state["slider_angulo"], key="slider_angulo")
-    
-    # ✅ APLICAR FILTROS UNA SOLA VEZ
     df_p = st.session_state.data.copy()
     
     if modo == "Price Ladder":
@@ -882,23 +909,18 @@ if not st.session_state.data.empty:
         if sel_prod_pp:
             df_p = df_p[df_p["Producto"].isin(sel_prod_pp)]
 
-    # Verificar si hay datos tras el filtrado
     if df_p.empty:
         st.warning("⚠️ No hay datos que coincidan con los filtros seleccionados.")
     else:
         if modo == "Price Ladder":
-            # --- LÓGICA PRICE LADDER ---
             ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5,"REUNIÓN":6, "FIESTA":7,"TRANSFORMADOR":8}
             df_p["O_Oca"] = df_p["Ocasión"].str.upper().map(ord_oca).fillna(99)
             
-            # Ordenamiento con desempate por $/Kg
             df_p = df_p.sort_values(by=["O_Oca", "Precio ($)", "Precio por Kg ($)"]).reset_index(drop=True)
             som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-            # USO DE VARIABLE espacio_v
             fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=espacio_v, row_heights=[0.15, 0.85])
 
-            # --- TRACE 1: SOM% ---
             fig.add_trace(go.Scatter(
                 x=df_p["Producto"], y=df_p["SOM (%)"], mode="lines+markers+text", 
                 line=dict(color="#BBBBBB", width=1.5), 
@@ -907,28 +929,44 @@ if not st.session_state.data.empty:
                 textposition="middle center", textfont=dict(size=t_som, color="black"),
             ), row=1, col=1)
 
-            # --- TRACE 2: BARRAS DE PRECIO ---
+            # ✨ APLICAR COLORES PERSONALIZADOS
             colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D","PROPUESTA":"#4B207E"}
             
-            # Lógica inteligente para etiquetas de Precio Desembolso
+            bar_colors = []
+            for _, row in df_p.iterrows():
+                # Verificar si tiene color personalizado
+                if row["Producto"] in st.session_state["custom_colors"]:
+                    bar_colors.append(st.session_state["custom_colors"][row["Producto"]]["barra"])
+                else:
+                    bar_colors.append(colors.get(str(row["Fabricante"]).upper(), "#999"))
+            
             labels_precios = []
-            for p in df_p["Precio ($)"]:
+            label_colors = []
+            for _, row in df_p.iterrows():
+                p = row["Precio ($)"]
                 if p < 10:
                     labels_precios.append(f"<b>${p:.1f}</b>")
                 else:
                     labels_precios.append(f"<b>${int(p)}</b>")
+                
+                # Color de texto personalizado
+                if row["Producto"] in st.session_state["custom_colors"]:
+                    label_colors.append(st.session_state["custom_colors"][row["Producto"]]["texto"])
+                else:
+                    label_colors.append("black")
 
             fig.add_trace(go.Bar(
                 x=df_p["Producto"], y=df_p["Precio ($)"],
-                marker_color=[colors.get(str(f).upper(), "#999") for f in df_p["Fabricante"]],
+                marker_color=bar_colors,
                 marker_opacity=opacidad_barras, 
                 width=ancho_barras,
                 text=labels_precios, 
                 textposition="outside", 
-                textfont=dict(size=t_precios, color="black")
+                textfont=dict(size=t_precios, color=label_colors[0] if label_colors else "black"),
+                customdata=label_colors,
+                texttemplate='%{text}'
             ), row=2, col=1)
 
-            # Anotaciones de Precio por Kg dentro de las barras
             for i, row in df_p.iterrows():
                 fig.add_annotation(
                     x=i, y=2.5, text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
@@ -938,7 +976,6 @@ if not st.session_state.data.empty:
                     bordercolor="#444" if row["Fabricante"] != "BARCEL" else None, borderwidth=1, row=2, col=1
                 )
 
-            # --- LÍNEAS DIVISORIAS ---
             for i in range(len(df_p) + 1):
                 fig.add_shape(type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50, xref="x2", yref="paper", line=dict(color="#DDDDDD", width=1))
 
@@ -956,7 +993,6 @@ if not st.session_state.data.empty:
                     showarrow=False, font=dict(size=16, color="black"), align="center"
                 )
 
-            # CONFIGURACIÓN DE LAYOUT (ALTO Y MARGEN)
             fig.update_layout(
                 height=alto_grafico, width=1950, template="plotly_white", showlegend=False, 
                 margin=dict(t=50, b=margen_b, l=40, r=40)
@@ -972,7 +1008,6 @@ if not st.session_state.data.empty:
             fig.update_yaxes(showticklabels=False, row=1, col=1)
             fig.update_yaxes(showgrid=True, gridcolor="#DCDCDC", tickprefix="$", tickfont=dict(size=14), row=2, col=1)
             
-            # --- RENDERIZADO CON BOTÓN DE DESCARGA ---
             st.plotly_chart(fig, use_container_width=True, config={
                 'toImageButtonOptions': {
                     'format': 'png',
@@ -984,7 +1019,6 @@ if not st.session_state.data.empty:
             })
 
         elif modo == "Price Pack" and "Canal" in st.session_state.data.columns:
-            # --- LÓGICA PRICE PACK ---
             ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIOS": 5, "CONVENIENCIA": 6}
             df_p["O_Can"] = df_p["Canal"].str.upper().map(ord_can).fillna(99)
             df_p = df_p.sort_values(by=["O_Can", "Precio ($)"]).reset_index(drop=True)
@@ -992,18 +1026,24 @@ if not st.session_state.data.empty:
             import plotly.graph_objects as go
             fig = go.Figure()
 
-            # 1. Barras de fondo (Pkg)
+            # ✨ APLICAR COLORES PERSONALIZADOS EN PRICE PACK
+            bar_colors_pp = []
+            for _, row in df_p.iterrows():
+                if row["Producto"] in st.session_state["custom_colors"]:
+                    bar_colors_pp.append(st.session_state["custom_colors"][row["Producto"]]["barra"])
+                else:
+                    bar_colors_pp.append("#F8F9FA")
+
             fig.add_trace(go.Bar(
                 x=df_p.index, 
                 y=df_p["Precio por Kg ($)"], 
-                marker_color="#F8F9FA",
+                marker_color=bar_colors_pp,
                 marker_line=dict(color="#D1D1D1", width=1),
                 marker_opacity=opacidad_barras,
                 width=ancho_barras,
                 showlegend=False
             ))
             
-            # Líneas de división de fondo
             for i in range(len(df_p) + 1):
                 fig.add_shape(
                     type="line", x0=i-0.5, x1=i-0.5, 
@@ -1012,9 +1052,7 @@ if not st.session_state.data.empty:
                     line=dict(color="#EEEEEE", width=1)
                 ) 
 
-            # Iteración para etiquetas y anotaciones
             for i, r in df_p.iterrows():
-                # ETIQUETAS PARA $/KG
                 val_pkg_pp = r['Precio por Kg ($)']
                 txt_pkg_pp = f"${val_pkg_pp:,.0f}"
 
@@ -1029,22 +1067,25 @@ if not st.session_state.data.empty:
                     borderwidth=1
                 )
                 
-                # ETIQUETAS PARA PRECIO DESEMBOLSO (Cajas Azules)
                 p_pp = r['Precio ($)']
                 txt_p_pp = f"${p_pp:.1f}" if p_pp < 10 else f"${int(p_pp)}"
+                
+                # Color de texto personalizado para Price Pack
+                color_texto_pp = "white"
+                if r["Producto"] in st.session_state["custom_colors"]:
+                    color_texto_pp = st.session_state["custom_colors"][r["Producto"]]["texto"]
 
                 fig.add_annotation(
                     x=i, y=15, 
                     text=f"<b>{txt_p_pp}</b>", 
                     showarrow=False, 
-                    font=dict(size=t_precios, color="white"),
+                    font=dict(size=t_precios, color=color_texto_pp),
                     bgcolor="#00B0F0", 
                     bordercolor="black", 
                     borderwidth=1.5,      
                     borderpad=4
                 )
             
-            # Agrupación visual por Canal en el eje X
             for cat in df_p["Canal"].unique():
                 indices = df_p.index[df_p["Canal"] == cat].tolist()
                 center = (indices[0] + indices[-1]) / 2
@@ -1060,7 +1101,6 @@ if not st.session_state.data.empty:
                     font=dict(size=14, color="#424242", family="Verdana")
                 )
             
-            # Configuración de Layout (Ejes y Márgenes)
             fig.update_layout(
                 height=alto_grafico,
                 margin=dict(b=margen_b, t=50, l=50, r=50),
@@ -1080,7 +1120,6 @@ if not st.session_state.data.empty:
                 )
             )
     
-            # Renderizado con config de descarga
             st.plotly_chart(fig, use_container_width=True, config={
                 'toImageButtonOptions': {
                     'format': 'png',
