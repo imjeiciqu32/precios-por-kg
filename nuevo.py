@@ -602,7 +602,7 @@ with st.sidebar:
             t_som = st.slider("Tamaño SOM (%)", 8, 25, value=st.session_state["slider_som"], key="slider_som")
             angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, value=st.session_state["slider_angulo"], key="slider_angulo")
         
-        # ✨ NUEVO: Selector de colores personalizados
+        # ✨ NUEVO: Selector de colores personalizados MEJORADO Y CORREGIDO
         with st.expander("🎨 Colores Personalizados (Opcional)"):
             st.markdown("**Selecciona un producto para cambiar su color:**")
             
@@ -616,6 +616,9 @@ with st.sidebar:
                 )
                 
                 if producto_seleccionado != "-- Ninguno --":
+                    st.markdown("---")
+                    st.markdown("#### 🎨 Personalización de Barra")
+                    
                     # Color de la barra
                     color_barra = st.color_picker(
                         "Color de barra",
@@ -623,34 +626,98 @@ with st.sidebar:
                         key=f"color_barra_{producto_seleccionado}"
                     )
                     
-                    # Color del texto
-                    color_texto = st.color_picker(
-                        "Color de texto (Precio)",
-                        value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("texto", "#000000"),
-                        key=f"color_texto_{producto_seleccionado}"
-                    )
+                    st.markdown("#### 📝 Personalización de Precios")
                     
-                    # Guardar colores personalizados
-                    if producto_seleccionado not in st.session_state["custom_colors"]:
-                        st.session_state["custom_colors"][producto_seleccionado] = {}
+                    col_precio1, col_precio2 = st.columns(2)
                     
-                    st.session_state["custom_colors"][producto_seleccionado]["barra"] = color_barra
-                    st.session_state["custom_colors"][producto_seleccionado]["texto"] = color_texto
+                    with col_precio1:
+                        # Color del texto del precio desembolso
+                        color_texto_desembolso = st.color_picker(
+                            "Color texto Precio Desembolso",
+                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("texto_desembolso", "#000000"),
+                            key=f"color_texto_desembolso_{producto_seleccionado}"
+                        )
+                        
+                        # Color de fondo del precio desembolso (no aplicable en barras, solo en price pack)
+                        if modo == "Price Pack":
+                            color_fondo_desembolso = st.color_picker(
+                                "Color fondo Precio Desembolso",
+                                value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("fondo_desembolso", "#00B0F0"),
+                                key=f"color_fondo_desembolso_{producto_seleccionado}"
+                            )
+                        else:
+                            color_fondo_desembolso = None
+                    
+                    with col_precio2:
+                        # Color del texto del precio por kg
+                        color_texto_pkg = st.color_picker(
+                            "Color texto Precio por Kg",
+                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("texto_pkg", "#000000"),
+                            key=f"color_texto_pkg_{producto_seleccionado}"
+                        )
+                        
+                        # Color de fondo del precio por kg
+                        color_fondo_pkg = st.color_picker(
+                            "Color fondo Precio por Kg",
+                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("fondo_pkg", "#FFFFFF"),
+                            key=f"color_fondo_pkg_{producto_seleccionado}"
+                        )
+                    
+                    st.markdown("#### 🔲 Personalización de Bordes")
+                    
+                    col_borde1, col_borde2 = st.columns(2)
+                    
+                    with col_borde1:
+                        if modo == "Price Pack":
+                            # Color del borde del precio desembolso
+                            color_borde_desembolso = st.color_picker(
+                                "Color borde Precio Desembolso",
+                                value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("borde_desembolso", "#000000"),
+                                key=f"color_borde_desembolso_{producto_seleccionado}"
+                            )
+                        else:
+                            color_borde_desembolso = None
+                    
+                    with col_borde2:
+                        # Color del borde del precio por kg
+                        color_borde_pkg = st.color_picker(
+                            "Color borde Precio por Kg",
+                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("borde_pkg", "#444444"),
+                            key=f"color_borde_pkg_{producto_seleccionado}"
+                        )
+                    
+                    # Guardar todos los colores personalizados
+                    st.session_state["custom_colors"][producto_seleccionado] = {
+                        "barra": color_barra,
+                        "texto_desembolso": color_texto_desembolso,
+                        "fondo_desembolso": color_fondo_desembolso,
+                        "texto_pkg": color_texto_pkg,
+                        "fondo_pkg": color_fondo_pkg,
+                        "borde_desembolso": color_borde_desembolso,
+                        "borde_pkg": color_borde_pkg
+                    }
                     
                     st.success(f"✅ Colores personalizados aplicados a: {producto_seleccionado}")
                     
-                    # Botón para quitar personalización
-                    if st.button(f"🗑️ Quitar personalización de {producto_seleccionado}"):
+                    # Botón para quitar personalización - CORREGIDO
+                    if st.button(f"🗑️ Quitar personalización de {producto_seleccionado}", key=f"remove_custom_{producto_seleccionado}"):
                         if producto_seleccionado in st.session_state["custom_colors"]:
                             del st.session_state["custom_colors"][producto_seleccionado]
+                            st.success(f"✅ Personalización eliminada de {producto_seleccionado}")
                             st.rerun()
                 
                 # Mostrar productos personalizados
                 if st.session_state["custom_colors"]:
                     st.markdown("---")
-                    st.markdown("**Productos con colores personalizados:**")
-                    for prod in st.session_state["custom_colors"].keys():
-                        st.caption(f"• {prod}")
+                    st.markdown("**📋 Productos con colores personalizados:**")
+                    for prod in list(st.session_state["custom_colors"].keys()):
+                        col_prod, col_btn = st.columns([3, 1])
+                        with col_prod:
+                            st.caption(f"• {prod}")
+                        with col_btn:
+                            if st.button("🗑️", key=f"quick_remove_{prod}"):
+                                del st.session_state["custom_colors"][prod]
+                                st.rerun()
     
     # --- SECCIÓN 4: HERRAMIENTAS AVANZADAS ---
     st.markdown("<br>", unsafe_allow_html=True)
@@ -929,31 +996,23 @@ if not st.session_state.data.empty:
                 textposition="middle center", textfont=dict(size=t_som, color="black"),
             ), row=1, col=1)
 
-            # ✨ APLICAR COLORES PERSONALIZADOS
+            # --- TRACE 2: BARRAS DE PRECIO CON PERSONALIZACIÓN ---
             colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D","PROPUESTA":"#4B207E"}
-            
+
             bar_colors = []
             for _, row in df_p.iterrows():
-                # Verificar si tiene color personalizado
                 if row["Producto"] in st.session_state["custom_colors"]:
                     bar_colors.append(st.session_state["custom_colors"][row["Producto"]]["barra"])
                 else:
                     bar_colors.append(colors.get(str(row["Fabricante"]).upper(), "#999"))
-            
+
             labels_precios = []
-            label_colors = []
             for _, row in df_p.iterrows():
                 p = row["Precio ($)"]
                 if p < 10:
                     labels_precios.append(f"<b>${p:.1f}</b>")
                 else:
                     labels_precios.append(f"<b>${int(p)}</b>")
-                
-                # Color de texto personalizado
-                if row["Producto"] in st.session_state["custom_colors"]:
-                    label_colors.append(st.session_state["custom_colors"][row["Producto"]]["texto"])
-                else:
-                    label_colors.append("black")
 
             fig.add_trace(go.Bar(
                 x=df_p["Producto"], y=df_p["Precio ($)"],
@@ -962,18 +1021,38 @@ if not st.session_state.data.empty:
                 width=ancho_barras,
                 text=labels_precios, 
                 textposition="outside", 
-                textfont=dict(size=t_precios, color=label_colors[0] if label_colors else "black"),
-                customdata=label_colors,
-                texttemplate='%{text}'
+                textfont=dict(size=t_precios, color="black"),
             ), row=2, col=1)
 
+            # Aplicar colores personalizados a las etiquetas de precio desembolso
+            for i, prod in enumerate(df_p["Producto"]):
+                if prod in st.session_state["custom_colors"]:
+                    custom = st.session_state["custom_colors"][prod]
+                    color_texto_desembolso = custom.get("texto_desembolso", "black")
+                else:
+                    color_texto_desembolso = "black"
+
+            # Anotaciones de Precio por Kg dentro de las barras - CON PERSONALIZACIÓN
             for i, row in df_p.iterrows():
+                # Obtener colores personalizados o usar defaults
+                if row["Producto"] in st.session_state["custom_colors"]:
+                    custom = st.session_state["custom_colors"][row["Producto"]]
+                    color_texto_pkg = custom.get("texto_pkg", "white" if row["Fabricante"] == "BARCEL" else "black")
+                    color_fondo_pkg = custom.get("fondo_pkg", "rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)")
+                    color_borde_pkg = custom.get("borde_pkg", "#444" if row["Fabricante"] != "BARCEL" else None)
+                else:
+                    color_texto_pkg = "white" if row["Fabricante"] == "BARCEL" else "black"
+                    color_fondo_pkg = "rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)"
+                    color_borde_pkg = "#444" if row["Fabricante"] != "BARCEL" else None
+                
                 fig.add_annotation(
                     x=i, y=2.5, text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
                     showarrow=False, 
-                    font=dict(size=t_pkg, color="white" if row["Fabricante"] == "BARCEL" else "black"),
-                    bgcolor="rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)",
-                    bordercolor="#444" if row["Fabricante"] != "BARCEL" else None, borderwidth=1, row=2, col=1
+                    font=dict(size=t_pkg, color=color_texto_pkg),
+                    bgcolor=color_fondo_pkg,
+                    bordercolor=color_borde_pkg,
+                    borderwidth=1, 
+                    row=2, col=1
                 )
 
             for i in range(len(df_p) + 1):
@@ -1052,7 +1131,26 @@ if not st.session_state.data.empty:
                     line=dict(color="#EEEEEE", width=1)
                 ) 
 
+            # Iteración para etiquetas y anotaciones - CON PERSONALIZACIÓN COMPLETA
             for i, r in df_p.iterrows():
+                # Obtener colores personalizados
+                if r["Producto"] in st.session_state["custom_colors"]:
+                    custom = st.session_state["custom_colors"][r["Producto"]]
+                    color_texto_pkg = custom.get("texto_pkg", "#212121")
+                    color_fondo_pkg = custom.get("fondo_pkg", "rgba(255,255,255,0.9)")
+                    color_borde_pkg = custom.get("borde_pkg", "#616161")
+                    color_texto_desembolso = custom.get("texto_desembolso", "white")
+                    color_fondo_desembolso = custom.get("fondo_desembolso", "#00B0F0")
+                    color_borde_desembolso = custom.get("borde_desembolso", "black")
+                else:
+                    color_texto_pkg = "#212121"
+                    color_fondo_pkg = "rgba(255,255,255,0.9)"
+                    color_borde_pkg = "#616161"
+                    color_texto_desembolso = "white"
+                    color_fondo_desembolso = "#00B0F0"
+                    color_borde_desembolso = "black"
+                
+                # ETIQUETAS PARA $/KG
                 val_pkg_pp = r['Precio por Kg ($)']
                 txt_pkg_pp = f"${val_pkg_pp:,.0f}"
 
@@ -1061,27 +1159,23 @@ if not st.session_state.data.empty:
                     text=f"<b>{txt_pkg_pp}</b>", 
                     yshift=15, 
                     showarrow=False, 
-                    font=dict(size=t_pkg, color="#212121"),
-                    bgcolor="rgba(255,255,255,0.9)", 
-                    bordercolor="#616161", 
+                    font=dict(size=t_pkg, color=color_texto_pkg),
+                    bgcolor=color_fondo_pkg, 
+                    bordercolor=color_borde_pkg, 
                     borderwidth=1
                 )
                 
+                # ETIQUETAS PARA PRECIO DESEMBOLSO
                 p_pp = r['Precio ($)']
                 txt_p_pp = f"${p_pp:.1f}" if p_pp < 10 else f"${int(p_pp)}"
-                
-                # Color de texto personalizado para Price Pack
-                color_texto_pp = "white"
-                if r["Producto"] in st.session_state["custom_colors"]:
-                    color_texto_pp = st.session_state["custom_colors"][r["Producto"]]["texto"]
 
                 fig.add_annotation(
                     x=i, y=15, 
                     text=f"<b>{txt_p_pp}</b>", 
                     showarrow=False, 
-                    font=dict(size=t_precios, color=color_texto_pp),
-                    bgcolor="#00B0F0", 
-                    bordercolor="black", 
+                    font=dict(size=t_precios, color=color_texto_desembolso),
+                    bgcolor=color_fondo_desembolso, 
+                    bordercolor=color_borde_desembolso, 
                     borderwidth=1.5,      
                     borderpad=4
                 )
