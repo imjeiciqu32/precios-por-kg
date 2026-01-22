@@ -1663,7 +1663,6 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                 with col_a:
                     st.success(f"🧪 **Sugerencia:**\n\n{h['Accion']}")
     else:
-        st.balloons()
         st.success("✅ **Estrategia en Paridad Optimizada (Sin hallazgos críticos).**")
 
 
