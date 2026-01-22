@@ -614,9 +614,29 @@ st.divider()
 
 # --- 5. FORMULARIOS DE AGREGAR ---
 
-# Inicializar estado para mensaje de éxito
+# ✅ INICIALIZACIÓN AL INICIO (ANTES DE TODO)
 if 'form_success' not in st.session_state:
     st.session_state.form_success = False
+if "slider_nombres" not in st.session_state:
+    st.session_state["slider_nombres"] = 14
+if "slider_precios" not in st.session_state:
+    st.session_state["slider_precios"] = 18
+if "slider_pkg" not in st.session_state:
+    st.session_state["slider_pkg"] = 16
+if "slider_som" not in st.session_state:
+    st.session_state["slider_som"] = 13
+if "slider_ancho" not in st.session_state:
+    st.session_state["slider_ancho"] = 0.6
+if "slider_opacidad" not in st.session_state:
+    st.session_state["slider_opacidad"] = 1.0
+if "slider_alto" not in st.session_state:
+    st.session_state["slider_alto"] = 950
+if "slider_espacio" not in st.session_state:
+    st.session_state["slider_espacio"] = 0.03
+if "slider_margen_b" not in st.session_state:
+    st.session_state["slider_margen_b"] = 400
+if "slider_angulo" not in st.session_state:
+    st.session_state["slider_angulo"] = -90
 
 # Solo mostramos el formulario si no estamos en el modo "Price and Volume"
 if modo in ["Price Ladder", "Price Pack"]:
@@ -689,7 +709,7 @@ if modo in ["Price Ladder", "Price Pack"]:
     # El editor de datos
     edited_df = st.data_editor(
         df_with_selections, 
-        num_rows="dynamic",      # Permite agregar filas al final
+        num_rows="dynamic",
         use_container_width=True,
         key="portfolio_editor",
         hide_index=True
@@ -708,8 +728,7 @@ if modo in ["Price Ladder", "Price Pack"]:
             st.success("Filas eliminadas correctamente")
             st.rerun()
 
-    # Lógica para detectar si hubo cambios manuales en las celdas (precios, nombres, etc.)
-    # Ignoramos la columna 'Select' para comparar si hubo cambios reales en los datos
+    # Lógica para detectar si hubo cambios manuales en las celdas
     current_data_no_select = edited_df.drop(columns=["Select"])
     if not current_data_no_select.equals(st.session_state.data):
         st.session_state.data = calcular_pkg(current_data_no_select, modo)
@@ -717,8 +736,9 @@ if modo in ["Price Ladder", "Price Pack"]:
         st.rerun()
 
 
-# --- 6.5 FILTROS DINÁMICOS (SOLO PARA PRICE LADDER) ---
-sel_fab, sel_oca, sel_prod = [], [], [] 
+# --- 6.5 FILTROS DINÁMICOS UNIFICADOS (PRICE LADDER Y PRICE PACK) ---
+sel_fab, sel_oca, sel_prod = [], [], []
+sel_canal_pp, sel_prod_pp = [], []
 
 if modo == "Price Ladder":
     st.write("") 
@@ -728,98 +748,90 @@ if modo == "Price Ladder":
 
         with col_f1:
             lista_fab = sorted(st.session_state.data["Fabricante"].unique().tolist())
-            sel_fab = st.multiselect("Filtrar por Fabricante", lista_fab)
+            sel_fab = st.multiselect("Filtrar por Fabricante", lista_fab, key="filter_fab")
 
         with col_f2:
             lista_oca = sorted(st.session_state.data["Ocasión"].unique().tolist())
-            sel_oca = st.multiselect("Filtrar por Ocasión", lista_oca)
+            sel_oca = st.multiselect("Filtrar por Ocasión", lista_oca, key="filter_oca")
 
         with col_f3:
             lista_prod = sorted(st.session_state.data["Producto"].unique().tolist())
-            sel_prod = st.multiselect("Filtrar por Producto", lista_prod)
+            sel_prod = st.multiselect("Filtrar por Producto", lista_prod, key="filter_prod")
 
-    # --- CORRECCIÓN: DEFINICIÓN DE DF_P INMEDIATAMENTE DESPUÉS DE LOS FILTROS ---
-    df_p = st.session_state.data.copy()
-    if sel_fab:
-        df_p = df_p[df_p["Fabricante"].isin(sel_fab)]
-    if sel_oca:
-        df_p = df_p[df_p["Ocasión"].isin(sel_oca)]
-    if sel_prod:
-        df_p = df_p[df_p["Producto"].isin(sel_prod)]
-else:
-    # Si no es Price Ladder, creamos df_p sin filtros para evitar errores en otras secciones
-    df_p = st.session_state.data.copy()
+elif modo == "Price Pack":
+    st.write("") 
+    with st.container(border=True):
+        st.markdown("### 🔍 Filtros de Visualización (Price Pack)")
+        
+        if "Canal" in st.session_state.data.columns:
+            col_pp1, col_pp2 = st.columns(2)
+    
+            with col_pp1:
+                lista_canales = sorted(st.session_state.data["Canal"].unique().tolist())
+                sel_canal_pp = st.multiselect("Filtrar por Canal", lista_canales, key="filter_pp_canal")
+    
+            with col_pp2:
+                lista_prod_pp = sorted(st.session_state.data["Producto"].unique().tolist())
+                sel_prod_pp = st.multiselect("Filtrar por Producto", lista_prod_pp, key="filter_pp_prod")
+
 
 # --- 6.8 PANEL EJECUTIVO (FORMATO TABLA EJECUTIVA) ---
-if modo == "Price Ladder" and not df_p.empty:
-    st.write("### 📈 Resumen de Mercado por Ocasión")
+if modo == "Price Ladder" and not st.session_state.data.empty:
+    # Aplicar filtros primero
+    df_filtered = st.session_state.data.copy()
+    if sel_fab:
+        df_filtered = df_filtered[df_filtered["Fabricante"].isin(sel_fab)]
+    if sel_oca:
+        df_filtered = df_filtered[df_filtered["Ocasión"].isin(sel_oca)]
+    if sel_prod:
+        df_filtered = df_filtered[df_filtered["Producto"].isin(sel_prod)]
     
-    # Agrupamos y preparamos los datos
-    resumen_oca = df_p.groupby("Ocasión").agg({
-        "Producto": "count",
-        "Precio ($)": "mean",
-        "Precio por Kg ($)": "mean"
-    }).reset_index()
+    if not df_filtered.empty:
+        st.write("### 📈 Resumen de Mercado por Ocasión")
+        
+        # Agrupamos y preparamos los datos
+        resumen_oca = df_filtered.groupby("Ocasión").agg({
+            "Producto": "count",
+            "Precio ($)": "mean",
+            "Precio por Kg ($)": "mean"
+        }).reset_index()
 
-    # Orden lógico de las ocasiones
-    ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5, "REUNIÓN": 6, "FIESTA": 7, "TRANSFORMADOR": 8}
-    resumen_oca["Orden"] = resumen_oca["Ocasión"].str.upper().map(ord_oca).fillna(99)
-    resumen_oca = resumen_oca.sort_values("Orden")
+        # Orden lógico de las ocasiones
+        ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5, "REUNIÓN": 6, "FIESTA": 7, "TRANSFORMADOR": 8}
+        resumen_oca["Orden"] = resumen_oca["Ocasión"].str.upper().map(ord_oca).fillna(99)
+        resumen_oca = resumen_oca.sort_values("Orden")
 
-    # Mostramos la tabla con Formato Ejecutivo
-    st.dataframe(
-        resumen_oca[["Ocasión", "Producto", "Precio ($)", "Precio por Kg ($)"]],
-        column_config={
-            "Ocasión": st.column_config.TextColumn("Segmento / Ocasión"),
-            "Producto": st.column_config.NumberColumn("SKUs", help="Cantidad de SKUs analizados"),
-            "Precio ($)": st.column_config.NumberColumn(
-                "Desembolso Prom.",
-                format="$%.1f",  # Símbolo $ y 1 decimal
-            ),
-            "Precio por Kg ($)": st.column_config.NumberColumn(
-                "$/KG Promedio",
-                format="$%d",    # Símbolo $ y redondeado (sin decimales)
-            ),
-        },
-        hide_index=True,
-        use_container_width=True
-    )
-    st.write("")
+        # Mostramos la tabla con Formato Ejecutivo
+        st.dataframe(
+            resumen_oca[["Ocasión", "Producto", "Precio ($)", "Precio por Kg ($)"]],
+            column_config={
+                "Ocasión": st.column_config.TextColumn("Segmento / Ocasión"),
+                "Producto": st.column_config.NumberColumn("SKUs", help="Cantidad de SKUs analizados"),
+                "Precio ($)": st.column_config.NumberColumn(
+                    "Desembolso Prom.",
+                    format="$%.1f",
+                ),
+                "Precio por Kg ($)": st.column_config.NumberColumn(
+                    "$/KG Promedio",
+                    format="$%d",
+                ),
+            },
+            hide_index=True,
+            use_container_width=True
+        )
+        st.write("")
+
     
 # --- 7. GRÁFICO FINAL (CON FILTROS DINÁMICOS INTEGRADOS) ---
 
 if not st.session_state.data.empty:
-    df_p = st.session_state.data.copy()
-    
-    # ✅ INICIALIZACIÓN MOVIDA AQUÍ (ANTES DEL SIDEBAR)
-    # Inicialización SOLO la primera vez (cuando no existe la key)
-    if "slider_nombres" not in st.session_state:
-        st.session_state["slider_nombres"] = 14
-    if "slider_precios" not in st.session_state:
-        st.session_state["slider_precios"] = 18
-    if "slider_pkg" not in st.session_state:
-        st.session_state["slider_pkg"] = 16
-    if "slider_som" not in st.session_state:
-        st.session_state["slider_som"] = 13
-    if "slider_ancho" not in st.session_state:
-        st.session_state["slider_ancho"] = 0.6
-    if "slider_opacidad" not in st.session_state:
-        st.session_state["slider_opacidad"] = 1.0
-    if "slider_alto" not in st.session_state:
-        st.session_state["slider_alto"] = 950
-    if "slider_espacio" not in st.session_state:
-        st.session_state["slider_espacio"] = 0.03
-    if "slider_margen_b" not in st.session_state:
-        st.session_state["slider_margen_b"] = 400
-    if "slider_angulo" not in st.session_state:
-        st.session_state["slider_angulo"] = -90
     
     # --- CONFIGURACIÓN DE INTERFAZ EN SIDEBAR ---
     with st.sidebar:
         st.divider()
         st.subheader("🎨 Controles de Diseño")
         
-        # Lógica de reseteo funcional (incluye todas las nuevas variables)
+        # Lógica de reseteo funcional
         def reset_diseno():
             st.session_state["slider_nombres"] = 14
             st.session_state["slider_precios"] = 18
@@ -850,7 +862,9 @@ if not st.session_state.data.empty:
             t_som = st.slider("Tamaño SOM (%)", 8, 25, value=st.session_state["slider_som"], key="slider_som")
             angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, value=st.session_state["slider_angulo"], key="slider_angulo")
     
-    # --- INSERCIÓN DE FILTROS (MODO LADDER) ---
+    # ✅ APLICAR FILTROS UNA SOLA VEZ
+    df_p = st.session_state.data.copy()
+    
     if modo == "Price Ladder":
         if sel_fab:
             df_p = df_p[df_p["Fabricante"].isin(sel_fab)]
@@ -858,10 +872,14 @@ if not st.session_state.data.empty:
             df_p = df_p[df_p["Ocasión"].isin(sel_oca)]
         if sel_prod:
             df_p = df_p[df_p["Producto"].isin(sel_prod)]
-    # --- FIN DE INSERCIÓN ---
+    elif modo == "Price Pack":
+        if sel_canal_pp:
+            df_p = df_p[df_p["Canal"].isin(sel_canal_pp)]
+        if sel_prod_pp:
+            df_p = df_p[df_p["Producto"].isin(sel_prod_pp)]
 
-    # 2. Verificar si hay datos tras el filtrado
-    if df_p.empty and modo == "Price Ladder":
+    # Verificar si hay datos tras el filtrado
+    if df_p.empty:
         st.warning("⚠️ No hay datos que coincidan con los filtros seleccionados.")
     else:
         if modo == "Price Ladder":
@@ -961,143 +979,113 @@ if not st.session_state.data.empty:
                 }
             })
 
-        else:
-            # --- 6.9 FILTROS DINÁMICOS PARA PRICE PACK ---
-            if modo == "Price Pack":
-                st.write("") 
-                with st.container(border=True):
-                    st.markdown("### 🔍 Filtros de Visualización (Price Pack)")
-                    
-                    # Verificación de seguridad: solo mostramos si la columna 'Canal' existe
-                    if "Canal" in st.session_state.data.columns:
-                        col_pp1, col_pp2 = st.columns(2)
+        elif modo == "Price Pack" and "Canal" in st.session_state.data.columns:
+            # --- LÓGICA PRICE PACK ---
+            ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIOS": 5, "CONVENIENCIA": 6}
+            df_p["O_Can"] = df_p["Canal"].str.upper().map(ord_can).fillna(99)
+            df_p = df_p.sort_values(by=["O_Can", "Precio ($)"]).reset_index(drop=True)
+            
+            import plotly.graph_objects as go
+            fig = go.Figure()
+
+            # 1. Barras de fondo (Pkg)
+            fig.add_trace(go.Bar(
+                x=df_p.index, 
+                y=df_p["Precio por Kg ($)"], 
+                marker_color="#F8F9FA",
+                marker_line=dict(color="#D1D1D1", width=1),
+                marker_opacity=opacidad_barras,
+                width=ancho_barras,
+                showlegend=False
+            ))
+            
+            # Líneas de división de fondo
+            for i in range(len(df_p) + 1):
+                fig.add_shape(
+                    type="line", x0=i-0.5, x1=i-0.5, 
+                    y0=-0.45, y1=0, 
+                    xref="x", yref="paper",
+                    line=dict(color="#EEEEEE", width=1)
+                ) 
+
+            # Iteración para etiquetas y anotaciones
+            for i, r in df_p.iterrows():
+                # ETIQUETAS PARA $/KG
+                val_pkg_pp = r['Precio por Kg ($)']
+                txt_pkg_pp = f"${val_pkg_pp:,.0f}"
+
+                fig.add_annotation(
+                    x=i, y=r["Precio por Kg ($)"], 
+                    text=f"<b>{txt_pkg_pp}</b>", 
+                    yshift=15, 
+                    showarrow=False, 
+                    font=dict(size=t_pkg, color="#212121"),
+                    bgcolor="rgba(255,255,255,0.9)", 
+                    bordercolor="#616161", 
+                    borderwidth=1
+                )
                 
-                        with col_pp1:
-                            lista_canales = sorted(st.session_state.data["Canal"].unique().tolist())
-                            sel_canal_pp = st.multiselect("Filtrar por Canal", lista_canales, key="filter_pp_canal")
-                
-                        with col_pp2:
-                            lista_prod_pp = sorted(st.session_state.data["Producto"].unique().tolist())
-                            sel_prod_pp = st.multiselect("Filtrar por Producto", lista_prod_pp, key="filter_pp_prod")
-                
-                        # Lógica de filtrado sobre el DataFrame df_p
-                        if sel_canal_pp:
-                            df_p = df_p[df_p["Canal"].isin(sel_canal_pp)]
-                        if sel_prod_pp:
-                            df_p = df_p[df_p["Producto"].isin(sel_prod_pp)]
-                
-                        # Ordenamiento específico del modo Price Pack
-                        ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIOS": 5, "CONVENIENCIA": 6}
-                        df_p["O_Can"] = df_p["Canal"].str.upper().map(ord_can).fillna(99)
-                        df_p = df_p.sort_values(by=["O_Can", "Precio ($)"]).reset_index(drop=True)
-                        
-                        # Solo renderizamos el gráfico si hay datos tras filtrar
-                        if not df_p.empty:
-                            import plotly.graph_objects as go
-                            fig = go.Figure()
-                
-                            # 1. Barras de fondo (Pkg)
-                            fig.add_trace(go.Bar(
-                                x=df_p.index, 
-                                y=df_p["Precio por Kg ($)"], 
-                                marker_color="#F8F9FA",
-                                marker_line=dict(color="#D1D1D1", width=1),
-                                marker_opacity=opacidad_barras,
-                                width=ancho_barras,
-                                showlegend=False
-                            ))
-                            
-                            # Líneas de división de fondo
-                            for i in range(len(df_p) + 1):
-                                fig.add_shape(
-                                    type="line", x0=i-0.5, x1=i-0.5, 
-                                    y0=-0.45, y1=0, 
-                                    xref="x", yref="paper",
-                                    line=dict(color="#EEEEEE", width=1)
-                                ) 
-                
-                            # Iteración para etiquetas y anotaciones
-                            for i, r in df_p.iterrows():
-                                # ETIQUETAS PARA $/KG
-                                val_pkg_pp = r['Precio por Kg ($)']
-                                txt_pkg_pp = f"${val_pkg_pp:,.0f}"
-                
-                                fig.add_annotation(
-                                    x=i, y=r["Precio por Kg ($)"], 
-                                    text=f"<b>{txt_pkg_pp}</b>", 
-                                    yshift=15, 
-                                    showarrow=False, 
-                                    font=dict(size=t_pkg, color="#212121"),
-                                    bgcolor="rgba(255,255,255,0.9)", 
-                                    bordercolor="#616161", 
-                                    borderwidth=1
-                                )
-                                
-                                # ETIQUETAS PARA PRECIO DESEMBOLSO (Cajas Azules)
-                                p_pp = r['Precio ($)']
-                                txt_p_pp = f"${p_pp:.1f}" if p_pp < 10 else f"${int(p_pp)}"
-                
-                                fig.add_annotation(
-                                    x=i, y=15, 
-                                    text=f"<b>{txt_p_pp}</b>", 
-                                    showarrow=False, 
-                                    font=dict(size=t_precios, color="white"),
-                                    bgcolor="#00B0F0", 
-                                    bordercolor="black", 
-                                    borderwidth=1.5,      
-                                    borderpad=4
-                                )
-                            
-                            # Agrupación visual por Canal en el eje X
-                            for cat in df_p["Canal"].unique():
-                                indices = df_p.index[df_p["Canal"] == cat].tolist()
-                                center = (indices[0] + indices[-1]) / 2
-                                fig.add_shape(
-                                    type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, 
-                                    y0=-0.6, y1=1, xref="x", yref="paper", 
-                                    line=dict(color="#CCCCCC", width=1.5) 
-                                )
-                                fig.add_annotation(
-                                    x=center, y=-0.6, xref="x", yref="paper", 
-                                    text=cat, 
-                                    showarrow=False, 
-                                    font=dict(size=14, color="#424242", family="Verdana")
-                                )
-                            
-                            # Configuración de Layout (Ejes y Márgenes)
-                            fig.update_layout(
-                                height=alto_grafico,
-                                margin=dict(b=margen_b, t=50, l=50, r=50),
-                                template="plotly_white", 
-                                xaxis=dict(
-                                    tickmode='array', 
-                                    tickvals=list(df_p.index), 
-                                    ticktext=["<b>"+str(t)+"</b>" for t in df_p["Producto"]],
-                                    tickangle=angulo_nombres,
-                                    tickfont=dict(color="#000000", size=t_nombres, family="Verdana"),
-                                    showgrid=False
-                                ),
-                                yaxis=dict(
-                                    tickprefix="$", 
-                                    showgrid=True, 
-                                    gridcolor="#F5F5F5"
-                                )
-                            )
-                    
-                            # Renderizado con config de descarga
-                            st.plotly_chart(fig, use_container_width=True, config={
-                                'toImageButtonOptions': {
-                                    'format': 'png',
-                                    'filename': 'Price_Pack_Export',
-                                    'height': alto_grafico,
-                                    'width': 1950,
-                                    'scale': 2
-                                }
-                            })
-                        else:
-                            st.info("Utiliza los filtros para visualizar los datos del Price Pack.")
-                    else:
-                        st.warning("La base de datos actual no corresponde al formato de Price Pack (Falta columna 'Canal').")
+                # ETIQUETAS PARA PRECIO DESEMBOLSO (Cajas Azules)
+                p_pp = r['Precio ($)']
+                txt_p_pp = f"${p_pp:.1f}" if p_pp < 10 else f"${int(p_pp)}"
+
+                fig.add_annotation(
+                    x=i, y=15, 
+                    text=f"<b>{txt_p_pp}</b>", 
+                    showarrow=False, 
+                    font=dict(size=t_precios, color="white"),
+                    bgcolor="#00B0F0", 
+                    bordercolor="black", 
+                    borderwidth=1.5,      
+                    borderpad=4
+                )
+            
+            # Agrupación visual por Canal en el eje X
+            for cat in df_p["Canal"].unique():
+                indices = df_p.index[df_p["Canal"] == cat].tolist()
+                center = (indices[0] + indices[-1]) / 2
+                fig.add_shape(
+                    type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, 
+                    y0=-0.6, y1=1, xref="x", yref="paper", 
+                    line=dict(color="#CCCCCC", width=1.5) 
+                )
+                fig.add_annotation(
+                    x=center, y=-0.6, xref="x", yref="paper", 
+                    text=cat, 
+                    showarrow=False, 
+                    font=dict(size=14, color="#424242", family="Verdana")
+                )
+            
+            # Configuración de Layout (Ejes y Márgenes)
+            fig.update_layout(
+                height=alto_grafico,
+                margin=dict(b=margen_b, t=50, l=50, r=50),
+                template="plotly_white", 
+                xaxis=dict(
+                    tickmode='array', 
+                    tickvals=list(df_p.index), 
+                    ticktext=["<b>"+str(t)+"</b>" for t in df_p["Producto"]],
+                    tickangle=angulo_nombres,
+                    tickfont=dict(color="#000000", size=t_nombres, family="Verdana"),
+                    showgrid=False
+                ),
+                yaxis=dict(
+                    tickprefix="$", 
+                    showgrid=True, 
+                    gridcolor="#F5F5F5"
+                )
+            )
+    
+            # Renderizado con config de descarga
+            st.plotly_chart(fig, use_container_width=True, config={
+                'toImageButtonOptions': {
+                    'format': 'png',
+                    'filename': 'Price_Pack_Export',
+                    'height': alto_grafico,
+                    'width': 1950,
+                    'scale': 2
+                }
+            })
                 
 # --- 8. COMPARATIVAS INDEX (UNIFICADO: LADDER + ARQUITECTURA PPT) ---
 # Agregamos la condición para que esta sección solo se ejecute en los modos que usan Index
