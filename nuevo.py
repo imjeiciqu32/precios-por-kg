@@ -838,18 +838,18 @@ if not st.session_state.data.empty:
 
         # Agrupadores por Expander para limpieza visual
         with st.expander("📏 Dimensiones y Espaciado"):
-            alto_grafico = st.slider("Alto del Gráfico", 400, 1500, key="slider_alto")
-            espacio_v = st.slider("Espacio entre Gráficos", 0.0, 0.2, key="slider_espacio")
-            margen_b = st.slider("Margen Inferior (Nombres)", 50, 600, key="slider_margen_b")
-            ancho_barras = st.slider("Ancho de Barras", 0.1, 1.0, key="slider_ancho")
-            opacidad_barras = st.slider("Opacidad Barras", 0.1, 1.0, key="slider_opacidad")
-
+            alto_grafico = st.slider("Alto del Gráfico", 400, 1500, value=st.session_state["slider_alto"], key="slider_alto")
+            espacio_v = st.slider("Espacio entre Gráficos", 0.0, 0.2, value=st.session_state["slider_espacio"], key="slider_espacio")
+            margen_b = st.slider("Margen Inferior (Nombres)", 50, 600, value=st.session_state["slider_margen_b"], key="slider_margen_b")
+            ancho_barras = st.slider("Ancho de Barras", 0.1, 1.0, value=st.session_state["slider_ancho"], key="slider_ancho")
+            opacidad_barras = st.slider("Opacidad Barras", 0.1, 1.0, value=st.session_state["slider_opacidad"], key="slider_opacidad")
+        
         with st.expander("🔡 Tipografía y Texto"):
-            t_nombres = st.slider("Tamaño Nombres", 8, 30, key="slider_nombres")
-            t_precios = st.slider("Tamaño Precios ($)", 10, 40, key="slider_precios")
-            t_pkg = st.slider("Tamaño $/Kg", 10, 40, key="slider_pkg")
-            t_som = st.slider("Tamaño SOM (%)", 8, 25, key="slider_som") # <--- NUEVO
-            angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, key="slider_angulo")
+            t_nombres = st.slider("Tamaño Nombres", 8, 30, value=st.session_state["slider_nombres"], key="slider_nombres")
+            t_precios = st.slider("Tamaño Precios ($)", 10, 40, value=st.session_state["slider_precios"], key="slider_precios")
+            t_pkg = st.slider("Tamaño $/Kg", 10, 40, value=st.session_state["slider_pkg"], key="slider_pkg")
+            t_som = st.slider("Tamaño SOM (%)", 8, 25, value=st.session_state["slider_som"], key="slider_som")
+            angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, value=st.session_state["slider_angulo"], key="slider_angulo")
     
     # --- INSERCIÓN DE FILTROS (MODO LADDER) ---
     if modo == "Price Ladder":
