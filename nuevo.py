@@ -7,7 +7,31 @@ from plotly.subplots import make_subplots
 import os
 import io
 
-
+# ============================================
+# INICIALIZACIÓN DE SLIDERS Y ESTADOS (DEBE ESTAR AQUÍ AL INICIO)
+# ============================================
+if 'form_success' not in st.session_state:
+    st.session_state.form_success = False
+if "slider_nombres" not in st.session_state:
+    st.session_state["slider_nombres"] = 14
+if "slider_precios" not in st.session_state:
+    st.session_state["slider_precios"] = 18
+if "slider_pkg" not in st.session_state:
+    st.session_state["slider_pkg"] = 16
+if "slider_som" not in st.session_state:
+    st.session_state["slider_som"] = 13
+if "slider_ancho" not in st.session_state:
+    st.session_state["slider_ancho"] = 0.6
+if "slider_opacidad" not in st.session_state:
+    st.session_state["slider_opacidad"] = 1.0
+if "slider_alto" not in st.session_state:
+    st.session_state["slider_alto"] = 950
+if "slider_espacio" not in st.session_state:
+    st.session_state["slider_espacio"] = 0.03
+if "slider_margen_b" not in st.session_state:
+    st.session_state["slider_margen_b"] = 400
+if "slider_angulo" not in st.session_state:
+    st.session_state["slider_angulo"] = -90
     
 TOKEN_BANXICO = "c668242067560df5be4f797a7137dd88c2a1571937fe7c82b567cceffc09b20a"
 FECHA_INICIO_FILTRO = "2020-01-01"
@@ -372,31 +396,7 @@ if "data" not in st.session_state or st.session_state.get("last_modo") != modo:
     
     st.session_state.last_modo = modo
 
-# ============================================
-# INICIALIZACIÓN DE SLIDERS Y ESTADOS (DEBE ESTAR AQUÍ AL INICIO)
-# ============================================
-if 'form_success' not in st.session_state:
-    st.session_state.form_success = False
-if "slider_nombres" not in st.session_state:
-    st.session_state["slider_nombres"] = 14
-if "slider_precios" not in st.session_state:
-    st.session_state["slider_precios"] = 18
-if "slider_pkg" not in st.session_state:
-    st.session_state["slider_pkg"] = 16
-if "slider_som" not in st.session_state:
-    st.session_state["slider_som"] = 13
-if "slider_ancho" not in st.session_state:
-    st.session_state["slider_ancho"] = 0.6
-if "slider_opacidad" not in st.session_state:
-    st.session_state["slider_opacidad"] = 1.0
-if "slider_alto" not in st.session_state:
-    st.session_state["slider_alto"] = 950
-if "slider_espacio" not in st.session_state:
-    st.session_state["slider_espacio"] = 0.03
-if "slider_margen_b" not in st.session_state:
-    st.session_state["slider_margen_b"] = 400
-if "slider_angulo" not in st.session_state:
-    st.session_state["slider_angulo"] = -90
+
 
 # --- 4. BARRA LATERAL (GESTIÓN MEJORADA CON DISEÑO PREMIUM) ---
 with st.sidebar:
