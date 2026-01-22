@@ -372,6 +372,32 @@ if "data" not in st.session_state or st.session_state.get("last_modo") != modo:
     
     st.session_state.last_modo = modo
 
+# ============================================
+# INICIALIZACIÓN DE SLIDERS Y ESTADOS (DEBE ESTAR AQUÍ AL INICIO)
+# ============================================
+if 'form_success' not in st.session_state:
+    st.session_state.form_success = False
+if "slider_nombres" not in st.session_state:
+    st.session_state["slider_nombres"] = 14
+if "slider_precios" not in st.session_state:
+    st.session_state["slider_precios"] = 18
+if "slider_pkg" not in st.session_state:
+    st.session_state["slider_pkg"] = 16
+if "slider_som" not in st.session_state:
+    st.session_state["slider_som"] = 13
+if "slider_ancho" not in st.session_state:
+    st.session_state["slider_ancho"] = 0.6
+if "slider_opacidad" not in st.session_state:
+    st.session_state["slider_opacidad"] = 1.0
+if "slider_alto" not in st.session_state:
+    st.session_state["slider_alto"] = 950
+if "slider_espacio" not in st.session_state:
+    st.session_state["slider_espacio"] = 0.03
+if "slider_margen_b" not in st.session_state:
+    st.session_state["slider_margen_b"] = 400
+if "slider_angulo" not in st.session_state:
+    st.session_state["slider_angulo"] = -90
+
 # --- 4. BARRA LATERAL (GESTIÓN MEJORADA CON DISEÑO PREMIUM) ---
 with st.sidebar:
     # Header principal con gradiente
@@ -600,29 +626,6 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # --- 5. PANEL PRINCIPAL ---
-if 'form_success' not in st.session_state:
-    st.session_state.form_success = False
-if "slider_nombres" not in st.session_state:
-    st.session_state["slider_nombres"] = 14
-if "slider_precios" not in st.session_state:
-    st.session_state["slider_precios"] = 18
-if "slider_pkg" not in st.session_state:
-    st.session_state["slider_pkg"] = 16
-if "slider_som" not in st.session_state:
-    st.session_state["slider_som"] = 13
-if "slider_ancho" not in st.session_state:
-    st.session_state["slider_ancho"] = 0.6
-if "slider_opacidad" not in st.session_state:
-    st.session_state["slider_opacidad"] = 1.0
-if "slider_alto" not in st.session_state:
-    st.session_state["slider_alto"] = 950
-if "slider_espacio" not in st.session_state:
-    st.session_state["slider_espacio"] = 0.03
-if "slider_margen_b" not in st.session_state:
-    st.session_state["slider_margen_b"] = 400
-if "slider_angulo" not in st.session_state:
-    st.session_state["slider_angulo"] = -90
-    
 # Icono según el modo
 iconos_modo = {
     "price ladder": "🪜",
@@ -639,11 +642,13 @@ st.divider()
 
 # --- 5. FORMULARIOS DE AGREGAR ---
 
-
-
 # Solo mostramos el formulario si no estamos en el modo "Price and Volume"
 if modo in ["Price Ladder", "Price Pack"]:
     
+    # Mostrar mensaje de éxito si se agregó un producto
+    if st.session_state.form_success:
+        st.success("✅ ¡Producto agregado exitosamente!")
+        st.session_state.form_success = False
     
     with st.expander(f"➕ Agregar nuevo SKU a {modo}", expanded=False):
         with st.form("form_nuevo_sku", clear_on_submit=True):
@@ -747,15 +752,15 @@ if modo == "Price Ladder":
 
         with col_f1:
             lista_fab = sorted(st.session_state.data["Fabricante"].unique().tolist())
-            sel_fab = st.multiselect("Filtrar por Fabricante", lista_fab)  # ❌ QUITÉ key="filter_fab"
+            sel_fab = st.multiselect("Filtrar por Fabricante", lista_fab)
 
         with col_f2:
             lista_oca = sorted(st.session_state.data["Ocasión"].unique().tolist())
-            sel_oca = st.multiselect("Filtrar por Ocasión", lista_oca)  # ❌ QUITÉ key="filter_oca"
+            sel_oca = st.multiselect("Filtrar por Ocasión", lista_oca)
 
         with col_f3:
             lista_prod = sorted(st.session_state.data["Producto"].unique().tolist())
-            sel_prod = st.multiselect("Filtrar por Producto", lista_prod)  # ❌ QUITÉ key="filter_prod"
+            sel_prod = st.multiselect("Filtrar por Producto", lista_prod)
 
 elif modo == "Price Pack":
     st.write("") 
@@ -767,11 +772,11 @@ elif modo == "Price Pack":
     
             with col_pp1:
                 lista_canales = sorted(st.session_state.data["Canal"].unique().tolist())
-                sel_canal_pp = st.multiselect("Filtrar por Canal", lista_canales, key="filter_pp_canal")  # Este sí tiene key porque ya lo tenía
+                sel_canal_pp = st.multiselect("Filtrar por Canal", lista_canales, key="filter_pp_canal")
     
             with col_pp2:
                 lista_prod_pp = sorted(st.session_state.data["Producto"].unique().tolist())
-                sel_prod_pp = st.multiselect("Filtrar por Producto", lista_prod_pp, key="filter_pp_prod")  # Este sí tiene key porque ya lo tenía
+                sel_prod_pp = st.multiselect("Filtrar por Producto", lista_prod_pp, key="filter_pp_prod")
 
 
 # --- 6.8 PANEL EJECUTIVO (FORMATO TABLA EJECUTIVA) ---
