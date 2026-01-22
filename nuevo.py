@@ -613,8 +613,19 @@ st.divider()
 
 
 # --- 5. FORMULARIOS DE AGREGAR ---
+
+# Inicializar estado para mensaje de éxito
+if 'form_success' not in st.session_state:
+    st.session_state.form_success = False
+
 # Solo mostramos el formulario si no estamos en el modo "Price and Volume"
 if modo in ["Price Ladder", "Price Pack"]:
+    
+    # Mostrar mensaje de éxito si se agregó un producto
+    if st.session_state.form_success:
+        st.success("✅ ¡Producto agregado exitosamente!")
+        st.session_state.form_success = False
+    
     with st.expander(f"➕ Agregar nuevo SKU a {modo}", expanded=False):
         with st.form("form_nuevo_sku", clear_on_submit=True):
             col1, col2, col3 = st.columns(3)
@@ -640,9 +651,10 @@ if modo in ["Price Ladder", "Price Pack"]:
                     st.session_state.data = pd.concat([st.session_state.data, nuevo], ignore_index=True)
                     st.session_state.data = calcular_pkg(st.session_state.data, modo)
                     st.session_state.data.to_csv(DB_FILE, index=False)
+                    st.session_state.form_success = True
                     st.rerun()
             
-            else: # Este sería el caso de "Price Pack Architecture"
+            else: # Price Pack Architecture
                 f_fam = col2.text_input("Familia").upper()
                 f_can = col3.selectbox("Canal", opciones_agru)
                 col4, col5 = st.columns(2)
@@ -660,6 +672,7 @@ if modo in ["Price Ladder", "Price Pack"]:
                     st.session_state.data = pd.concat([st.session_state.data, nuevo], ignore_index=True)
                     st.session_state.data = calcular_pkg(st.session_state.data, modo)
                     st.session_state.data.to_csv(DB_FILE, index=False)
+                    st.session_state.form_success = True
                     st.rerun()
                     
                     
