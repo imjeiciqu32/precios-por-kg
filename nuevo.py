@@ -7,6 +7,32 @@ from plotly.subplots import make_subplots
 import os
 import io
 
+# ============================================
+# INICIALIZACIÓN DE SESSION_STATE (AL INICIO DEL SCRIPT)
+# ============================================
+if 'form_success' not in st.session_state:
+    st.session_state.form_success = False
+if "slider_nombres" not in st.session_state:
+    st.session_state["slider_nombres"] = 14
+if "slider_precios" not in st.session_state:
+    st.session_state["slider_precios"] = 18
+if "slider_pkg" not in st.session_state:
+    st.session_state["slider_pkg"] = 16
+if "slider_som" not in st.session_state:
+    st.session_state["slider_som"] = 13
+if "slider_ancho" not in st.session_state:
+    st.session_state["slider_ancho"] = 0.6
+if "slider_opacidad" not in st.session_state:
+    st.session_state["slider_opacidad"] = 1.0
+if "slider_alto" not in st.session_state:
+    st.session_state["slider_alto"] = 950
+if "slider_espacio" not in st.session_state:
+    st.session_state["slider_espacio"] = 0.03
+if "slider_margen_b" not in st.session_state:
+    st.session_state["slider_margen_b"] = 400
+if "slider_angulo" not in st.session_state:
+    st.session_state["slider_angulo"] = -90
+    
 TOKEN_BANXICO = "c668242067560df5be4f797a7137dd88c2a1571937fe7c82b567cceffc09b20a"
 FECHA_INICIO_FILTRO = "2020-01-01"
 FECHA_FIN_FILTRO = "2025-12-31"
@@ -614,29 +640,7 @@ st.divider()
 
 # --- 5. FORMULARIOS DE AGREGAR ---
 
-# ✅ INICIALIZACIÓN AL INICIO (ANTES DE TODO)
-if 'form_success' not in st.session_state:
-    st.session_state.form_success = False
-if "slider_nombres" not in st.session_state:
-    st.session_state["slider_nombres"] = 14
-if "slider_precios" not in st.session_state:
-    st.session_state["slider_precios"] = 18
-if "slider_pkg" not in st.session_state:
-    st.session_state["slider_pkg"] = 16
-if "slider_som" not in st.session_state:
-    st.session_state["slider_som"] = 13
-if "slider_ancho" not in st.session_state:
-    st.session_state["slider_ancho"] = 0.6
-if "slider_opacidad" not in st.session_state:
-    st.session_state["slider_opacidad"] = 1.0
-if "slider_alto" not in st.session_state:
-    st.session_state["slider_alto"] = 950
-if "slider_espacio" not in st.session_state:
-    st.session_state["slider_espacio"] = 0.03
-if "slider_margen_b" not in st.session_state:
-    st.session_state["slider_margen_b"] = 400
-if "slider_angulo" not in st.session_state:
-    st.session_state["slider_angulo"] = -90
+
 
 # Solo mostramos el formulario si no estamos en el modo "Price and Volume"
 if modo in ["Price Ladder", "Price Pack"]:
