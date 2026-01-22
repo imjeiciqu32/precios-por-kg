@@ -748,15 +748,15 @@ if modo == "Price Ladder":
 
         with col_f1:
             lista_fab = sorted(st.session_state.data["Fabricante"].unique().tolist())
-            sel_fab = st.multiselect("Filtrar por Fabricante", lista_fab, key="filter_fab")
+            sel_fab = st.multiselect("Filtrar por Fabricante", lista_fab)  # ❌ QUITÉ key="filter_fab"
 
         with col_f2:
             lista_oca = sorted(st.session_state.data["Ocasión"].unique().tolist())
-            sel_oca = st.multiselect("Filtrar por Ocasión", lista_oca, key="filter_oca")
+            sel_oca = st.multiselect("Filtrar por Ocasión", lista_oca)  # ❌ QUITÉ key="filter_oca"
 
         with col_f3:
             lista_prod = sorted(st.session_state.data["Producto"].unique().tolist())
-            sel_prod = st.multiselect("Filtrar por Producto", lista_prod, key="filter_prod")
+            sel_prod = st.multiselect("Filtrar por Producto", lista_prod)  # ❌ QUITÉ key="filter_prod"
 
 elif modo == "Price Pack":
     st.write("") 
@@ -768,11 +768,11 @@ elif modo == "Price Pack":
     
             with col_pp1:
                 lista_canales = sorted(st.session_state.data["Canal"].unique().tolist())
-                sel_canal_pp = st.multiselect("Filtrar por Canal", lista_canales, key="filter_pp_canal")
+                sel_canal_pp = st.multiselect("Filtrar por Canal", lista_canales, key="filter_pp_canal")  # Este sí tiene key porque ya lo tenía
     
             with col_pp2:
                 lista_prod_pp = sorted(st.session_state.data["Producto"].unique().tolist())
-                sel_prod_pp = st.multiselect("Filtrar por Producto", lista_prod_pp, key="filter_pp_prod")
+                sel_prod_pp = st.multiselect("Filtrar por Producto", lista_prod_pp, key="filter_pp_prod")  # Este sí tiene key porque ya lo tenía
 
 
 # --- 6.8 PANEL EJECUTIVO (FORMATO TABLA EJECUTIVA) ---
