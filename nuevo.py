@@ -813,14 +813,28 @@ if not st.session_state.data.empty:
             reset_diseno()
         
         # Inicialización de estados (Safe Check)
-        defaults = {
-            "slider_nombres": 14, "slider_precios": 18, "slider_pkg": 16,
-            "slider_som": 13, "slider_ancho": 0.6, "slider_opacidad": 1.0, 
-            "slider_alto": 950, "slider_espacio": 0.03, "slider_margen_b": 400, 
-            "slider_angulo": -90
-        }
-        for key, val in defaults.items():
-            if key not in st.session_state: st.session_state[key] = val
+        # ✅ ESTO MANTIENE LOS VALORES DESPUÉS DE AGREGAR PRODUCTOS
+        # Inicialización SOLO la primera vez (cuando no existe la key)
+        if "slider_nombres" not in st.session_state:
+            st.session_state["slider_nombres"] = 14
+        if "slider_precios" not in st.session_state:
+            st.session_state["slider_precios"] = 18
+        if "slider_pkg" not in st.session_state:
+            st.session_state["slider_pkg"] = 16
+        if "slider_som" not in st.session_state:
+            st.session_state["slider_som"] = 13
+        if "slider_ancho" not in st.session_state:
+            st.session_state["slider_ancho"] = 0.6
+        if "slider_opacidad" not in st.session_state:
+            st.session_state["slider_opacidad"] = 1.0
+        if "slider_alto" not in st.session_state:
+            st.session_state["slider_alto"] = 950
+        if "slider_espacio" not in st.session_state:
+            st.session_state["slider_espacio"] = 0.03
+        if "slider_margen_b" not in st.session_state:
+            st.session_state["slider_margen_b"] = 400
+        if "slider_angulo" not in st.session_state:
+            st.session_state["slider_angulo"] = -90
 
         # Agrupadores por Expander para limpieza visual
         with st.expander("📏 Dimensiones y Espaciado"):
