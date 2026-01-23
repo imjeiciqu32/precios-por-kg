@@ -166,380 +166,30 @@ import json
 from datetime import datetime
 import base64
 
-# --- INICIALIZACIÓN DE SESSION STATE PARA TEMAS ---
-if "tema_actual" not in st.session_state:
-    st.session_state["tema_actual"] = "claro"
-if "modo_tema" not in st.session_state:
-    st.session_state["modo_tema"] = "manual"  # manual, auto
-if "color_acento" not in st.session_state:
-    st.session_state["color_acento"] = "#4A9EFF"
-if "brillo_tema" not in st.session_state:
-    st.session_state["brillo_tema"] = 100
+# ============================================================================
+# SISTEMA DE GUARDAR/CARGAR CONFIGURACIONES
+# Agregar este código al inicio de tu app, después de los imports
+# ============================================================================
+
+import json
+from datetime import datetime
+
+# --- INICIALIZACIÓN DE SESSION STATE ---
 if "configs_guardadas" not in st.session_state:
     st.session_state["configs_guardadas"] = {}
 
-# --- DEFINICIÓN DE PALETAS DE TEMAS ---
-TEMAS = {
-    "claro": {
-        "nombre": "☀️ Claro",
-        "fondo_principal": "#FFFFFF",
-        "fondo_secundario": "#F8F9FA",
-        "fondo_sidebar": "#F0F2F6",
-        "texto_principal": "#0E1117",
-        "texto_secundario": "#31333F",
-        "bordes": "#E0E0E0",
-        "acento": "#FF4B4B",
-        "input_bg": "#FFFFFF",
-        "plotly_template": "plotly_white"
-    },
-    "oscuro_suave": {
-        "nombre": "🌙 Oscuro Suave",
-        "fondo_principal": "#0E1117",
-        "fondo_secundario": "#1E1E1E",
-        "fondo_sidebar": "#161B22",
-        "texto_principal": "#FAFAFA",
-        "texto_secundario": "#B0B0B0",
-        "bordes": "#2D2D2D",
-        "acento": "#4A9EFF",
-        "input_bg": "#262626",
-        "plotly_template": "plotly_dark"
-    },
-    "oscuro_contraste": {
-        "nombre": "🌑 Oscuro Alto Contraste",
-        "fondo_principal": "#000000",
-        "fondo_secundario": "#0A0A0A",
-        "fondo_sidebar": "#050505",
-        "texto_principal": "#FFFFFF",
-        "texto_secundario": "#CCCCCC",
-        "bordes": "#333333",
-        "acento": "#00D9FF",
-        "input_bg": "#1A1A1A",
-        "plotly_template": "plotly_dark"
-    },
-    "corporativo": {
-        "nombre": "💼 Corporativo",
-        "fondo_principal": "#F5F7FA",
-        "fondo_secundario": "#FFFFFF",
-        "fondo_sidebar": "#E8EBF0",
-        "texto_principal": "#1A1A1A",
-        "texto_secundario": "#666666",
-        "bordes": "#D1D5DB",
-        "acento": "#0B3C8C",
-        "input_bg": "#FFFFFF",
-        "plotly_template": "plotly_white"
-    }
-}
-
-# --- FUNCIÓN PARA APLICAR TEMA ---
-def aplicar_tema(tema_key, color_acento=None, brillo=100):
-    """Aplica el tema seleccionado con CSS personalizado"""
-    
-    tema = TEMAS.get(tema_key, TEMAS["claro"])
-    acento = color_acento if color_acento else tema["acento"]
-    
-    # Ajustar brillo
-    factor_brillo = brillo / 100
-    
-    css = f"""
-    <style>
-        /* ============================================
-           VARIABLES CSS GLOBALES
-           ============================================ */
-        :root {{
-            --bg-principal: {tema['fondo_principal']};
-            --bg-secundario: {tema['fondo_secundario']};
-            --bg-sidebar: {tema['fondo_sidebar']};
-            --texto-principal: {tema['texto_principal']};
-            --texto-secundario: {tema['texto_secundario']};
-            --bordes: {tema['bordes']};
-            --acento: {acento};
-            --input-bg: {tema['input_bg']};
-        }}
-        
-        /* ============================================
-           FONDO PRINCIPAL Y SIDEBAR
-           ============================================ */
-        .stApp {{
-            background-color: var(--bg-principal) !important;
-            filter: brightness({factor_brillo});
-            transition: all 0.3s ease;
-        }}
-        
-        [data-testid="stSidebar"] {{
-            background-color: var(--bg-sidebar) !important;
-        }}
-        
-        [data-testid="stSidebar"] > div:first-child {{
-            background-color: var(--bg-sidebar) !important;
-        }}
-        
-        /* ============================================
-           TEXTOS Y TÍTULOS
-           ============================================ */
-        h1, h2, h3, h4, h5, h6 {{
-            color: var(--texto-principal) !important;
-        }}
-        
-        p, span, div, label {{
-            color: var(--texto-principal) !important;
-        }}
-        
-        .stMarkdown {{
-            color: var(--texto-principal) !important;
-        }}
-        
-        /* Texto secundario */
-        .stCaption, small {{
-            color: var(--texto-secundario) !important;
-        }}
-        
-        /* ============================================
-           EXPANDERS Y CONTAINERS
-           ============================================ */
-        [data-testid="stExpander"] {{
-            background-color: var(--bg-secundario) !important;
-            border: 1px solid var(--bordes) !important;
-            border-radius: 8px !important;
-        }}
-        
-        [data-testid="stExpander"] summary {{
-            background-color: var(--bg-secundario) !important;
-            color: var(--texto-principal) !important;
-        }}
-        
-        /* ============================================
-           INPUTS Y CONTROLES
-           ============================================ */
-        
-        /* Sliders */
-        .stSlider > div > div > div {{
-            background-color: var(--input-bg) !important;
-        }}
-        
-        .stSlider [data-baseweb="slider"] {{
-            background-color: var(--input-bg) !important;
-        }}
-        
-        /* Selectbox y Multiselect */
-        [data-baseweb="select"] {{
-            background-color: var(--input-bg) !important;
-        }}
-        
-        [data-baseweb="select"] > div {{
-            background-color: var(--input-bg) !important;
-            border-color: var(--bordes) !important;
-        }}
-        
-        /* Text Input */
-        .stTextInput > div > div > input {{
-            background-color: var(--input-bg) !important;
-            color: var(--texto-principal) !important;
-            border-color: var(--bordes) !important;
-        }}
-        
-        /* Number Input */
-        .stNumberInput > div > div > input {{
-            background-color: var(--input-bg) !important;
-            color: var(--texto-principal) !important;
-            border-color: var(--bordes) !important;
-        }}
-        
-        /* Color Picker */
-        [data-testid="stColorPicker"] > div > div {{
-            background-color: var(--input-bg) !important;
-            border-color: var(--bordes) !important;
-        }}
-        
-        /* Checkbox */
-        .stCheckbox {{
-            color: var(--texto-principal) !important;
-        }}
-        
-        /* Radio */
-        .stRadio {{
-            color: var(--texto-principal) !important;
-        }}
-        
-        /* ============================================
-           BOTONES
-           ============================================ */
-        .stButton > button {{
-            background-color: var(--acento) !important;
-            color: white !important;
-            border: none !important;
-            border-radius: 6px !important;
-            transition: all 0.2s ease !important;
-        }}
-        
-        .stButton > button:hover {{
-            opacity: 0.85 !important;
-            transform: translateY(-1px) !important;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
-        }}
-        
-        .stDownloadButton > button {{
-            background-color: var(--acento) !important;
-            color: white !important;
-            border: none !important;
-        }}
-        
-        /* ============================================
-           TABLAS Y DATAFRAMES
-           ============================================ */
-        [data-testid="stDataFrame"] {{
-            background-color: var(--bg-secundario) !important;
-        }}
-        
-        .dataframe {{
-            background-color: var(--bg-secundario) !important;
-            color: var(--texto-principal) !important;
-        }}
-        
-        .dataframe th {{
-            background-color: var(--input-bg) !important;
-            color: var(--texto-principal) !important;
-        }}
-        
-        .dataframe td {{
-            background-color: var(--bg-secundario) !important;
-            color: var(--texto-principal) !important;
-        }}
-        
-        /* ============================================
-           MENSAJES DE ESTADO
-           ============================================ */
-        .stSuccess {{
-            background-color: rgba(34, 197, 94, 0.1) !important;
-            border-left: 4px solid #22C55E !important;
-            color: var(--texto-principal) !important;
-        }}
-        
-        .stError {{
-            background-color: rgba(239, 68, 68, 0.1) !important;
-            border-left: 4px solid #EF4444 !important;
-            color: var(--texto-principal) !important;
-        }}
-        
-        .stWarning {{
-            background-color: rgba(251, 191, 36, 0.1) !important;
-            border-left: 4px solid #FBBF24 !important;
-            color: var(--texto-principal) !important;
-        }}
-        
-        .stInfo {{
-            background-color: rgba(59, 130, 246, 0.1) !important;
-            border-left: 4px solid #3B82F6 !important;
-            color: var(--texto-principal) !important;
-        }}
-        
-        /* ============================================
-           FILE UPLOADER
-           ============================================ */
-        [data-testid="stFileUploader"] {{
-            background-color: var(--bg-secundario) !important;
-            border: 2px dashed var(--bordes) !important;
-            border-radius: 8px !important;
-        }}
-        
-        [data-testid="stFileUploader"] section {{
-            background-color: var(--bg-secundario) !important;
-        }}
-        
-        /* ============================================
-           DIVIDERS
-           ============================================ */
-        hr {{
-            border-color: var(--bordes) !important;
-        }}
-        
-        /* ============================================
-           TOOLTIPS
-           ============================================ */
-        [data-testid="stTooltipIcon"] {{
-            color: var(--texto-secundario) !important;
-        }}
-        
-        /* ============================================
-           COLUMNAS Y CONTAINERS
-           ============================================ */
-        [data-testid="column"] {{
-            background-color: transparent !important;
-        }}
-        
-        /* ============================================
-           TARJETAS PERSONALIZADAS (Price Ladder, etc)
-           ============================================ */
-        div[style*="background:white"], 
-        div[style*="background: white"],
-        div[style*="background:#FFFFFF"],
-        div[style*="background: #FFFFFF"] {{
-            background-color: var(--bg-secundario) !important;
-        }}
-        
-        div[style*="border:1px solid #ddd"],
-        div[style*="border: 1px solid #ddd"] {{
-            border-color: var(--bordes) !important;
-        }}
-        
-        /* ============================================
-           SCROLLBAR
-           ============================================ */
-        ::-webkit-scrollbar {{
-            width: 10px;
-            height: 10px;
-        }}
-        
-        ::-webkit-scrollbar-track {{
-            background: var(--bg-principal);
-        }}
-        
-        ::-webkit-scrollbar-thumb {{
-            background: var(--bordes);
-            border-radius: 5px;
-        }}
-        
-        ::-webkit-scrollbar-thumb:hover {{
-            background: var(--texto-secundario);
-        }}
-        
-        /* ============================================
-           ANIMACIONES
-           ============================================ */
-        * {{
-            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-        }}
-    </style>
-    """
-    
-    st.markdown(css, unsafe_allow_html=True)
-    
-    # Guardar tema actual
-    st.session_state["plotly_template"] = tema["plotly_template"]
-
-# --- FUNCIÓN PARA DETECTAR HORA Y APLICAR TEMA AUTO ---
-def aplicar_tema_auto():
-    """Aplica tema automático según la hora del día"""
-    hora_actual = datetime.now().hour
-    
-    # 6 AM - 6 PM: Claro
-    # 6 PM - 6 AM: Oscuro
-    if 6 <= hora_actual < 18:
-        return "claro"
-    else:
-        return "oscuro_suave"
-
 # --- FUNCIÓN PARA GUARDAR CONFIGURACIÓN ---
 def guardar_configuracion(nombre):
-    """Guarda la configuración actual completa"""
+    """
+    Guarda la configuración actual completa incluyendo:
+    - Todos los sliders de diseño
+    - Configuración del grid
+    - Colores personalizados de productos
+    """
     
     config = {
         "nombre": nombre,
         "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "tema": {
-            "tema_actual": st.session_state.get("tema_actual", "claro"),
-            "color_acento": st.session_state.get("color_acento", "#4A9EFF"),
-            "brillo": st.session_state.get("brillo_tema", 100)
-        },
         "diseno": {
             "slider_nombres": st.session_state.get("slider_nombres", 14),
             "slider_precios": st.session_state.get("slider_precios", 18),
@@ -568,6 +218,331 @@ def guardar_configuracion(nombre):
     
     st.session_state["configs_guardadas"][nombre] = config
     return config
+
+# --- FUNCIÓN PARA CARGAR CONFIGURACIÓN ---
+def cargar_configuracion(nombre):
+    """
+    Carga una configuración guardada y la aplica inmediatamente
+    """
+    
+    if nombre not in st.session_state["configs_guardadas"]:
+        return False
+    
+    config = st.session_state["configs_guardadas"][nombre]
+    
+    # Aplicar todos los valores de diseño
+    if "diseno" in config:
+        for key, value in config["diseno"].items():
+            st.session_state[key] = value
+    
+    # Aplicar configuración del grid
+    if "grid" in config:
+        for key, value in config["grid"].items():
+            st.session_state[key] = value
+    
+    # Aplicar colores personalizados
+    if "colores_personalizados" in config:
+        st.session_state["custom_colors"] = config["colores_personalizados"]
+    
+    return True
+
+# --- FUNCIÓN PARA EXPORTAR CONFIGURACIÓN ---
+def exportar_configuracion(nombre):
+    """
+    Exporta una configuración como archivo JSON para descargar
+    """
+    
+    if nombre not in st.session_state["configs_guardadas"]:
+        return None
+    
+    config = st.session_state["configs_guardadas"][nombre]
+    json_str = json.dumps(config, indent=2, ensure_ascii=False)
+    
+    return json_str
+
+# --- FUNCIÓN PARA IMPORTAR CONFIGURACIÓN ---
+def importar_configuracion(json_str):
+    """
+    Importa una configuración desde un archivo JSON
+    """
+    
+    try:
+        config = json.loads(json_str)
+        nombre = config.get("nombre", f"Importada_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+        st.session_state["configs_guardadas"][nombre] = config
+        return nombre
+    except Exception as e:
+        return None
+
+# --- FUNCIÓN PARA ELIMINAR CONFIGURACIÓN ---
+def eliminar_configuracion(nombre):
+    """
+    Elimina una configuración guardada
+    """
+    
+    if nombre in st.session_state["configs_guardadas"]:
+        del st.session_state["configs_guardadas"][nombre]
+        return True
+    return False
+
+# --- FUNCIÓN PARA DUPLICAR CONFIGURACIÓN ---
+def duplicar_configuracion(nombre_original, nombre_nuevo):
+    """
+    Crea una copia de una configuración existente
+    """
+    
+    if nombre_original not in st.session_state["configs_guardadas"]:
+        return False
+    
+    config_original = st.session_state["configs_guardadas"][nombre_original].copy()
+    config_original["nombre"] = nombre_nuevo
+    config_original["fecha"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    st.session_state["configs_guardadas"][nombre_nuevo] = config_original
+    return True
+
+# ============================================================================
+# PANEL DE CONTROL EN SIDEBAR
+# Agregar esto en tu sidebar donde quieras que aparezca
+# ============================================================================
+
+with st.sidebar:
+    st.markdown("---")
+    
+    with st.expander("💾 Configuraciones", expanded=False):
+        st.markdown("### Guardar/Cargar Presets")
+        st.caption("Guarda tu configuración actual de diseño, grid y colores para reutilizarla después.")
+        
+        # ===== SECCIÓN: GUARDAR NUEVA =====
+        st.markdown("#### 💾 Guardar Actual")
+        nombre_nuevo = st.text_input(
+            "Nombre del preset",
+            placeholder="Ej: Presentación Ejecutiva",
+            key="input_nombre_config",
+            help="Dale un nombre descriptivo a tu configuración"
+        )
+        
+        col_guardar1, col_guardar2 = st.columns([2, 1])
+        with col_guardar1:
+            if st.button("💾 Guardar", key="btn_guardar_config", use_container_width=True):
+                if nombre_nuevo.strip():
+                    if nombre_nuevo in st.session_state["configs_guardadas"]:
+                        st.warning(f"⚠️ Ya existe '{nombre_nuevo}'. ¿Sobrescribir?")
+                        if st.button("✅ Sí, sobrescribir", key="btn_confirm_overwrite"):
+                            guardar_configuracion(nombre_nuevo)
+                            st.success(f"✅ '{nombre_nuevo}' actualizado!")
+                            st.rerun()
+                    else:
+                        guardar_configuracion(nombre_nuevo)
+                        st.success(f"✅ '{nombre_nuevo}' guardado!")
+                        st.rerun()
+                else:
+                    st.error("❌ Ingresa un nombre válido")
+        
+        with col_guardar2:
+            # Mostrar contador de configs guardadas
+            num_configs = len(st.session_state["configs_guardadas"])
+            st.metric("Guardadas", num_configs)
+        
+        # ===== SECCIÓN: CARGAR EXISTENTE =====
+        if st.session_state["configs_guardadas"]:
+            st.markdown("---")
+            st.markdown("#### 📂 Cargar Preset")
+            
+            # Lista de configuraciones con info
+            configs_info = []
+            for nombre, config in st.session_state["configs_guardadas"].items():
+                fecha = config.get("fecha", "Sin fecha")
+                configs_info.append(f"{nombre} ({fecha})")
+            
+            config_seleccionada = st.selectbox(
+                "Selecciona un preset",
+                ["-- Ninguna --"] + list(st.session_state["configs_guardadas"].keys()),
+                key="select_config",
+                help="Elige una configuración guardada para cargar"
+            )
+            
+            if config_seleccionada != "-- Ninguna --":
+                config_info = st.session_state["configs_guardadas"][config_seleccionada]
+                
+                # Mostrar info de la config
+                st.info(f"""
+                📅 **Creada:** {config_info['fecha']}
+                
+                **Incluye:**
+                - ✅ Tamaños de texto
+                - ✅ Dimensiones de gráfico
+                - ✅ Configuración de grid
+                - ✅ Colores personalizados ({len(config_info.get('colores_personalizados', {}))})
+                """)
+                
+                # Botones de acción
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    if st.button("📂 Cargar", key="btn_cargar_config", use_container_width=True, help="Aplicar esta configuración"):
+                        if cargar_configuracion(config_seleccionada):
+                            st.success(f"✅ '{config_seleccionada}' cargado!")
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al cargar")
+                
+                with col2:
+                    # Exportar como JSON
+                    json_export = exportar_configuracion(config_seleccionada)
+                    if json_export:
+                        st.download_button(
+                            "📥 Exportar",
+                            data=json_export,
+                            file_name=f"{config_seleccionada.replace(' ', '_')}.json",
+                            mime="application/json",
+                            key="btn_export_config",
+                            use_container_width=True,
+                            help="Descargar como archivo JSON"
+                        )
+                
+                with col3:
+                    if st.button("🗑️", key="btn_delete_config", use_container_width=True, help="Eliminar este preset"):
+                        if eliminar_configuracion(config_seleccionada):
+                            st.success("✅ Eliminado!")
+                            st.rerun()
+                
+                # Opción para duplicar
+                st.markdown("**Duplicar preset:**")
+                col_dup1, col_dup2 = st.columns([2, 1])
+                with col_dup1:
+                    nombre_duplicado = st.text_input(
+                        "Nuevo nombre",
+                        placeholder=f"{config_seleccionada} - Copia",
+                        key="input_duplicar",
+                        label_visibility="collapsed"
+                    )
+                with col_dup2:
+                    if st.button("📋", key="btn_duplicar", use_container_width=True, help="Duplicar"):
+                        if nombre_duplicado.strip():
+                            if duplicar_configuracion(config_seleccionada, nombre_duplicado):
+                                st.success(f"✅ Duplicado como '{nombre_duplicado}'")
+                                st.rerun()
+        
+        # ===== SECCIÓN: IMPORTAR =====
+        st.markdown("---")
+        st.markdown("#### 📤 Importar Preset")
+        st.caption("Sube un archivo JSON de configuración exportado previamente")
+        
+        archivo_config = st.file_uploader(
+            "Sube archivo JSON",
+            type=["json"],
+            key="upload_config",
+            label_visibility="collapsed",
+            help="Importa configuraciones de otros equipos o respaldos"
+        )
+        
+        if archivo_config:
+            try:
+                json_str = archivo_config.read().decode("utf-8")
+                nombre_importada = importar_configuracion(json_str)
+                if nombre_importada:
+                    st.success(f"✅ '{nombre_importada}' importado!")
+                    st.rerun()
+                else:
+                    st.error("❌ Error: Archivo JSON inválido")
+            except Exception as e:
+                st.error(f"❌ Error al leer archivo: {str(e)}")
+        
+        # ===== SECCIÓN: LISTA RÁPIDA =====
+        if st.session_state["configs_guardadas"]:
+            st.markdown("---")
+            st.markdown("#### 📋 Todos los Presets")
+            
+            for nombre in list(st.session_state["configs_guardadas"].keys()):
+                col_nombre, col_btn = st.columns([3, 1])
+                with col_nombre:
+                    st.caption(f"• **{nombre}**")
+                with col_btn:
+                    if st.button("🗑️", key=f"quick_delete_{nombre}", help=f"Eliminar {nombre}"):
+                        if eliminar_configuracion(nombre):
+                            st.rerun()
+        else:
+            st.info("💡 No hay presets guardados aún. ¡Crea el primero!")
+        
+        # ===== SECCIÓN: AYUDA =====
+        st.markdown("---")
+        with st.expander("❓ ¿Cómo usar?"):
+            st.markdown("""
+            ### 📖 Guía Rápida
+            
+            **1. Guardar configuración:**
+            - Ajusta todos tus sliders y colores
+            - Dale un nombre descriptivo
+            - Click en "Guardar"
+            
+            **2. Cargar configuración:**
+            - Selecciona un preset de la lista
+            - Click en "Cargar"
+            - ¡Todo se aplica automáticamente!
+            
+            **3. Exportar/Importar:**
+            - **Exportar:** Descarga como JSON para backup o compartir
+            - **Importar:** Sube un JSON para restaurar o usar configs de otros
+            
+            **4. Casos de uso:**
+            - 📊 **Presentación:** Texto grande, grid limpio
+            - 🔬 **Análisis:** Texto pequeño, grid denso
+            - 🖨️ **Impresión:** Colores optimizados
+            - 💼 **Ejecutivo:** Diseño corporativo
+            
+            **💡 Tip:** Crea presets para cada ocasión y cambia rápidamente entre ellos.
+            """)
+
+# ============================================================================
+# EJEMPLOS DE USO EN TU CÓDIGO
+# ============================================================================
+
+
+EJEMPLO 1: Cargar automáticamente un preset al inicio
+---------------------------------------------------------
+if "preset_cargado" not in st.session_state:
+    if "Presentación Ejecutiva" in st.session_state["configs_guardadas"]:
+        cargar_configuracion("Presentación Ejecutiva")
+        st.session_state["preset_cargado"] = True
+        st.rerun()
+
+
+EJEMPLO 2: Crear presets predefinidos al inicio de la app
+---------------------------------------------------------
+# Crear preset por defecto si no existe
+if "configs_guardadas" not in st.session_state or not st.session_state["configs_guardadas"]:
+    # Configurar valores default
+    st.session_state["slider_nombres"] = 16
+    st.session_state["slider_precios"] = 20
+    st.session_state["slider_ancho"] = 0.7
+    # ... etc
+    
+    # Guardar como "Default"
+    guardar_configuracion("Default")
+
+
+EJEMPLO 3: Mostrar preset actual en el título
+---------------------------------------------------------
+preset_actual = "Sin preset"
+for nombre, config in st.session_state["configs_guardadas"].items():
+    # Comparar si los valores actuales coinciden con algún preset
+    if (st.session_state.get("slider_nombres") == config["diseno"]["slider_nombres"] and
+        st.session_state.get("slider_precios") == config["diseno"]["slider_precios"]):
+        preset_actual = nombre
+        break
+
+st.sidebar.success(f"📌 Preset actual: **{preset_actual}**")
+
+
+EJEMPLO 4: Botón de reset con confirmación
+---------------------------------------------------------
+if st.sidebar.button("🔄 Reset a valores default"):
+    if "Default" in st.session_state["configs_guardadas"]:
+        cargar_configuracion("Default")
+        st.success("✅ Reseteado a valores default")
+        st.rerun()
+
 
 # --- FUNCIÓN PARA CARGAR CONFIGURACIÓN ---
 def cargar_configuracion(nombre):
