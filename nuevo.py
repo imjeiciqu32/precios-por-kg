@@ -13,13 +13,13 @@ import io
 if 'form_success' not in st.session_state:
     st.session_state.form_success = False
 if "slider_nombres" not in st.session_state:
-    st.session_state["slider_nombres"] = 14
+    st.session_state["slider_nombres"] = 16
 if "slider_precios" not in st.session_state:
     st.session_state["slider_precios"] = 18
 if "slider_pkg" not in st.session_state:
-    st.session_state["slider_pkg"] = 16
+    st.session_state["slider_pkg"] = 18
 if "slider_som" not in st.session_state:
-    st.session_state["slider_som"] = 13
+    st.session_state["slider_som"] = 15
 if "slider_ancho" not in st.session_state:
     st.session_state["slider_ancho"] = 0.8
 if "slider_opacidad" not in st.session_state:
