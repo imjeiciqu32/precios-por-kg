@@ -642,7 +642,7 @@ with st.sidebar:
                     </div>
                 """, unsafe_allow_html=True)
     
-       with st.expander("🎨 Colores Personalizados (Opcional)"):
+        with st.expander("🎨 Colores Personalizados (Opcional)"):
             st.markdown("**Selecciona un producto para cambiar su color:**")
             
             # Inicializar custom_colors si no existe
@@ -751,7 +751,7 @@ with st.sidebar:
                                 on_click=eliminar_personalizacion,
                                 args=(prod,)
                             )
-        
+    
     # --- SECCIÓN 4: HERRAMIENTAS AVANZADAS ---
     if not st.session_state.data.empty:
         st.markdown("<br>", unsafe_allow_html=True)
