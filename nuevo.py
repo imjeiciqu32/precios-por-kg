@@ -565,7 +565,7 @@ with st.sidebar:
                 </div>
             """, unsafe_allow_html=True)
     
- # --- SECCIÓN 3: CONTROLES DE DISEÑO (MOVIDOS ANTES DEL FOOTER) ---
+# --- SECCIÓN 3: CONTROLES DE DISEÑO (MOVIDOS ANTES DEL FOOTER) ---
 if not st.session_state.data.empty:
     st.markdown("<br>", unsafe_allow_html=True)
     st.divider()
@@ -584,7 +584,7 @@ if not st.session_state.data.empty:
         st.session_state["slider_margen_b"] = 400
         st.session_state["slider_angulo"] = -90
         st.session_state["custom_colors"] = {}
-        # Resets para grid
+        # Resets para grid (CORREGIDOS)
         st.session_state["grid_color"] = "#DCDCDC"
         st.session_state["grid_grosor"] = 1.0
         st.session_state["grid_opacidad"] = 0.5
@@ -592,7 +592,7 @@ if not st.session_state.data.empty:
         st.session_state["grid_y_visible"] = True
         st.session_state["grid_x_visible"] = False
         st.session_state["nticks_y"] = 10
-        st.session_state["grid_z_order"] = 0
+        st.session_state["grid_layer"] = "below traces"  # CORREGIDO
         
     if st.button("Resetear Todo el Diseño"):
         reset_diseno()
@@ -618,7 +618,7 @@ if not st.session_state.data.empty:
         t_som = st.slider("Tamaño SOM (%)", 8, 25, value=st.session_state["slider_som"], key="slider_som")
         angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, value=st.session_state["slider_angulo"], key="slider_angulo")
     
-    # === EXPANDER PARA LÍNEAS DIVISORIAS / GRID ===
+    # === EXPANDER PARA LÍNEAS DIVISORIAS / GRID (CORREGIDO) ===
     with st.expander("📊 Líneas Divisorias (Grid)"):
         st.markdown("#### Visibilidad del Grid")
         col_vis1, col_vis2 = st.columns(2)
@@ -665,7 +665,7 @@ if not st.session_state.data.empty:
                 value=st.session_state.get("grid_opacidad", 0.5),
                 step=0.05,
                 key="grid_opacidad",
-                help="Transparencia de las líneas"
+                help="Transparencia de las líneas (visual, no afecta Plotly)"
             )
         
         col_style4, col_style5 = st.columns(2)
@@ -673,7 +673,7 @@ if not st.session_state.data.empty:
         with col_style4:
             grid_estilo = st.selectbox(
                 "Estilo de Línea",
-                options=["solid", "dash", "dot", "dashdot"],
+                options=["solid", "dash", "dot", "dashdot"],  # CORREGIDO: valores válidos
                 index=["solid", "dash", "dot", "dashdot"].index(
                     st.session_state.get("grid_estilo", "solid")
                 ),
@@ -682,16 +682,16 @@ if not st.session_state.data.empty:
             )
         
         with col_style5:
-            grid_z_order = st.selectbox(
+            # CORREGIDO: usar valores válidos de Plotly
+            grid_layer_option = st.selectbox(
                 "Posición de Grid",
-                options=[("Detrás de barras", "below"), ("Delante de barras", "above")],
-                format_func=lambda x: x[0],
-                index=0 if st.session_state.get("grid_z_order", "below") == "below" else 1,
-                key="grid_z_order_select",
+                options=["Detrás de barras", "Delante de barras"],
+                index=0 if st.session_state.get("grid_layer", "below traces") == "below traces" else 1,
+                key="grid_layer_select",
                 help="Si las líneas aparecen detrás o delante de las barras"
             )
-            grid_z_order = grid_z_order[1]
-            st.session_state["grid_z_order"] = grid_z_order
+            grid_layer = "below traces" if grid_layer_option == "Detrás de barras" else "above traces"
+            st.session_state["grid_layer"] = grid_layer
         
         st.markdown("#### Cantidad de Líneas")
         col_qty1, col_qty2 = st.columns(2)
@@ -734,138 +734,137 @@ if not st.session_state.data.empty:
                 </div>
             """, unsafe_allow_html=True)
 
+    # ✨ SELECTOR DE COLORES PERSONALIZADOS
+    with st.expander("🎨 Colores Personalizados (Opcional)"):
+        st.markdown("**Selecciona un producto para cambiar su color:**")
         
-        # ✨ SELECTOR DE COLORES PERSONALIZADOS CORREGIDO
-        with st.expander("🎨 Colores Personalizados (Opcional)"):
-            st.markdown("**Selecciona un producto para cambiar su color:**")
+        if "Producto" in st.session_state.data.columns:
+            productos_disponibles = sorted(st.session_state.data["Producto"].unique().tolist())
             
-            if "Producto" in st.session_state.data.columns:
-                productos_disponibles = sorted(st.session_state.data["Producto"].unique().tolist())
+            producto_seleccionado = st.selectbox(
+                "Producto a personalizar:",
+                ["-- Ninguno --"] + productos_disponibles,
+                key="color_picker_producto"
+            )
+            
+            if producto_seleccionado != "-- Ninguno --":
+                st.markdown("---")
+                st.markdown("#### 🎨 Personalización de Barra")
                 
-                producto_seleccionado = st.selectbox(
-                    "Producto a personalizar:",
-                    ["-- Ninguno --"] + productos_disponibles,
-                    key="color_picker_producto"
+                # Obtener fabricante del producto seleccionado para defaults inteligentes
+                fabricante_prod = st.session_state.data[st.session_state.data["Producto"] == producto_seleccionado]["Fabricante"].iloc[0] if "Fabricante" in st.session_state.data.columns else "OTROS"
+                
+                # Defaults inteligentes según fabricante
+                default_barra = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"}.get(fabricante_prod.upper(), "#999999")
+                default_texto_pkg = "#FFFFFF" if fabricante_prod.upper() == "BARCEL" else "#000000"
+                default_fondo_pkg = "#4682B4" if fabricante_prod.upper() == "BARCEL" else "#FFFFFF"
+                default_borde_pkg = "#444444" if fabricante_prod.upper() != "BARCEL" else "#333333"
+                
+                # Color de la barra
+                color_barra = st.color_picker(
+                    "Color de barra",
+                    value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("barra", default_barra),
+                    key=f"color_barra_{producto_seleccionado}"
                 )
                 
-                if producto_seleccionado != "-- Ninguno --":
-                    st.markdown("---")
-                    st.markdown("#### 🎨 Personalización de Barra")
-                    
-                    # Obtener fabricante del producto seleccionado para defaults inteligentes
-                    fabricante_prod = st.session_state.data[st.session_state.data["Producto"] == producto_seleccionado]["Fabricante"].iloc[0] if "Fabricante" in st.session_state.data.columns else "OTROS"
-                    
-                    # Defaults inteligentes según fabricante
-                    default_barra = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"}.get(fabricante_prod.upper(), "#999999")
-                    default_texto_pkg = "#FFFFFF" if fabricante_prod.upper() == "BARCEL" else "#000000"
-                    default_fondo_pkg = "#4682B4" if fabricante_prod.upper() == "BARCEL" else "#FFFFFF"
-                    default_borde_pkg = "#444444" if fabricante_prod.upper() != "BARCEL" else "#333333"
-                    
-                    # Color de la barra
-                    color_barra = st.color_picker(
-                        "Color de barra",
-                        value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("barra", default_barra),
-                        key=f"color_barra_{producto_seleccionado}"
+                st.markdown("#### 📝 Personalización de Precios")
+                
+                col_precio1, col_precio2 = st.columns(2)
+                
+                with col_precio1:
+                    st.markdown("**Precio Desembolso (arriba)**")
+                    # Color del texto del precio desembolso
+                    color_texto_desembolso = st.color_picker(
+                        "Color texto",
+                        value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("texto_desembolso", "#000000"),
+                        key=f"color_texto_desembolso_{producto_seleccionado}",
+                        help="Color del texto del precio arriba de la barra"
                     )
                     
-                    st.markdown("#### 📝 Personalización de Precios")
-                    
-                    col_precio1, col_precio2 = st.columns(2)
-                    
-                    with col_precio1:
-                        st.markdown("**Precio Desembolso (arriba)**")
-                        # Color del texto del precio desembolso
-                        color_texto_desembolso = st.color_picker(
-                            "Color texto",
-                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("texto_desembolso", "#000000"),
-                            key=f"color_texto_desembolso_{producto_seleccionado}",
-                            help="Color del texto del precio arriba de la barra"
+                    # Color de fondo del precio desembolso (solo Price Pack)
+                    if modo == "Price Pack":
+                        color_fondo_desembolso = st.color_picker(
+                            "Color fondo (caja azul)",
+                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("fondo_desembolso", "#00B0F0"),
+                            key=f"color_fondo_desembolso_{producto_seleccionado}"
                         )
-                        
-                        # Color de fondo del precio desembolso (solo Price Pack)
-                        if modo == "Price Pack":
-                            color_fondo_desembolso = st.color_picker(
-                                "Color fondo (caja azul)",
-                                value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("fondo_desembolso", "#00B0F0"),
-                                key=f"color_fondo_desembolso_{producto_seleccionado}"
-                            )
-                        else:
-                            color_fondo_desembolso = None
-                    
-                    with col_precio2:
-                        st.markdown("**Precio por Kg (dentro)**")
-                        # Color del texto del precio por kg
-                        color_texto_pkg = st.color_picker(
-                            "Color texto",
-                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("texto_pkg", default_texto_pkg),
-                            key=f"color_texto_pkg_{producto_seleccionado}",
-                            help="Color del texto del precio por kg dentro de la barra"
-                        )
-                        
-                        # Color de fondo del precio por kg
-                        color_fondo_pkg = st.color_picker(
-                            "Color fondo",
-                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("fondo_pkg", default_fondo_pkg),
-                            key=f"color_fondo_pkg_{producto_seleccionado}",
-                            help="Color de fondo de la cajita del precio por kg"
-                        )
-                    
-                    st.markdown("#### 🔲 Personalización de Bordes")
-                    
-                    col_borde1, col_borde2 = st.columns(2)
-                    
-                    with col_borde1:
-                        if modo == "Price Pack":
-                            # Color del borde del precio desembolso
-                            color_borde_desembolso = st.color_picker(
-                                "Borde Precio Desembolso",
-                                value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("borde_desembolso", "#000000"),
-                                key=f"color_borde_desembolso_{producto_seleccionado}"
-                            )
-                        else:
-                            color_borde_desembolso = None
-                    
-                    with col_borde2:
-                        # Color del borde del precio por kg
-                        color_borde_pkg = st.color_picker(
-                            "Borde Precio por Kg",
-                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("borde_pkg", default_borde_pkg),
-                            key=f"color_borde_pkg_{producto_seleccionado}"
-                        )
-                    
-                    # Guardar todos los colores personalizados
-                    st.session_state["custom_colors"][producto_seleccionado] = {
-                        "barra": color_barra,
-                        "texto_desembolso": color_texto_desembolso,
-                        "fondo_desembolso": color_fondo_desembolso,
-                        "texto_pkg": color_texto_pkg,
-                        "fondo_pkg": color_fondo_pkg,
-                        "borde_desembolso": color_borde_desembolso,
-                        "borde_pkg": color_borde_pkg
-                    }
-                    
-                    st.success(f"✅ Colores personalizados aplicados a: {producto_seleccionado}")
-                    
-                    # Botón para quitar personalización - CORREGIDO
-                    if st.button(f"🗑️ Quitar personalización de {producto_seleccionado}", key=f"remove_custom_{producto_seleccionado}"):
-                        if producto_seleccionado in st.session_state["custom_colors"]:
-                            del st.session_state["custom_colors"][producto_seleccionado]
-                            st.success(f"✅ Personalización eliminada de {producto_seleccionado}")
-                            st.rerun()
+                    else:
+                        color_fondo_desembolso = None
                 
-                # Mostrar productos personalizados
-                if st.session_state["custom_colors"]:
-                    st.markdown("---")
-                    st.markdown("**📋 Productos con colores personalizados:**")
-                    for prod in list(st.session_state["custom_colors"].keys()):
-                        col_prod, col_btn = st.columns([3, 1])
-                        with col_prod:
-                            st.caption(f"• {prod}")
-                        with col_btn:
-                            if st.button("🗑️", key=f"quick_remove_{prod}"):
-                                del st.session_state["custom_colors"][prod]
-                                st.rerun()
-    
+                with col_precio2:
+                    st.markdown("**Precio por Kg (dentro)**")
+                    # Color del texto del precio por kg
+                    color_texto_pkg = st.color_picker(
+                        "Color texto",
+                        value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("texto_pkg", default_texto_pkg),
+                        key=f"color_texto_pkg_{producto_seleccionado}",
+                        help="Color del texto del precio por kg dentro de la barra"
+                    )
+                    
+                    # Color de fondo del precio por kg
+                    color_fondo_pkg = st.color_picker(
+                        "Color fondo",
+                        value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("fondo_pkg", default_fondo_pkg),
+                        key=f"color_fondo_pkg_{producto_seleccionado}",
+                        help="Color de fondo de la cajita del precio por kg"
+                    )
+                
+                st.markdown("#### 🔲 Personalización de Bordes")
+                
+                col_borde1, col_borde2 = st.columns(2)
+                
+                with col_borde1:
+                    if modo == "Price Pack":
+                        # Color del borde del precio desembolso
+                        color_borde_desembolso = st.color_picker(
+                            "Borde Precio Desembolso",
+                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("borde_desembolso", "#000000"),
+                            key=f"color_borde_desembolso_{producto_seleccionado}"
+                        )
+                    else:
+                        color_borde_desembolso = None
+                
+                with col_borde2:
+                    # Color del borde del precio por kg
+                    color_borde_pkg = st.color_picker(
+                        "Borde Precio por Kg",
+                        value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("borde_pkg", default_borde_pkg),
+                        key=f"color_borde_pkg_{producto_seleccionado}"
+                    )
+                
+                # Guardar todos los colores personalizados
+                st.session_state["custom_colors"][producto_seleccionado] = {
+                    "barra": color_barra,
+                    "texto_desembolso": color_texto_desembolso,
+                    "fondo_desembolso": color_fondo_desembolso,
+                    "texto_pkg": color_texto_pkg,
+                    "fondo_pkg": color_fondo_pkg,
+                    "borde_desembolso": color_borde_desembolso,
+                    "borde_pkg": color_borde_pkg
+                }
+                
+                st.success(f"✅ Colores personalizados aplicados a: {producto_seleccionado}")
+                
+                # Botón para quitar personalización
+                if st.button(f"🗑️ Quitar personalización de {producto_seleccionado}", key=f"remove_custom_{producto_seleccionado}"):
+                    if producto_seleccionado in st.session_state["custom_colors"]:
+                        del st.session_state["custom_colors"][producto_seleccionado]
+                        st.success(f"✅ Personalización eliminada de {producto_seleccionado}")
+                        st.rerun()
+            
+            # Mostrar productos personalizados
+            if st.session_state["custom_colors"]:
+                st.markdown("---")
+                st.markdown("**📋 Productos con colores personalizados:**")
+                for prod in list(st.session_state["custom_colors"].keys()):
+                    col_prod, col_btn = st.columns([3, 1])
+                    with col_prod:
+                        st.caption(f"• {prod}")
+                    with col_btn:
+                        if st.button("🗑️", key=f"quick_remove_{prod}"):
+                            del st.session_state["custom_colors"][prod]
+                            st.rerun()
+                            
     # --- SECCIÓN 4: HERRAMIENTAS AVANZADAS ---
     st.markdown("<br>", unsafe_allow_html=True)
     
