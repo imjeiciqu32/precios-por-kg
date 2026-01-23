@@ -455,21 +455,32 @@ def cargar_configuracion(nombre):
     
     config = st.session_state["configs_guardadas"][nombre]
     
-    # Crear diccionario temporal para evitar modificar session_state durante iteración
-    updates = {}
-    
+    # Aplicar cada valor individualmente usando setattr-like pattern
     if "diseno" in config:
-        updates.update(config["diseno"])
+        st.session_state["slider_nombres"] = config["diseno"].get("slider_nombres", 14)
+        st.session_state["slider_precios"] = config["diseno"].get("slider_precios", 18)
+        st.session_state["slider_pkg"] = config["diseno"].get("slider_pkg", 16)
+        st.session_state["slider_som"] = config["diseno"].get("slider_som", 13)
+        st.session_state["slider_ancho"] = config["diseno"].get("slider_ancho", 0.6)
+        st.session_state["slider_alto_barras"] = config["diseno"].get("slider_alto_barras", 1.0)
+        st.session_state["slider_opacidad"] = config["diseno"].get("slider_opacidad", 1.0)
+        st.session_state["slider_alto"] = config["diseno"].get("slider_alto", 950)
+        st.session_state["slider_espacio"] = config["diseno"].get("slider_espacio", 0.03)
+        st.session_state["slider_margen_b"] = config["diseno"].get("slider_margen_b", 400)
+        st.session_state["slider_angulo"] = config["diseno"].get("slider_angulo", -90)
     
     if "grid" in config:
-        updates.update(config["grid"])
+        st.session_state["grid_color"] = config["grid"].get("grid_color", "#DCDCDC")
+        st.session_state["grid_grosor"] = config["grid"].get("grid_grosor", 1.0)
+        st.session_state["grid_opacidad"] = config["grid"].get("grid_opacidad", 0.5)
+        st.session_state["grid_estilo"] = config["grid"].get("grid_estilo", "solid")
+        st.session_state["grid_y_visible"] = config["grid"].get("grid_y_visible", True)
+        st.session_state["grid_x_visible"] = config["grid"].get("grid_x_visible", False)
+        st.session_state["nticks_y"] = config["grid"].get("nticks_y", 10)
+        st.session_state["grid_layer"] = config["grid"].get("grid_layer", "below traces")
     
     if "colores_personalizados" in config:
-        updates["custom_colors"] = config["colores_personalizados"]
-    
-    # Aplicar todos los cambios de una vez
-    for key, value in updates.items():
-        st.session_state[key] = value
+        st.session_state["custom_colors"] = config["colores_personalizados"]
     
     return True
 
@@ -1029,7 +1040,7 @@ with st.sidebar:
             </p>
         </div>
     """, unsafe_allow_html=True)
-
+    
 # --- 5. PANEL PRINCIPAL ---
 iconos_modo = {
     "price ladder": "🪜",
