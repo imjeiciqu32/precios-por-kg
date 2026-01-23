@@ -1310,6 +1310,37 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
             </div>
         """, unsafe_allow_html=True)
         
+        # === CONTROLES DE PERSONALIZACIÓN ===
+        with st.expander("⚙️ Personalizar tamaño de tarjetas", expanded=False):
+            st.markdown("#### 📐 Dimensiones de Tarjeta")
+            col_dim1, col_dim2, col_dim3 = st.columns(3)
+            with col_dim1:
+                ancho_tarjeta = st.slider("Ancho (px)", 200, 600, 300, 20, key="ancho_card")
+            with col_dim2:
+                alto_tarjeta = st.slider("Alto (px)", 150, 400, 220, 20, key="alto_card")
+            with col_dim3:
+                padding_tarjeta = st.slider("Padding (px)", 10, 40, 18, 2, key="pad_card")
+            
+            st.markdown("#### 🔤 Tamaños de Texto")
+            col_txt1, col_txt2, col_txt3, col_txt4 = st.columns(4)
+            with col_txt1:
+                size_producto = st.slider("Nombre Producto", 8, 24, 13, 1, key="txt_prod")
+            with col_txt2:
+                size_precio = st.slider("Precio", 14, 36, 22, 2, key="txt_precio")
+            with col_txt3:
+                size_index = st.slider("Index", 24, 72, 42, 4, key="txt_index")
+            with col_txt4:
+                size_label = st.slider("Etiquetas", 7, 18, 11, 1, key="txt_label")
+            
+            st.markdown("#### 🎨 Estilo Visual")
+            col_style1, col_style2 = st.columns(2)
+            with col_style1:
+                border_width = st.slider("Grosor Borde (px)", 1, 6, 2, 1, key="border_w")
+                border_top_width = st.slider("Grosor Borde Superior (px)", 3, 12, 6, 1, key="border_top_w")
+            with col_style2:
+                shadow_intensity = st.slider("Intensidad Sombra", 0, 20, 8, 2, key="shadow_i")
+                border_radius = st.slider("Redondeo Esquinas (px)", 4, 20, 12, 2, key="radius")
+        
         df_comp["Lookup_Key"] = df_comp["Producto"]
         list_a = df_comp[df_comp["Fabricante"]=="BARCEL"]["Lookup_Key"].unique().tolist()
         list_b = df_comp[df_comp["Fabricante"]!="BARCEL"]["Lookup_Key"].unique().tolist()
@@ -1325,33 +1356,121 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                     s_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=idx_default)
                     selections.append((s_a, s_b))
 
+            # Función para crear HTML de tarjeta personalizada
+            def crear_tarjeta_html(sel_a, sel_b, v_a, v_b, tipo_metrica, ancho, alto, pad, s_prod, s_precio, s_idx, s_label, b_width, b_top_width, shadow, radius):
+                idx = int((v_a / v_b * 100)) if v_b > 0 else 0
+                color = "#0B3C8C" if idx <= 100 else "#D32F2F"
+                label_metrica = "Index Desembolso" if tipo_metrica == "desembolso" else "Index $/Kg"
+                precio_fmt_a = f"${v_a:.1f}" if tipo_metrica == "desembolso" else f"${int(v_a)}"
+                precio_fmt_b = f"${v_b:.1f}" if tipo_metrica == "desembolso" else f"${int(v_b)}"
+                
+                return f"""
+                <div style="background:white; 
+                            border:{b_width}px solid #ddd; 
+                            border-top:{b_top_width}px solid {color}; 
+                            border-radius:{radius}px; 
+                            padding:{pad}px; 
+                            text-align:center; 
+                            width:{ancho}px; 
+                            height:{alto}px; 
+                            display:inline-flex; 
+                            flex-direction:column; 
+                            justify-content:space-between;
+                            box-shadow: 0 4px {shadow}px rgba(0,0,0,0.12);
+                            margin: 5px;">
+                    <div style="display:flex; 
+                                justify-content:space-between; 
+                                font-size:{s_prod}px; 
+                                color:#333; 
+                                font-weight:700; 
+                                margin-bottom:10px; 
+                                line-height:1.3;">
+                        <span style="text-align:left; max-width:48%; overflow:hidden;">{sel_a}</span>
+                        <span style="text-align:right; max-width:48%; overflow:hidden;">{sel_b}</span>
+                    </div>
+                    <div style="display:flex; 
+                                justify-content:space-between; 
+                                align-items:center; 
+                                font-weight:bold; 
+                                font-size:{s_precio}px; 
+                                margin-bottom:14px;">
+                        <span style="color:#222;">{precio_fmt_a}</span>
+                        <span style="color:#bbb; font-size:{s_label}px; font-weight:600;">vs</span>
+                        <span style="color:#222;">{precio_fmt_b}</span>
+                    </div>
+                    <div style="font-size:{s_idx}px; font-weight:900; color:{color}; margin-bottom:6px; line-height:1;">{idx}</div>
+                    <div style="font-size:{s_label}px; font-weight:bold; color:#777; text-transform:uppercase; letter-spacing:0.5px;">{label_metrica}</div>
+                </div>
+                """
+
             # Fila Desembolso
             st.markdown("### 💰 Index Desembolso")
+            
+            # Botón para descargar todas las tarjetas de desembolso
+            if st.button("📥 Descargar Todas las Tarjetas de Desembolso", use_container_width=True):
+                st.info("💡 **Tip para captura de pantalla:**\n- Windows: Win + Shift + S o Snipping Tool\n- Mac: Cmd + Shift + 4\n- Chrome: Extensión 'GoFullPage' o 'Awesome Screenshot'")
+            
             des_cols = st.columns(4)
             for i, (sel_a, sel_b) in enumerate(selections):
                 v_a = df_comp[df_comp["Lookup_Key"] == sel_a]["Precio ($)"].iloc[0]
                 v_b = df_comp[df_comp["Lookup_Key"] == sel_b]["Precio ($)"].iloc[0]
-                idx = int((v_a / v_b * 100)) if v_b > 0 else 0
-                color = "#0B3C8C" if idx <= 100 else "#D32F2F"
+                
                 with des_cols[i]:
-                    st.markdown(f"""<div style="background:white; border:1px solid #ddd; border-top:5px solid {color}; border-radius:10px; padding:10px; text-align:center;">
-                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#666; margin-bottom:5px;"><span>{sel_a}</span><span>{sel_b}</span></div>
-                        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:10px;"><span>${v_a:.1f}</span><span style="color:#ccc; font-size:0.7rem;">vs</span><span>${v_b:.1f}</span></div>
-                        <div style="font-size:1.8rem; font-weight:900; color:{color};">{idx}</div><div style="font-size:0.6rem; font-weight:bold; color:#999;">Index Desembolso</div></div>""", unsafe_allow_html=True)
+                    card_html = crear_tarjeta_html(sel_a, sel_b, v_a, v_b, "desembolso", 
+                                                   ancho_tarjeta, alto_tarjeta, padding_tarjeta,
+                                                   size_producto, size_precio, size_index, size_label,
+                                                   border_width, border_top_width, shadow_intensity, border_radius)
+                    st.markdown(card_html, unsafe_allow_html=True)
 
             # Fila $/Kg
             st.markdown("### ⚖️ Index Precio por Kg")
+            
+            # Botón para descargar todas las tarjetas de precio por kg
+            if st.button("📥 Descargar Todas las Tarjetas de Precio/Kg", use_container_width=True):
+                st.info("💡 **Tip para captura de pantalla:**\n- Windows: Win + Shift + S o Snipping Tool\n- Mac: Cmd + Shift + 4\n- Chrome: Extensión 'GoFullPage' o 'Awesome Screenshot'")
+            
             pkg_cols = st.columns(4)
             for i, (sel_a, sel_b) in enumerate(selections):
                 v_a = df_comp[df_comp["Lookup_Key"] == sel_a]["Precio por Kg ($)"].iloc[0]
                 v_b = df_comp[df_comp["Lookup_Key"] == sel_b]["Precio por Kg ($)"].iloc[0]
-                idx = int((v_a / v_b * 100)) if v_b > 0 else 0
-                color = "#0B3C8C" if idx <= 100 else "#D32F2F"
+                
                 with pkg_cols[i]:
-                    st.markdown(f"""<div style="background:white; border:1px solid #ddd; border-top:5px solid {color}; border-radius:10px; padding:10px; text-align:center;">
-                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#666; margin-bottom:5px;"><span>{sel_a}</span><span>{sel_b}</span></div>
-                        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:10px;"><span>${int(v_a)}</span><span style="color:#ccc; font-size:0.7rem;">vs</span><span>${int(v_b)}</span></div>
-                        <div style="font-size:1.8rem; font-weight:900; color:{color};">{idx}</div><div style="font-size:0.6rem; font-weight:bold; color:#999;">Index $/Kg</div></div>""", unsafe_allow_html=True)
+                    card_html = crear_tarjeta_html(sel_a, sel_b, v_a, v_b, "precio_kg",
+                                                   ancho_tarjeta, alto_tarjeta, padding_tarjeta,
+                                                   size_producto, size_precio, size_index, size_label,
+                                                   border_width, border_top_width, shadow_intensity, border_radius)
+                    st.markdown(card_html, unsafe_allow_html=True)
+            
+            # === GUÍA DE USO ===
+            with st.expander("📖 Guía de Uso para PowerPoint"):
+                st.markdown("""
+                ### 🎯 Cómo usar estas tarjetas en PowerPoint
+                
+                **Opción 1: Captura de Pantalla (Recomendado)**
+                1. Ajusta el tamaño de las tarjetas con los controles de personalización
+                2. Haz clic en "Descargar Todas las Tarjetas"
+                3. Usa la herramienta de captura de pantalla:
+                   - **Windows**: Win + Shift + S
+                   - **Mac**: Cmd + Shift + 4
+                4. Selecciona el área con las tarjetas
+                5. Pega directamente en PowerPoint (Ctrl+V / Cmd+V)
+                
+                **Opción 2: Extensiones de Chrome**
+                - Instala "GoFullPage" o "Awesome Screenshot"
+                - Captura solo la sección de tarjetas
+                - Guarda la imagen y arrástrala a PowerPoint
+                
+                **Opción 3: Captura Individual**
+                - Ajusta zoom del navegador (Ctrl + / Cmd +)
+                - Captura cada fila de tarjetas por separado
+                - Combina en PowerPoint según necesites
+                
+                ### 💡 Tips para mejor calidad
+                - **Tamaño óptimo para PPT**: Ancho 250-350px, Alto 180-220px
+                - **Zoom navegador**: 100-125% para mejor resolución
+                - **Fondo blanco**: Las tarjetas ya tienen fondo blanco integrado
+                - **Nombres largos**: Reduce el texto a 11-13px si se cortan
+                """)
 
     # --- MODO 2: MATRIZ DE ARQUITECTURA (VISTA PPT) / PRICE PACK ---
     else:
@@ -1455,7 +1574,7 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                 st.warning("No hay datos en el canal DETALLE para realizar comparaciones.")
         else:
             st.error("⚠️ El formato de datos actual no es compatible con la Matriz (Falta columna 'Canal').")
-
+            
 # --- FIN DE SECCIÓN 8 ---
         
 
