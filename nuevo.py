@@ -157,18 +157,11 @@ try:
 except FileNotFoundError:
     pass # Si no encuentra el logo, la app sigue corriendo normal
 
-# ============================================================================
-# SISTEMA DE TEMAS Y CONFIGURACIONES GUARDADAS
-# Agregar este código al inicio de tu app, después de los imports
-# ============================================================================
 
-import json
-from datetime import datetime
-import base64
 
 # ============================================================================
 # SISTEMA DE GUARDAR/CARGAR CONFIGURACIONES
-# Agregar este código al inicio de tu app, después de los imports
+# Copiar y pegar este código completo al inicio de tu app (después de imports)
 # ============================================================================
 
 import json
@@ -180,13 +173,7 @@ if "configs_guardadas" not in st.session_state:
 
 # --- FUNCIÓN PARA GUARDAR CONFIGURACIÓN ---
 def guardar_configuracion(nombre):
-    """
-    Guarda la configuración actual completa incluyendo:
-    - Todos los sliders de diseño
-    - Configuración del grid
-    - Colores personalizados de productos
-    """
-    
+    """Guarda la configuración actual completa"""
     config = {
         "nombre": nombre,
         "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -215,302 +202,16 @@ def guardar_configuracion(nombre):
         },
         "colores_personalizados": st.session_state.get("custom_colors", {})
     }
-    
     st.session_state["configs_guardadas"][nombre] = config
     return config
 
 # --- FUNCIÓN PARA CARGAR CONFIGURACIÓN ---
 def cargar_configuracion(nombre):
-    """
-    Carga una configuración guardada y la aplica inmediatamente
-    """
-    
-    if nombre not in st.session_state["configs_guardadas"]:
-        return False
-    
-    config = st.session_state["configs_guardadas"][nombre]
-    
-    # Aplicar todos los valores de diseño
-    if "diseno" in config:
-        for key, value in config["diseno"].items():
-            st.session_state[key] = value
-    
-    # Aplicar configuración del grid
-    if "grid" in config:
-        for key, value in config["grid"].items():
-            st.session_state[key] = value
-    
-    # Aplicar colores personalizados
-    if "colores_personalizados" in config:
-        st.session_state["custom_colors"] = config["colores_personalizados"]
-    
-    return True
-
-# --- FUNCIÓN PARA EXPORTAR CONFIGURACIÓN ---
-def exportar_configuracion(nombre):
-    """
-    Exporta una configuración como archivo JSON para descargar
-    """
-    
-    if nombre not in st.session_state["configs_guardadas"]:
-        return None
-    
-    config = st.session_state["configs_guardadas"][nombre]
-    json_str = json.dumps(config, indent=2, ensure_ascii=False)
-    
-    return json_str
-
-# --- FUNCIÓN PARA IMPORTAR CONFIGURACIÓN ---
-def importar_configuracion(json_str):
-    """
-    Importa una configuración desde un archivo JSON
-    """
-    
-    try:
-        config = json.loads(json_str)
-        nombre = config.get("nombre", f"Importada_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
-        st.session_state["configs_guardadas"][nombre] = config
-        return nombre
-    except Exception as e:
-        return None
-
-# --- FUNCIÓN PARA ELIMINAR CONFIGURACIÓN ---
-def eliminar_configuracion(nombre):
-    """
-    Elimina una configuración guardada
-    """
-    
-    if nombre in st.session_state["configs_guardadas"]:
-        del st.session_state["configs_guardadas"][nombre]
-        return True
-    return False
-
-# --- FUNCIÓN PARA DUPLICAR CONFIGURACIÓN ---
-def duplicar_configuracion(nombre_original, nombre_nuevo):
-    """
-    Crea una copia de una configuración existente
-    """
-    
-    if nombre_original not in st.session_state["configs_guardadas"]:
-        return False
-    
-    config_original = st.session_state["configs_guardadas"][nombre_original].copy()
-    config_original["nombre"] = nombre_nuevo
-    config_original["fecha"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    st.session_state["configs_guardadas"][nombre_nuevo] = config_original
-    return True
-
-# ============================================================================
-# PANEL DE CONTROL EN SIDEBAR
-# Agregar esto en tu sidebar donde quieras que aparezca
-# ============================================================================
-
-with st.sidebar:
-    st.markdown("---")
-    
-    with st.expander("💾 Configuraciones", expanded=False):
-        st.markdown("### Guardar/Cargar Presets")
-        st.caption("Guarda tu configuración actual de diseño, grid y colores para reutilizarla después.")
-        
-        # ===== SECCIÓN: GUARDAR NUEVA =====
-        st.markdown("#### 💾 Guardar Actual")
-        nombre_nuevo = st.text_input(
-            "Nombre del preset",
-            placeholder="Ej: Presentación Ejecutiva",
-            key="input_nombre_config",
-            help="Dale un nombre descriptivo a tu configuración"
-        )
-        
-        col_guardar1, col_guardar2 = st.columns([2, 1])
-        with col_guardar1:
-            if st.button("💾 Guardar", key="btn_guardar_config", use_container_width=True):
-                if nombre_nuevo.strip():
-                    if nombre_nuevo in st.session_state["configs_guardadas"]:
-                        st.warning(f"⚠️ Ya existe '{nombre_nuevo}'. ¿Sobrescribir?")
-                        if st.button("✅ Sí, sobrescribir", key="btn_confirm_overwrite"):
-                            guardar_configuracion(nombre_nuevo)
-                            st.success(f"✅ '{nombre_nuevo}' actualizado!")
-                            st.rerun()
-                    else:
-                        guardar_configuracion(nombre_nuevo)
-                        st.success(f"✅ '{nombre_nuevo}' guardado!")
-                        st.rerun()
-                else:
-                    st.error("❌ Ingresa un nombre válido")
-        
-        with col_guardar2:
-            # Mostrar contador de configs guardadas
-            num_configs = len(st.session_state["configs_guardadas"])
-            st.metric("Guardadas", num_configs)
-        
-        # ===== SECCIÓN: CARGAR EXISTENTE =====
-        if st.session_state["configs_guardadas"]:
-            st.markdown("---")
-            st.markdown("#### 📂 Cargar Preset")
-            
-            # Lista de configuraciones con info
-            configs_info = []
-            for nombre, config in st.session_state["configs_guardadas"].items():
-                fecha = config.get("fecha", "Sin fecha")
-                configs_info.append(f"{nombre} ({fecha})")
-            
-            config_seleccionada = st.selectbox(
-                "Selecciona un preset",
-                ["-- Ninguna --"] + list(st.session_state["configs_guardadas"].keys()),
-                key="select_config",
-                help="Elige una configuración guardada para cargar"
-            )
-            
-            if config_seleccionada != "-- Ninguna --":
-                config_info = st.session_state["configs_guardadas"][config_seleccionada]
-                
-                # Mostrar info de la config
-                st.info(f"""
-                📅 **Creada:** {config_info['fecha']}
-                
-                **Incluye:**
-                - ✅ Tamaños de texto
-                - ✅ Dimensiones de gráfico
-                - ✅ Configuración de grid
-                - ✅ Colores personalizados ({len(config_info.get('colores_personalizados', {}))})
-                """)
-                
-                # Botones de acción
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    if st.button("📂 Cargar", key="btn_cargar_config", use_container_width=True, help="Aplicar esta configuración"):
-                        if cargar_configuracion(config_seleccionada):
-                            st.success(f"✅ '{config_seleccionada}' cargado!")
-                            st.rerun()
-                        else:
-                            st.error("❌ Error al cargar")
-                
-                with col2:
-                    # Exportar como JSON
-                    json_export = exportar_configuracion(config_seleccionada)
-                    if json_export:
-                        st.download_button(
-                            "📥 Exportar",
-                            data=json_export,
-                            file_name=f"{config_seleccionada.replace(' ', '_')}.json",
-                            mime="application/json",
-                            key="btn_export_config",
-                            use_container_width=True,
-                            help="Descargar como archivo JSON"
-                        )
-                
-                with col3:
-                    if st.button("🗑️", key="btn_delete_config", use_container_width=True, help="Eliminar este preset"):
-                        if eliminar_configuracion(config_seleccionada):
-                            st.success("✅ Eliminado!")
-                            st.rerun()
-                
-                # Opción para duplicar
-                st.markdown("**Duplicar preset:**")
-                col_dup1, col_dup2 = st.columns([2, 1])
-                with col_dup1:
-                    nombre_duplicado = st.text_input(
-                        "Nuevo nombre",
-                        placeholder=f"{config_seleccionada} - Copia",
-                        key="input_duplicar",
-                        label_visibility="collapsed"
-                    )
-                with col_dup2:
-                    if st.button("📋", key="btn_duplicar", use_container_width=True, help="Duplicar"):
-                        if nombre_duplicado.strip():
-                            if duplicar_configuracion(config_seleccionada, nombre_duplicado):
-                                st.success(f"✅ Duplicado como '{nombre_duplicado}'")
-                                st.rerun()
-        
-        # ===== SECCIÓN: IMPORTAR =====
-        st.markdown("---")
-        st.markdown("#### 📤 Importar Preset")
-        st.caption("Sube un archivo JSON de configuración exportado previamente")
-        
-        archivo_config = st.file_uploader(
-            "Sube archivo JSON",
-            type=["json"],
-            key="upload_config",
-            label_visibility="collapsed",
-            help="Importa configuraciones de otros equipos o respaldos"
-        )
-        
-        if archivo_config:
-            try:
-                json_str = archivo_config.read().decode("utf-8")
-                nombre_importada = importar_configuracion(json_str)
-                if nombre_importada:
-                    st.success(f"✅ '{nombre_importada}' importado!")
-                    st.rerun()
-                else:
-                    st.error("❌ Error: Archivo JSON inválido")
-            except Exception as e:
-                st.error(f"❌ Error al leer archivo: {str(e)}")
-        
-        # ===== SECCIÓN: LISTA RÁPIDA =====
-        if st.session_state["configs_guardadas"]:
-            st.markdown("---")
-            st.markdown("#### 📋 Todos los Presets")
-            
-            for nombre in list(st.session_state["configs_guardadas"].keys()):
-                col_nombre, col_btn = st.columns([3, 1])
-                with col_nombre:
-                    st.caption(f"• **{nombre}**")
-                with col_btn:
-                    if st.button("🗑️", key=f"quick_delete_{nombre}", help=f"Eliminar {nombre}"):
-                        if eliminar_configuracion(nombre):
-                            st.rerun()
-        else:
-            st.info("💡 No hay presets guardados aún. ¡Crea el primero!")
-        
-        # ===== SECCIÓN: AYUDA =====
-        st.markdown("---")
-        with st.expander("❓ ¿Cómo usar?"):
-            st.markdown("""
-            ### 📖 Guía Rápida
-            
-            **1. Guardar configuración:**
-            - Ajusta todos tus sliders y colores
-            - Dale un nombre descriptivo
-            - Click en "Guardar"
-            
-            **2. Cargar configuración:**
-            - Selecciona un preset de la lista
-            - Click en "Cargar"
-            - ¡Todo se aplica automáticamente!
-            
-            **3. Exportar/Importar:**
-            - **Exportar:** Descarga como JSON para backup o compartir
-            - **Importar:** Sube un JSON para restaurar o usar configs de otros
-            
-            **4. Casos de uso:**
-            - 📊 **Presentación:** Texto grande, grid limpio
-            - 🔬 **Análisis:** Texto pequeño, grid denso
-            - 🖨️ **Impresión:** Colores optimizados
-            - 💼 **Ejecutivo:** Diseño corporativo
-            
-            **💡 Tip:** Crea presets para cada ocasión y cambia rápidamente entre ellos.
-            """)
-
-
-
-
-# --- FUNCIÓN PARA CARGAR CONFIGURACIÓN ---
-def cargar_configuracion(nombre):
     """Carga una configuración guardada"""
-    
     if nombre not in st.session_state["configs_guardadas"]:
         return False
     
     config = st.session_state["configs_guardadas"][nombre]
-    
-    # Aplicar tema
-    if "tema" in config:
-        st.session_state["tema_actual"] = config["tema"].get("tema_actual", "claro")
-        st.session_state["color_acento"] = config["tema"].get("color_acento", "#4A9EFF")
-        st.session_state["brillo_tema"] = config["tema"].get("brillo", 100)
     
     # Aplicar diseño
     if "diseno" in config:
@@ -530,20 +231,16 @@ def cargar_configuracion(nombre):
 
 # --- FUNCIÓN PARA EXPORTAR CONFIGURACIÓN ---
 def exportar_configuracion(nombre):
-    """Exporta configuración como archivo JSON descargable"""
-    
+    """Exporta configuración como archivo JSON"""
     if nombre not in st.session_state["configs_guardadas"]:
         return None
-    
     config = st.session_state["configs_guardadas"][nombre]
     json_str = json.dumps(config, indent=2, ensure_ascii=False)
-    
     return json_str
 
 # --- FUNCIÓN PARA IMPORTAR CONFIGURACIÓN ---
 def importar_configuracion(json_str):
     """Importa configuración desde JSON"""
-    
     try:
         config = json.loads(json_str)
         nombre = config.get("nombre", f"Importada_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
@@ -552,163 +249,182 @@ def importar_configuracion(json_str):
     except:
         return None
 
+# --- FUNCIÓN PARA ELIMINAR CONFIGURACIÓN ---
+def eliminar_configuracion(nombre):
+    """Elimina una configuración guardada"""
+    if nombre in st.session_state["configs_guardadas"]:
+        del st.session_state["configs_guardadas"][nombre]
+        return True
+    return False
+
+# --- FUNCIÓN PARA DUPLICAR CONFIGURACIÓN ---
+def duplicar_configuracion(nombre_original, nombre_nuevo):
+    """Crea una copia de una configuración"""
+    if nombre_original not in st.session_state["configs_guardadas"]:
+        return False
+    config_original = st.session_state["configs_guardadas"][nombre_original].copy()
+    config_original["nombre"] = nombre_nuevo
+    config_original["fecha"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    st.session_state["configs_guardadas"][nombre_nuevo] = config_original
+    return True
+
 # ============================================================================
 # PANEL DE CONTROL EN SIDEBAR
-# Agregar esto en tu sidebar
+# Este código va en tu sidebar, donde quieras que aparezca el panel
 # ============================================================================
 
 with st.sidebar:
     st.markdown("---")
-    st.markdown("### 🎨 Personalización")
     
-    with st.expander("🌓 Tema Visual", expanded=False):
-        # Selector de modo
-        modo_tema = st.radio(
-            "Modo de Tema",
-            ["Manual", "Automático (según hora)"],
-            index=0 if st.session_state["modo_tema"] == "manual" else 1,
-            key="radio_modo_tema"
-        )
-        st.session_state["modo_tema"] = "manual" if modo_tema == "Manual" else "auto"
+    with st.expander("💾 Configuraciones", expanded=False):
+        st.markdown("### Guardar/Cargar Presets")
+        st.caption("Guarda tu configuración actual de diseño, grid y colores.")
         
-        # Si es manual, mostrar selector
-        if st.session_state["modo_tema"] == "manual":
-            tema_seleccionado = st.selectbox(
-                "Tema",
-                list(TEMAS.keys()),
-                format_func=lambda x: TEMAS[x]["nombre"],
-                index=list(TEMAS.keys()).index(st.session_state["tema_actual"]),
-                key="select_tema"
-            )
-            st.session_state["tema_actual"] = tema_seleccionado
-        else:
-            tema_seleccionado = aplicar_tema_auto()
-            st.session_state["tema_actual"] = tema_seleccionado
-            st.info(f"🕐 Tema automático: **{TEMAS[tema_seleccionado]['nombre']}**")
-        
-        # Color de acento
-        st.markdown("**Color de Acento**")
-        color_acento = st.color_picker(
-            "Botones y enlaces",
-            value=st.session_state["color_acento"],
-            key="picker_acento",
-            label_visibility="collapsed"
-        )
-        st.session_state["color_acento"] = color_acento
-        
-        # Brillo
-        brillo = st.slider(
-            "💡 Brillo",
-            50, 150,
-            value=st.session_state["brillo_tema"],
-            key="slider_brillo"
-        )
-        st.session_state["brillo_tema"] = brillo
-        
-        # Aplicar tema
-        aplicar_tema(st.session_state["tema_actual"], st.session_state["color_acento"], st.session_state["brillo_tema"])
-        
-        # Preview
-        st.markdown("---")
-        st.markdown("**Vista Previa**")
-        st.markdown(f"""
-            <div style="background-color: {TEMAS[tema_seleccionado]['fondo_secundario']}; 
-                        padding: 15px; 
-                        border-radius: 8px; 
-                        border: 1px solid {TEMAS[tema_seleccionado]['bordes']};">
-                <p style="color: {TEMAS[tema_seleccionado]['texto_principal']}; margin: 0;">
-                    Texto principal
-                </p>
-                <p style="color: {TEMAS[tema_seleccionado]['texto_secundario']}; margin: 5px 0; font-size: 0.9em;">
-                    Texto secundario
-                </p>
-                <div style="background-color: {color_acento}; 
-                            color: white; 
-                            padding: 8px; 
-                            border-radius: 5px; 
-                            text-align: center; 
-                            margin-top: 10px;">
-                    Botón de acción
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    with st.expander("💾 Configuraciones Guardadas", expanded=False):
-        # Guardar nueva configuración
-        st.markdown("**Guardar Configuración Actual**")
-        nombre_config = st.text_input(
-            "Nombre",
+        # ===== GUARDAR NUEVA =====
+        st.markdown("#### 💾 Guardar Actual")
+        nombre_nuevo = st.text_input(
+            "Nombre del preset",
             placeholder="Ej: Presentación Ejecutiva",
             key="input_nombre_config"
         )
         
-        if st.button("💾 Guardar", key="btn_guardar_config", use_container_width=True):
-            if nombre_config:
-                guardar_configuracion(nombre_config)
-                st.success(f"✅ Configuración '{nombre_config}' guardada!")
-                st.rerun()
-            else:
-                st.warning("⚠️ Ingresa un nombre")
+        col_g1, col_g2 = st.columns([2, 1])
+        with col_g1:
+            if st.button("💾 Guardar", key="btn_guardar_config", use_container_width=True):
+                if nombre_nuevo.strip():
+                    guardar_configuracion(nombre_nuevo)
+                    st.success(f"✅ '{nombre_nuevo}' guardado!")
+                    st.rerun()
+                else:
+                    st.error("❌ Ingresa un nombre")
         
-        # Cargar configuración existente
+        with col_g2:
+            num_configs = len(st.session_state["configs_guardadas"])
+            st.metric("Total", num_configs)
+        
+        # ===== CARGAR EXISTENTE =====
         if st.session_state["configs_guardadas"]:
             st.markdown("---")
-            st.markdown("**Cargar Configuración**")
+            st.markdown("#### 📂 Cargar Preset")
             
             config_seleccionada = st.selectbox(
-                "Selecciona",
+                "Selecciona un preset",
                 ["-- Ninguna --"] + list(st.session_state["configs_guardadas"].keys()),
                 key="select_config"
             )
             
             if config_seleccionada != "-- Ninguna --":
                 config_info = st.session_state["configs_guardadas"][config_seleccionada]
-                st.caption(f"📅 Guardada: {config_info['fecha']}")
                 
-                col1, col2 = st.columns(2)
+                st.info(f"""
+📅 **Creada:** {config_info['fecha']}
+
+**Incluye:**
+- ✅ Tamaños de texto
+- ✅ Dimensiones de gráfico
+- ✅ Configuración de grid
+- ✅ Colores personalizados ({len(config_info.get('colores_personalizados', {}))})
+                """)
+                
+                col1, col2, col3 = st.columns(3)
+                
                 with col1:
                     if st.button("📂 Cargar", key="btn_cargar_config", use_container_width=True):
                         if cargar_configuracion(config_seleccionada):
-                            st.success("✅ Configuración cargada!")
+                            st.success(f"✅ Cargado!")
                             st.rerun()
                 
                 with col2:
-                    # Exportar
                     json_export = exportar_configuracion(config_seleccionada)
                     if json_export:
                         st.download_button(
-                            "📥 Exportar",
+                            "📥",
                             data=json_export,
-                            file_name=f"{config_seleccionada}.json",
+                            file_name=f"{config_seleccionada.replace(' ', '_')}.json",
                             mime="application/json",
                             key="btn_export_config",
                             use_container_width=True
                         )
                 
-                # Eliminar
-                if st.button(f"🗑️ Eliminar '{config_seleccionada}'", key="btn_delete_config", use_container_width=True):
-                    del st.session_state["configs_guardadas"][config_seleccionada]
-                    st.success("✅ Eliminada!")
-                    st.rerun()
+                with col3:
+                    if st.button("🗑️", key="btn_delete_config", use_container_width=True):
+                        if eliminar_configuracion(config_seleccionada):
+                            st.success("✅ Eliminado!")
+                            st.rerun()
+                
+                # Duplicar
+                st.markdown("**Duplicar:**")
+                col_d1, col_d2 = st.columns([2, 1])
+                with col_d1:
+                    nombre_dup = st.text_input(
+                        "Nuevo nombre",
+                        placeholder=f"{config_seleccionada} Copia",
+                        key="input_duplicar",
+                        label_visibility="collapsed"
+                    )
+                with col_d2:
+                    if st.button("📋", key="btn_duplicar", use_container_width=True):
+                        if nombre_dup.strip():
+                            if duplicar_configuracion(config_seleccionada, nombre_dup):
+                                st.success(f"✅ Duplicado!")
+                                st.rerun()
         
-        # Importar configuración
+        # ===== IMPORTAR =====
         st.markdown("---")
-        st.markdown("**Importar Configuración**")
+        st.markdown("#### 📤 Importar")
         archivo_config = st.file_uploader(
-            "Sube archivo JSON",
+            "Sube JSON",
             type=["json"],
             key="upload_config",
             label_visibility="collapsed"
         )
         
         if archivo_config:
-            json_str = archivo_config.read().decode("utf-8")
-            nombre_importada = importar_configuracion(json_str)
-            if nombre_importada:
-                st.success(f"✅ Configuración '{nombre_importada}' importada!")
-                st.rerun()
-            else:
-                st.error("❌ Error al importar archivo")
+            try:
+                json_str = archivo_config.read().decode("utf-8")
+                nombre_importada = importar_configuracion(json_str)
+                if nombre_importada:
+                    st.success(f"✅ '{nombre_importada}' importado!")
+                    st.rerun()
+                else:
+                    st.error("❌ Archivo inválido")
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
+        
+        # ===== LISTA RÁPIDA =====
+        if st.session_state["configs_guardadas"]:
+            st.markdown("---")
+            st.markdown("#### 📋 Todos")
+            
+            for nombre in list(st.session_state["configs_guardadas"].keys()):
+                col_n, col_b = st.columns([3, 1])
+                with col_n:
+                    st.caption(f"• {nombre}")
+                with col_b:
+                    if st.button("🗑️", key=f"qdel_{nombre}"):
+                        if eliminar_configuracion(nombre):
+                            st.rerun()
+        else:
+            st.info("💡 No hay presets. ¡Crea el primero!")
+        
+        # ===== AYUDA =====
+        st.markdown("---")
+        with st.expander("❓ Ayuda"):
+            st.markdown("""
+**Guardar:**
+1. Ajusta sliders y colores
+2. Dale un nombre
+3. Click "Guardar"
+
+**Cargar:**
+1. Selecciona preset
+2. Click "Cargar"
+3. ¡Listo!
+
+**Exportar/Importar:**
+- Exportar: backup o compartir
+- Importar: restaurar o usar de otros
+            """)
 
 @st.dialog("📖 Glosario de Metodologías Estratégicas")
 def mostrar_glosario():
