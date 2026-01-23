@@ -565,168 +565,174 @@ with st.sidebar:
                 </div>
             """, unsafe_allow_html=True)
     
-   # --- SECCIÓN 3: CONTROLES DE DISEÑO (MOVIDOS ANTES DEL FOOTER) ---
-    if not st.session_state.data.empty:
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.divider()
-        st.subheader("🎨 Controles de Diseño")
+ # --- SECCIÓN 3: CONTROLES DE DISEÑO (MOVIDOS ANTES DEL FOOTER) ---
+if not st.session_state.data.empty:
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.divider()
+    st.subheader("🎨 Controles de Diseño")
+    
+    def reset_diseno():
+        st.session_state["slider_nombres"] = 14
+        st.session_state["slider_precios"] = 18
+        st.session_state["slider_pkg"] = 16
+        st.session_state["slider_som"] = 13
+        st.session_state["slider_ancho"] = 0.6
+        st.session_state["slider_alto_barras"] = 1.0  # NUEVO: Alto de barras
+        st.session_state["slider_opacidad"] = 1.0
+        st.session_state["slider_alto"] = 950
+        st.session_state["slider_espacio"] = 0.03
+        st.session_state["slider_margen_b"] = 400
+        st.session_state["slider_angulo"] = -90
+        st.session_state["custom_colors"] = {}
+        # Resets para grid
+        st.session_state["grid_color"] = "#DCDCDC"
+        st.session_state["grid_grosor"] = 1.0
+        st.session_state["grid_opacidad"] = 0.5
+        st.session_state["grid_estilo"] = "solid"
+        st.session_state["grid_y_visible"] = True
+        st.session_state["grid_x_visible"] = False
+        st.session_state["nticks_y"] = 10
+        st.session_state["grid_z_order"] = 0
         
-        def reset_diseno():
-            st.session_state["slider_nombres"] = 14
-            st.session_state["slider_precios"] = 18
-            st.session_state["slider_pkg"] = 16
-            st.session_state["slider_som"] = 13
-            st.session_state["slider_ancho"] = 0.6
-            st.session_state["slider_opacidad"] = 1.0
-            st.session_state["slider_alto"] = 950
-            st.session_state["slider_espacio"] = 0.03
-            st.session_state["slider_margen_b"] = 400
-            st.session_state["slider_angulo"] = -90
-            st.session_state["custom_colors"] = {}
-            # Nuevos resets para grid
-            st.session_state["grid_color"] = "#E0E0E0"
-            st.session_state["grid_grosor"] = 1.0
-            st.session_state["grid_opacidad"] = 0.5
-            st.session_state["grid_estilo"] = "solid"
-            st.session_state["grid_y_visible"] = True
-            st.session_state["grid_x_visible"] = False
-            st.session_state["nticks_y"] = 10
-            st.session_state["grid_z_order"] = 0
-            
-        if st.button("Resetear Todo el Diseño"):
-            reset_diseno()
-            st.rerun()
-            
-        with st.expander("📏 Dimensiones y Espaciado"):
-            alto_grafico = st.slider("Alto del Gráfico", 400, 1500, value=st.session_state["slider_alto"], key="slider_alto")
-            espacio_v = st.slider("Espacio entre Gráficos", 0.0, 0.2, value=st.session_state["slider_espacio"], key="slider_espacio")
-            margen_b = st.slider("Margen Inferior (Nombres)", 50, 600, value=st.session_state["slider_margen_b"], key="slider_margen_b")
+    if st.button("Resetear Todo el Diseño"):
+        reset_diseno()
+        st.rerun()
+        
+    with st.expander("📏 Dimensiones y Espaciado"):
+        alto_grafico = st.slider("Alto del Gráfico", 400, 1500, value=st.session_state["slider_alto"], key="slider_alto")
+        espacio_v = st.slider("Espacio entre Gráficos", 0.0, 0.2, value=st.session_state["slider_espacio"], key="slider_espacio")
+        margen_b = st.slider("Margen Inferior (Nombres)", 50, 600, value=st.session_state["slider_margen_b"], key="slider_margen_b")
+        
+        col_barras1, col_barras2 = st.columns(2)
+        with col_barras1:
             ancho_barras = st.slider("Ancho de Barras", 0.1, 1.0, value=st.session_state["slider_ancho"], key="slider_ancho")
-            opacidad_barras = st.slider("Opacidad Barras", 0.1, 1.0, value=st.session_state["slider_opacidad"], key="slider_opacidad")
+        with col_barras2:
+            alto_barras = st.slider("Alto de Barras (escala Y)", 0.1, 2.0, value=st.session_state.get("slider_alto_barras", 1.0), step=0.1, key="slider_alto_barras", help="Multiplica la altura de las barras. >1 = más altas, <1 = más bajas")
         
-        with st.expander("🔡 Tipografía y Texto"):
-            t_nombres = st.slider("Tamaño Nombres", 8, 30, value=st.session_state["slider_nombres"], key="slider_nombres")
-            t_precios = st.slider("Tamaño Precios ($)", 10, 40, value=st.session_state["slider_precios"], key="slider_precios")
-            t_pkg = st.slider("Tamaño $/Kg", 10, 40, value=st.session_state["slider_pkg"], key="slider_pkg")
-            t_som = st.slider("Tamaño SOM (%)", 8, 25, value=st.session_state["slider_som"], key="slider_som")
-            angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, value=st.session_state["slider_angulo"], key="slider_angulo")
+        opacidad_barras = st.slider("Opacidad Barras", 0.1, 1.0, value=st.session_state["slider_opacidad"], key="slider_opacidad")
+    
+    with st.expander("🔡 Tipografía y Texto"):
+        t_nombres = st.slider("Tamaño Nombres", 8, 30, value=st.session_state["slider_nombres"], key="slider_nombres")
+        t_precios = st.slider("Tamaño Precios ($)", 10, 40, value=st.session_state["slider_precios"], key="slider_precios")
+        t_pkg = st.slider("Tamaño $/Kg", 10, 40, value=st.session_state["slider_pkg"], key="slider_pkg")
+        t_som = st.slider("Tamaño SOM (%)", 8, 25, value=st.session_state["slider_som"], key="slider_som")
+        angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, value=st.session_state["slider_angulo"], key="slider_angulo")
+    
+    # === EXPANDER PARA LÍNEAS DIVISORIAS / GRID ===
+    with st.expander("📊 Líneas Divisorias (Grid)"):
+        st.markdown("#### Visibilidad del Grid")
+        col_vis1, col_vis2 = st.columns(2)
+        with col_vis1:
+            grid_y_visible = st.checkbox(
+                "Mostrar líneas horizontales (Y)", 
+                value=st.session_state.get("grid_y_visible", True),
+                key="grid_y_visible",
+                help="Líneas horizontales del eje Y"
+            )
+        with col_vis2:
+            grid_x_visible = st.checkbox(
+                "Mostrar líneas verticales (X)", 
+                value=st.session_state.get("grid_x_visible", False),
+                key="grid_x_visible",
+                help="Líneas verticales del eje X"
+            )
         
-        # === NUEVO EXPANDER PARA LÍNEAS DIVISORIAS / GRID ===
-        with st.expander("📊 Líneas Divisorias (Grid)"):
-            st.markdown("#### Visibilidad del Grid")
-            col_vis1, col_vis2 = st.columns(2)
-            with col_vis1:
-                grid_y_visible = st.checkbox(
-                    "Mostrar líneas horizontales (Y)", 
-                    value=st.session_state.get("grid_y_visible", True),
-                    key="grid_y_visible",
-                    help="Líneas horizontales del eje Y"
-                )
-            with col_vis2:
-                grid_x_visible = st.checkbox(
-                    "Mostrar líneas verticales (X)", 
-                    value=st.session_state.get("grid_x_visible", False),
-                    key="grid_x_visible",
-                    help="Líneas verticales del eje X"
-                )
-            
-            st.markdown("#### Estilo de Líneas")
-            col_style1, col_style2, col_style3 = st.columns(3)
-            
-            with col_style1:
-                grid_color = st.color_picker(
-                    "Color de Líneas",
-                    value=st.session_state.get("grid_color", "#E0E0E0"),
-                    key="grid_color",
-                    help="Color de las líneas divisorias"
-                )
-            
-            with col_style2:
-                grid_grosor = st.slider(
-                    "Grosor de Líneas",
-                    0.1, 5.0, 
-                    value=st.session_state.get("grid_grosor", 1.0),
-                    step=0.1,
-                    key="grid_grosor",
-                    help="Grosor de las líneas en puntos"
-                )
-            
-            with col_style3:
-                grid_opacidad = st.slider(
-                    "Opacidad de Líneas",
-                    0.0, 1.0,
-                    value=st.session_state.get("grid_opacidad", 0.5),
-                    step=0.05,
-                    key="grid_opacidad",
-                    help="Transparencia de las líneas"
-                )
-            
-            col_style4, col_style5 = st.columns(2)
-            
-            with col_style4:
-                grid_estilo = st.selectbox(
-                    "Estilo de Línea",
-                    options=["solid", "dashed", "dotted", "dashdot"],
-                    index=["solid", "dashed", "dotted", "dashdot"].index(
-                        st.session_state.get("grid_estilo", "solid")
-                    ),
-                    key="grid_estilo",
-                    help="Tipo de línea: continua, discontinua, punteada, etc."
-                )
-            
-            with col_style5:
-                grid_z_order = st.selectbox(
-                    "Posición de Grid",
-                    options=[("Detrás de barras", 0), ("Delante de barras", 3)],
-                    format_func=lambda x: x[0],
-                    index=0 if st.session_state.get("grid_z_order", 0) == 0 else 1,
-                    key="grid_z_order_select",
-                    help="Si las líneas aparecen detrás o delante de las barras"
-                )
-                grid_z_order = grid_z_order[1]
-                st.session_state["grid_z_order"] = grid_z_order
-            
-            st.markdown("#### Cantidad de Líneas")
-            col_qty1, col_qty2 = st.columns(2)
-            
-            with col_qty1:
-                nticks_y = st.slider(
-                    "Número de líneas horizontales",
-                    3, 30,
-                    value=st.session_state.get("nticks_y", 10),
-                    key="nticks_y",
-                    help="Cantidad de divisiones en el eje Y"
-                )
-            
-            with col_qty2:
-                st.info("💡 **Tip**: Más líneas = grid más denso. Menos líneas = gráfico más limpio.")
-            
-            # Preview de configuración actual
-            st.markdown("---")
-            st.markdown("#### 👁️ Vista Previa de Configuración")
-            preview_cols = st.columns(3)
-            with preview_cols[0]:
-                st.markdown(f"""
-                    <div style='background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd;'>
-                        <div style='font-size: 12px; color: #666; margin-bottom: 5px;'>Color</div>
-                        <div style='background: {grid_color}; height: 30px; border-radius: 3px; border: 1px solid #ccc;'></div>
-                    </div>
-                """, unsafe_allow_html=True)
-            with preview_cols[1]:
-                st.markdown(f"""
-                    <div style='background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd;'>
-                        <div style='font-size: 12px; color: #666; margin-bottom: 5px;'>Grosor & Opacidad</div>
-                        <div style='font-weight: bold; font-size: 18px; color: #333;'>{grid_grosor}px · {int(grid_opacidad*100)}%</div>
-                    </div>
-                """, unsafe_allow_html=True)
-            with preview_cols[2]:
-                st.markdown(f"""
-                    <div style='background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd;'>
-                        <div style='font-size: 12px; color: #666; margin-bottom: 5px;'>Estilo & Líneas</div>
-                        <div style='font-weight: bold; font-size: 18px; color: #333;'>{grid_estilo.title()} · {nticks_y} líneas</div>
-                    </div>
-                """, unsafe_allow_html=True)
-
+        st.markdown("#### Estilo de Líneas")
+        col_style1, col_style2, col_style3 = st.columns(3)
+        
+        with col_style1:
+            grid_color = st.color_picker(
+                "Color de Líneas",
+                value=st.session_state.get("grid_color", "#DCDCDC"),
+                key="grid_color",
+                help="Color de las líneas divisorias"
+            )
+        
+        with col_style2:
+            grid_grosor = st.slider(
+                "Grosor de Líneas",
+                0.1, 5.0, 
+                value=st.session_state.get("grid_grosor", 1.0),
+                step=0.1,
+                key="grid_grosor",
+                help="Grosor de las líneas en puntos"
+            )
+        
+        with col_style3:
+            grid_opacidad = st.slider(
+                "Opacidad de Líneas",
+                0.0, 1.0,
+                value=st.session_state.get("grid_opacidad", 0.5),
+                step=0.05,
+                key="grid_opacidad",
+                help="Transparencia de las líneas"
+            )
+        
+        col_style4, col_style5 = st.columns(2)
+        
+        with col_style4:
+            grid_estilo = st.selectbox(
+                "Estilo de Línea",
+                options=["solid", "dash", "dot", "dashdot"],
+                index=["solid", "dash", "dot", "dashdot"].index(
+                    st.session_state.get("grid_estilo", "solid")
+                ),
+                key="grid_estilo",
+                help="Tipo de línea: solid (continua), dash (discontinua), dot (punteada), dashdot (mixta)"
+            )
+        
+        with col_style5:
+            grid_z_order = st.selectbox(
+                "Posición de Grid",
+                options=[("Detrás de barras", "below"), ("Delante de barras", "above")],
+                format_func=lambda x: x[0],
+                index=0 if st.session_state.get("grid_z_order", "below") == "below" else 1,
+                key="grid_z_order_select",
+                help="Si las líneas aparecen detrás o delante de las barras"
+            )
+            grid_z_order = grid_z_order[1]
+            st.session_state["grid_z_order"] = grid_z_order
+        
+        st.markdown("#### Cantidad de Líneas")
+        col_qty1, col_qty2 = st.columns(2)
+        
+        with col_qty1:
+            nticks_y = st.slider(
+                "Número de líneas horizontales",
+                3, 30,
+                value=st.session_state.get("nticks_y", 10),
+                key="nticks_y",
+                help="Cantidad de divisiones en el eje Y"
+            )
+        
+        with col_qty2:
+            st.info("💡 **Tip**: Más líneas = grid más denso. Menos líneas = gráfico más limpio.")
+        
+        # Preview de configuración actual
+        st.markdown("---")
+        st.markdown("#### 👁️ Vista Previa de Configuración")
+        preview_cols = st.columns(3)
+        with preview_cols[0]:
+            st.markdown(f"""
+                <div style='background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd;'>
+                    <div style='font-size: 12px; color: #666; margin-bottom: 5px;'>Color</div>
+                    <div style='background: {grid_color}; height: 30px; border-radius: 3px; border: 1px solid #ccc;'></div>
+                </div>
+            """, unsafe_allow_html=True)
+        with preview_cols[1]:
+            st.markdown(f"""
+                <div style='background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd;'>
+                    <div style='font-size: 12px; color: #666; margin-bottom: 5px;'>Grosor & Opacidad</div>
+                    <div style='font-weight: bold; font-size: 18px; color: #333;'>{grid_grosor}px · {int(grid_opacidad*100)}%</div>
+                </div>
+            """, unsafe_allow_html=True)
+        with preview_cols[2]:
+            st.markdown(f"""
+                <div style='background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd;'>
+                    <div style='font-size: 12px; color: #666; margin-bottom: 5px;'>Estilo & Líneas</div>
+                    <div style='font-weight: bold; font-size: 18px; color: #333;'>{grid_estilo.title()} · {nticks_y} líneas</div>
+                </div>
+            """, unsafe_allow_html=True)
 
         
         # ✨ SELECTOR DE COLORES PERSONALIZADOS CORREGIDO
@@ -1099,7 +1105,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         )
         st.write("")
 
-# --- 7. GRÁFICO FINAL ---
+# --- 7. GRÁFICO FINAL CON CONFIGURACIÓN DE GRID ---
 if not st.session_state.data.empty:
     
     df_p = st.session_state.data.copy()
@@ -1137,7 +1143,7 @@ if not st.session_state.data.empty:
                 textposition="middle center", textfont=dict(size=t_som, color="black"),
             ), row=1, col=1)
 
-            # --- TRACE 2: BARRAS DE PRECIO CON PERSONALIZACIÓN CORREGIDA ---
+            # --- TRACE 2: BARRAS DE PRECIO CON PERSONALIZACIÓN Y ALTO AJUSTABLE ---
             colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D","PROPUESTA":"#4B207E"}
 
             bar_colors = []
@@ -1160,11 +1166,11 @@ if not st.session_state.data.empty:
                 else:
                     labels_precios.append(f"${int(p)}")
 
-            # Crear un trace por cada producto para poder aplicar colores individuales
+            # Crear un trace por cada producto con alto ajustable
             for idx, (i, row) in enumerate(df_p.iterrows()):
                 fig.add_trace(go.Bar(
                     x=[row["Producto"]], 
-                    y=[row["Precio ($)"]],
+                    y=[row["Precio ($)"] * alto_barras],  # ⭐ APLICAR MULTIPLICADOR DE ALTO
                     marker_color=bar_colors[idx],
                     marker_opacity=opacidad_barras, 
                     width=ancho_barras,
@@ -1202,7 +1208,8 @@ if not st.session_state.data.empty:
                     color_borde_pkg = "#444" if row["Fabricante"] != "BARCEL" else None
                 
                 fig.add_annotation(
-                    x=i, y=2.5, text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
+                    x=i, y=2.5 * alto_barras,  # ⭐ AJUSTAR POSICIÓN SEGÚN ALTO DE BARRAS
+                    text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
                     showarrow=False, 
                     font=dict(size=t_pkg, color=color_texto_pkg),
                     bgcolor=color_fondo_pkg,
@@ -1236,12 +1243,27 @@ if not st.session_state.data.empty:
             fig.update_xaxes(
                 tickangle=angulo_nombres, 
                 tickfont=dict(size=t_nombres, color="black"),
-                showline=False, 
+                showline=False,
+                showgrid=grid_x_visible,  # ⭐ CONFIGURACIÓN GRID X
+                gridcolor=grid_color,
+                gridwidth=grid_grosor,
+                griddash=grid_estilo,
+                layer=grid_z_order,
                 row=2, col=1
             )
             
-            fig.update_yaxes(showticklabels=False, row=1, col=1)
-            fig.update_yaxes(showgrid=True, gridcolor="#DCDCDC", tickprefix="$", tickfont=dict(size=14), row=2, col=1)
+            fig.update_yaxes(showticklabels=False, showgrid=False, row=1, col=1)
+            fig.update_yaxes(
+                showgrid=grid_y_visible,  # ⭐ CONFIGURACIÓN GRID Y
+                gridcolor=grid_color,
+                gridwidth=grid_grosor,
+                griddash=grid_estilo,
+                layer=grid_z_order,
+                nticks=nticks_y,
+                tickprefix="$", 
+                tickfont=dict(size=14), 
+                row=2, col=1
+            )
             
             st.plotly_chart(fig, use_container_width=True, config={
                 'toImageButtonOptions': {
@@ -1261,7 +1283,7 @@ if not st.session_state.data.empty:
             import plotly.graph_objects as go
             fig = go.Figure()
 
-            # ✨ APLICAR COLORES PERSONALIZADOS EN PRICE PACK
+            # ✨ APLICAR COLORES PERSONALIZADOS Y ALTO AJUSTABLE EN PRICE PACK
             bar_colors_pp = []
             for _, row in df_p.iterrows():
                 if row["Producto"] in st.session_state["custom_colors"]:
@@ -1271,7 +1293,7 @@ if not st.session_state.data.empty:
 
             fig.add_trace(go.Bar(
                 x=df_p.index, 
-                y=df_p["Precio por Kg ($)"], 
+                y=df_p["Precio por Kg ($)"] * alto_barras,  # ⭐ APLICAR MULTIPLICADOR DE ALTO
                 marker_color=bar_colors_pp,
                 marker_line=dict(color="#D1D1D1", width=1),
                 marker_opacity=opacidad_barras,
@@ -1323,7 +1345,7 @@ if not st.session_state.data.empty:
                 txt_pkg_pp = f"${val_pkg_pp:,.0f}"
 
                 fig.add_annotation(
-                    x=i, y=r["Precio por Kg ($)"], 
+                    x=i, y=r["Precio por Kg ($)"] * alto_barras,  # ⭐ AJUSTAR SEGÚN ALTO
                     text=f"<b>{txt_pkg_pp}</b>", 
                     yshift=15, 
                     showarrow=False, 
@@ -1338,7 +1360,7 @@ if not st.session_state.data.empty:
                 txt_p_pp = f"${p_pp:.1f}" if p_pp < 10 else f"${int(p_pp)}"
 
                 fig.add_annotation(
-                    x=i, y=15, 
+                    x=i, y=15 * alto_barras,  # ⭐ AJUSTAR SEGÚN ALTO
                     text=f"<b>{txt_p_pp}</b>", 
                     showarrow=False, 
                     font=dict(size=t_precios, color=color_texto_desembolso),
@@ -1373,12 +1395,20 @@ if not st.session_state.data.empty:
                     ticktext=["<b>"+str(t)+"</b>" for t in df_p["Producto"]],
                     tickangle=angulo_nombres,
                     tickfont=dict(color="#000000", size=t_nombres, family="Verdana"),
-                    showgrid=False
+                    showgrid=grid_x_visible,  # ⭐ CONFIGURACIÓN GRID X
+                    gridcolor=grid_color,
+                    gridwidth=grid_grosor,
+                    griddash=grid_estilo,
+                    layer=grid_z_order,
                 ),
                 yaxis=dict(
                     tickprefix="$", 
-                    showgrid=True, 
-                    gridcolor="#F5F5F5"
+                    showgrid=grid_y_visible,  # ⭐ CONFIGURACIÓN GRID Y
+                    gridcolor=grid_color,
+                    gridwidth=grid_grosor,
+                    griddash=grid_estilo,
+                    layer=grid_z_order,
+                    nticks=nticks_y,
                 )
             )
     
