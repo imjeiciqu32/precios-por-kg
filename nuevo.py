@@ -1322,14 +1322,16 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                 padding_tarjeta = st.slider("Padding (px)", 10, 40, 18, 2, key="pad_card")
             
             st.markdown("#### 🔤 Tamaños de Texto")
-            col_txt1, col_txt2, col_txt3, col_txt4 = st.columns(4)
+            col_txt1, col_txt2, col_txt3, col_txt4, col_txt5 = st.columns(5)
             with col_txt1:
                 size_producto = st.slider("Nombre Producto", 8, 24, 13, 1, key="txt_prod")
             with col_txt2:
                 size_precio = st.slider("Precio", 14, 36, 22, 2, key="txt_precio")
             with col_txt3:
-                size_index = st.slider("Index", 24, 72, 42, 4, key="txt_index")
+                size_vs = st.slider("VS", 8, 24, 11, 1, key="txt_vs")
             with col_txt4:
+                size_index = st.slider("Index", 24, 72, 42, 4, key="txt_index")
+            with col_txt5:
                 size_label = st.slider("Etiquetas", 7, 18, 11, 1, key="txt_label")
             
             st.markdown("#### 🎨 Estilo Visual")
@@ -1357,7 +1359,7 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                     selections.append((s_a, s_b))
 
             # Función para crear HTML de tarjeta personalizada
-            def crear_tarjeta_html(sel_a, sel_b, v_a, v_b, tipo_metrica, ancho, alto, pad, s_prod, s_precio, s_idx, s_label, b_width, b_top_width, shadow, radius):
+            def crear_tarjeta_html(sel_a, sel_b, v_a, v_b, tipo_metrica, ancho, alto, pad, s_prod, s_precio, s_vs, s_idx, s_label, b_width, b_top_width, shadow, radius):
                 idx = int((v_a / v_b * 100)) if v_b > 0 else 0
                 color = "#0B3C8C" if idx <= 100 else "#D32F2F"
                 label_metrica = "Index Desembolso" if tipo_metrica == "desembolso" else "Index $/Kg"
@@ -1395,7 +1397,7 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                                 font-size:{s_precio}px; 
                                 margin-bottom:14px;">
                         <span style="color:#222;">{precio_fmt_a}</span>
-                        <span style="color:#bbb; font-size:{s_label}px; font-weight:600;">vs</span>
+                        <span style="color:#bbb; font-size:{s_vs}px; font-weight:600;">vs</span>
                         <span style="color:#222;">{precio_fmt_b}</span>
                     </div>
                     <div style="font-size:{s_idx}px; font-weight:900; color:{color}; margin-bottom:6px; line-height:1;">{idx}</div>
@@ -1406,10 +1408,6 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
             # Fila Desembolso
             st.markdown("### 💰 Index Desembolso")
             
-            # Botón para descargar todas las tarjetas de desembolso
-            if st.button("📥 Descargar Todas las Tarjetas de Desembolso", use_container_width=True):
-                st.info("💡 **Tip para captura de pantalla:**\n- Windows: Win + Shift + S o Snipping Tool\n- Mac: Cmd + Shift + 4\n- Chrome: Extensión 'GoFullPage' o 'Awesome Screenshot'")
-            
             des_cols = st.columns(4)
             for i, (sel_a, sel_b) in enumerate(selections):
                 v_a = df_comp[df_comp["Lookup_Key"] == sel_a]["Precio ($)"].iloc[0]
@@ -1418,16 +1416,16 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                 with des_cols[i]:
                     card_html = crear_tarjeta_html(sel_a, sel_b, v_a, v_b, "desembolso", 
                                                    ancho_tarjeta, alto_tarjeta, padding_tarjeta,
-                                                   size_producto, size_precio, size_index, size_label,
+                                                   size_producto, size_precio, size_vs, size_index, size_label,
                                                    border_width, border_top_width, shadow_intensity, border_radius)
                     st.markdown(card_html, unsafe_allow_html=True)
+                    
+                    # Botón individual de descarga
+                    if st.button("📸 Capturar", key=f"cap_des_{i}", use_container_width=True, help="Usa Win+Shift+S (Windows) o Cmd+Shift+4 (Mac) para capturar esta tarjeta"):
+                        st.toast("💡 Usa la herramienta de captura de tu sistema para guardar esta tarjeta", icon="📸")
 
             # Fila $/Kg
             st.markdown("### ⚖️ Index Precio por Kg")
-            
-            # Botón para descargar todas las tarjetas de precio por kg
-            if st.button("📥 Descargar Todas las Tarjetas de Precio/Kg", use_container_width=True):
-                st.info("💡 **Tip para captura de pantalla:**\n- Windows: Win + Shift + S o Snipping Tool\n- Mac: Cmd + Shift + 4\n- Chrome: Extensión 'GoFullPage' o 'Awesome Screenshot'")
             
             pkg_cols = st.columns(4)
             for i, (sel_a, sel_b) in enumerate(selections):
@@ -1437,40 +1435,13 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                 with pkg_cols[i]:
                     card_html = crear_tarjeta_html(sel_a, sel_b, v_a, v_b, "precio_kg",
                                                    ancho_tarjeta, alto_tarjeta, padding_tarjeta,
-                                                   size_producto, size_precio, size_index, size_label,
+                                                   size_producto, size_precio, size_vs, size_index, size_label,
                                                    border_width, border_top_width, shadow_intensity, border_radius)
                     st.markdown(card_html, unsafe_allow_html=True)
-            
-            # === GUÍA DE USO ===
-            with st.expander("📖 Guía de Uso para PowerPoint"):
-                st.markdown("""
-                ### 🎯 Cómo usar estas tarjetas en PowerPoint
-                
-                **Opción 1: Captura de Pantalla (Recomendado)**
-                1. Ajusta el tamaño de las tarjetas con los controles de personalización
-                2. Haz clic en "Descargar Todas las Tarjetas"
-                3. Usa la herramienta de captura de pantalla:
-                   - **Windows**: Win + Shift + S
-                   - **Mac**: Cmd + Shift + 4
-                4. Selecciona el área con las tarjetas
-                5. Pega directamente en PowerPoint (Ctrl+V / Cmd+V)
-                
-                **Opción 2: Extensiones de Chrome**
-                - Instala "GoFullPage" o "Awesome Screenshot"
-                - Captura solo la sección de tarjetas
-                - Guarda la imagen y arrástrala a PowerPoint
-                
-                **Opción 3: Captura Individual**
-                - Ajusta zoom del navegador (Ctrl + / Cmd +)
-                - Captura cada fila de tarjetas por separado
-                - Combina en PowerPoint según necesites
-                
-                ### 💡 Tips para mejor calidad
-                - **Tamaño óptimo para PPT**: Ancho 250-350px, Alto 180-220px
-                - **Zoom navegador**: 100-125% para mejor resolución
-                - **Fondo blanco**: Las tarjetas ya tienen fondo blanco integrado
-                - **Nombres largos**: Reduce el texto a 11-13px si se cortan
-                """)
+                    
+                    # Botón individual de descarga
+                    if st.button("📸 Capturar", key=f"cap_pkg_{i}", use_container_width=True, help="Usa Win+Shift+S (Windows) o Cmd+Shift+4 (Mac) para capturar esta tarjeta"):
+                        st.toast("💡 Usa la herramienta de captura de tu sistema para guardar esta tarjeta", icon="📸")
 
     # --- MODO 2: MATRIZ DE ARQUITECTURA (VISTA PPT) / PRICE PACK ---
     else:
@@ -1574,8 +1545,6 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                 st.warning("No hay datos en el canal DETALLE para realizar comparaciones.")
         else:
             st.error("⚠️ El formato de datos actual no es compatible con la Matriz (Falta columna 'Canal').")
-            
-# --- FIN DE SECCIÓN 8 ---
         
 
 # --- 10. PIRÁMIDE DE POSICIONAMIENTO (SOLO LADDER) ---
