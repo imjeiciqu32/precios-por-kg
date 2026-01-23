@@ -1266,6 +1266,11 @@ if not st.session_state.data.empty:
             })
                 
 # --- 8. COMPARATIVAS INDEX (UNIFICADO: LADDER + ARQUITECTURA PPT) ---
+# IMPORTS NECESARIOS AL INICIO DEL ARCHIVO (agregar si no están)
+from PIL import Image, ImageDraw, ImageFont
+import io
+import base64
+
 # Agregamos la condición para que esta sección solo se ejecute en los modos que usan Index
 if modo != "Price and Volume" and not st.session_state.data.empty:
     st.divider()
@@ -1343,6 +1348,128 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                 shadow_intensity = st.slider("Intensidad Sombra", 0, 20, 8, 2, key="shadow_i")
                 border_radius = st.slider("Redondeo Esquinas (px)", 4, 20, 12, 2, key="radius")
         
+        # === FUNCIÓN PARA GENERAR IMAGEN PNG ===
+        def generar_imagen_tarjeta(sel_a, sel_b, v_a, v_b, tipo_metrica, ancho, alto, pad, s_prod, s_precio, s_vs, s_idx, s_label, b_top_width, radius):
+            """Genera una imagen PNG de la tarjeta usando Pillow"""
+            idx = int((v_a / v_b * 100)) if v_b > 0 else 0
+            color_rgb = (11, 60, 140) if idx <= 100 else (211, 47, 47)  # Azul o Rojo
+            label_metrica = "INDEX DESEMBOLSO" if tipo_metrica == "desembolso" else "INDEX $/KG"
+            precio_fmt_a = f"${v_a:.1f}" if tipo_metrica == "desembolso" else f"${int(v_a)}"
+            precio_fmt_b = f"${v_b:.1f}" if tipo_metrica == "desembolso" else f"${int(v_b)}"
+            
+            # Crear imagen con fondo blanco
+            img = Image.new('RGB', (ancho, alto), color='white')
+            draw = ImageDraw.Draw(img)
+            
+            # Dibujar borde superior de color
+            draw.rectangle([0, 0, ancho, b_top_width], fill=color_rgb)
+            
+            # Dibujar bordes grises
+            border_color = (221, 221, 221)
+            draw.rectangle([0, b_top_width, 2, alto], fill=border_color)  # Izquierda
+            draw.rectangle([ancho-2, b_top_width, ancho, alto], fill=border_color)  # Derecha
+            draw.rectangle([0, alto-2, ancho, alto], fill=border_color)  # Abajo
+            
+            # Intentar cargar fuentes (con fallback)
+            try:
+                font_producto = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", s_prod)
+                font_precio = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", s_precio)
+                font_vs = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", s_vs)
+                font_index = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", s_idx)
+                font_label = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", s_label)
+            except:
+                font_producto = ImageFont.load_default()
+                font_precio = ImageFont.load_default()
+                font_vs = ImageFont.load_default()
+                font_index = ImageFont.load_default()
+                font_label = ImageFont.load_default()
+            
+            # Posiciones Y
+            y_productos = b_top_width + pad + 5
+            y_precios = y_productos + s_prod + 15
+            y_index = y_precios + s_precio + 20
+            y_label = y_index + s_idx + 5
+            
+            # Dibujar nombres de productos
+            draw.text((pad, y_productos), sel_a, fill=(51, 51, 51), font=font_producto)
+            bbox_b = draw.textbbox((0, 0), sel_b, font=font_producto)
+            width_b = bbox_b[2] - bbox_b[0]
+            draw.text((ancho - pad - width_b, y_productos), sel_b, fill=(51, 51, 51), font=font_producto)
+            
+            # Dibujar precios
+            draw.text((pad, y_precios), precio_fmt_a, fill=(34, 34, 34), font=font_precio)
+            
+            # Dibujar "vs" centrado
+            vs_text = "vs"
+            bbox_vs = draw.textbbox((0, 0), vs_text, font=font_vs)
+            width_vs = bbox_vs[2] - bbox_vs[0]
+            draw.text((ancho//2 - width_vs//2, y_precios), vs_text, fill=(187, 187, 187), font=font_vs)
+            
+            # Dibujar precio B
+            bbox_precio_b = draw.textbbox((0, 0), precio_fmt_b, font=font_precio)
+            width_precio_b = bbox_precio_b[2] - bbox_precio_b[0]
+            draw.text((ancho - pad - width_precio_b, y_precios), precio_fmt_b, fill=(34, 34, 34), font=font_precio)
+            
+            # Dibujar INDEX centrado
+            idx_text = str(idx)
+            bbox_idx = draw.textbbox((0, 0), idx_text, font=font_index)
+            width_idx = bbox_idx[2] - bbox_idx[0]
+            draw.text((ancho//2 - width_idx//2, y_index), idx_text, fill=color_rgb, font=font_index)
+            
+            # Dibujar label centrado
+            bbox_label = draw.textbbox((0, 0), label_metrica, font=font_label)
+            width_label = bbox_label[2] - bbox_label[0]
+            draw.text((ancho//2 - width_label//2, y_label), label_metrica, fill=(119, 119, 119), font=font_label)
+            
+            return img
+        
+        # Función para crear HTML de tarjeta (para vista previa)
+        def crear_tarjeta_html(sel_a, sel_b, v_a, v_b, tipo_metrica, ancho, alto, pad, s_prod, s_precio, s_vs, s_idx, s_label, b_width, b_top_width, shadow, radius):
+            idx = int((v_a / v_b * 100)) if v_b > 0 else 0
+            color = "#0B3C8C" if idx <= 100 else "#D32F2F"
+            label_metrica = "Index Desembolso" if tipo_metrica == "desembolso" else "Index $/Kg"
+            precio_fmt_a = f"${v_a:.1f}" if tipo_metrica == "desembolso" else f"${int(v_a)}"
+            precio_fmt_b = f"${v_b:.1f}" if tipo_metrica == "desembolso" else f"${int(v_b)}"
+            
+            return f"""
+            <div style="background:white; 
+                        border:{b_width}px solid #ddd; 
+                        border-top:{b_top_width}px solid {color}; 
+                        border-radius:{radius}px; 
+                        padding:{pad}px; 
+                        text-align:center; 
+                        width:{ancho}px; 
+                        height:{alto}px; 
+                        display:inline-flex; 
+                        flex-direction:column; 
+                        justify-content:space-between;
+                        box-shadow: 0 4px {shadow}px rgba(0,0,0,0.12);
+                        margin: 5px;">
+                <div style="display:flex; 
+                            justify-content:space-between; 
+                            font-size:{s_prod}px; 
+                            color:#333; 
+                            font-weight:700; 
+                            margin-bottom:10px; 
+                            line-height:1.3;">
+                    <span style="text-align:left; max-width:48%; overflow:hidden;">{sel_a}</span>
+                    <span style="text-align:right; max-width:48%; overflow:hidden;">{sel_b}</span>
+                </div>
+                <div style="display:flex; 
+                            justify-content:space-between; 
+                            align-items:center; 
+                            font-weight:bold; 
+                            font-size:{s_precio}px; 
+                            margin-bottom:14px;">
+                    <span style="color:#222;">{precio_fmt_a}</span>
+                    <span style="color:#bbb; font-size:{s_vs}px; font-weight:600;">vs</span>
+                    <span style="color:#222;">{precio_fmt_b}</span>
+                </div>
+                <div style="font-size:{s_idx}px; font-weight:900; color:{color}; margin-bottom:6px; line-height:1;">{idx}</div>
+                <div style="font-size:{s_label}px; font-weight:bold; color:#777; text-transform:uppercase; letter-spacing:0.5px;">{label_metrica}</div>
+            </div>
+            """
+        
         df_comp["Lookup_Key"] = df_comp["Producto"]
         list_a = df_comp[df_comp["Fabricante"]=="BARCEL"]["Lookup_Key"].unique().tolist()
         list_b = df_comp[df_comp["Fabricante"]!="BARCEL"]["Lookup_Key"].unique().tolist()
@@ -1358,53 +1485,6 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                     s_b = st.selectbox(f"{label_b}", list_b, key=f"sb{i}", index=idx_default)
                     selections.append((s_a, s_b))
 
-            # Función para crear HTML de tarjeta personalizada
-            def crear_tarjeta_html(sel_a, sel_b, v_a, v_b, tipo_metrica, ancho, alto, pad, s_prod, s_precio, s_vs, s_idx, s_label, b_width, b_top_width, shadow, radius):
-                idx = int((v_a / v_b * 100)) if v_b > 0 else 0
-                color = "#0B3C8C" if idx <= 100 else "#D32F2F"
-                label_metrica = "Index Desembolso" if tipo_metrica == "desembolso" else "Index $/Kg"
-                precio_fmt_a = f"${v_a:.1f}" if tipo_metrica == "desembolso" else f"${int(v_a)}"
-                precio_fmt_b = f"${v_b:.1f}" if tipo_metrica == "desembolso" else f"${int(v_b)}"
-                
-                return f"""
-                <div style="background:white; 
-                            border:{b_width}px solid #ddd; 
-                            border-top:{b_top_width}px solid {color}; 
-                            border-radius:{radius}px; 
-                            padding:{pad}px; 
-                            text-align:center; 
-                            width:{ancho}px; 
-                            height:{alto}px; 
-                            display:inline-flex; 
-                            flex-direction:column; 
-                            justify-content:space-between;
-                            box-shadow: 0 4px {shadow}px rgba(0,0,0,0.12);
-                            margin: 5px;">
-                    <div style="display:flex; 
-                                justify-content:space-between; 
-                                font-size:{s_prod}px; 
-                                color:#333; 
-                                font-weight:700; 
-                                margin-bottom:10px; 
-                                line-height:1.3;">
-                        <span style="text-align:left; max-width:48%; overflow:hidden;">{sel_a}</span>
-                        <span style="text-align:right; max-width:48%; overflow:hidden;">{sel_b}</span>
-                    </div>
-                    <div style="display:flex; 
-                                justify-content:space-between; 
-                                align-items:center; 
-                                font-weight:bold; 
-                                font-size:{s_precio}px; 
-                                margin-bottom:14px;">
-                        <span style="color:#222;">{precio_fmt_a}</span>
-                        <span style="color:#bbb; font-size:{s_vs}px; font-weight:600;">vs</span>
-                        <span style="color:#222;">{precio_fmt_b}</span>
-                    </div>
-                    <div style="font-size:{s_idx}px; font-weight:900; color:{color}; margin-bottom:6px; line-height:1;">{idx}</div>
-                    <div style="font-size:{s_label}px; font-weight:bold; color:#777; text-transform:uppercase; letter-spacing:0.5px;">{label_metrica}</div>
-                </div>
-                """
-
             # Fila Desembolso
             st.markdown("### 💰 Index Desembolso")
             
@@ -1414,15 +1494,34 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                 v_b = df_comp[df_comp["Lookup_Key"] == sel_b]["Precio ($)"].iloc[0]
                 
                 with des_cols[i]:
+                    # Mostrar vista previa HTML
                     card_html = crear_tarjeta_html(sel_a, sel_b, v_a, v_b, "desembolso", 
                                                    ancho_tarjeta, alto_tarjeta, padding_tarjeta,
                                                    size_producto, size_precio, size_vs, size_index, size_label,
                                                    border_width, border_top_width, shadow_intensity, border_radius)
                     st.markdown(card_html, unsafe_allow_html=True)
                     
-                    # Botón individual de descarga
-                    if st.button("📸 Capturar", key=f"cap_des_{i}", use_container_width=True, help="Usa Win+Shift+S (Windows) o Cmd+Shift+4 (Mac) para capturar esta tarjeta"):
-                        st.toast("💡 Usa la herramienta de captura de tu sistema para guardar esta tarjeta", icon="📸")
+                    # Generar imagen y botón de descarga
+                    img = generar_imagen_tarjeta(sel_a, sel_b, v_a, v_b, "desembolso",
+                                                ancho_tarjeta, alto_tarjeta, padding_tarjeta,
+                                                size_producto, size_precio, size_vs, size_index, size_label,
+                                                border_top_width, border_radius)
+                    
+                    # Convertir imagen a bytes
+                    buf = io.BytesIO()
+                    img.save(buf, format='PNG')
+                    buf.seek(0)
+                    
+                    # Botón de descarga
+                    nombre_archivo = f"desembolso_{sel_a.replace(' ', '_')}_vs_{sel_b.replace(' ', '_')}.png"
+                    st.download_button(
+                        label="⬇️ Descargar PNG",
+                        data=buf,
+                        file_name=nombre_archivo,
+                        mime="image/png",
+                        key=f"download_des_{i}",
+                        use_container_width=True
+                    )
 
             # Fila $/Kg
             st.markdown("### ⚖️ Index Precio por Kg")
@@ -1433,15 +1532,34 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                 v_b = df_comp[df_comp["Lookup_Key"] == sel_b]["Precio por Kg ($)"].iloc[0]
                 
                 with pkg_cols[i]:
+                    # Mostrar vista previa HTML
                     card_html = crear_tarjeta_html(sel_a, sel_b, v_a, v_b, "precio_kg",
                                                    ancho_tarjeta, alto_tarjeta, padding_tarjeta,
                                                    size_producto, size_precio, size_vs, size_index, size_label,
                                                    border_width, border_top_width, shadow_intensity, border_radius)
                     st.markdown(card_html, unsafe_allow_html=True)
                     
-                    # Botón individual de descarga
-                    if st.button("📸 Capturar", key=f"cap_pkg_{i}", use_container_width=True, help="Usa Win+Shift+S (Windows) o Cmd+Shift+4 (Mac) para capturar esta tarjeta"):
-                        st.toast("💡 Usa la herramienta de captura de tu sistema para guardar esta tarjeta", icon="📸")
+                    # Generar imagen y botón de descarga
+                    img = generar_imagen_tarjeta(sel_a, sel_b, v_a, v_b, "precio_kg",
+                                                ancho_tarjeta, alto_tarjeta, padding_tarjeta,
+                                                size_producto, size_precio, size_vs, size_index, size_label,
+                                                border_top_width, border_radius)
+                    
+                    # Convertir imagen a bytes
+                    buf = io.BytesIO()
+                    img.save(buf, format='PNG')
+                    buf.seek(0)
+                    
+                    # Botón de descarga
+                    nombre_archivo = f"precio_kg_{sel_a.replace(' ', '_')}_vs_{sel_b.replace(' ', '_')}.png"
+                    st.download_button(
+                        label="⬇️ Descargar PNG",
+                        data=buf,
+                        file_name=nombre_archivo,
+                        mime="image/png",
+                        key=f"download_pkg_{i}",
+                        use_container_width=True
+                    )
 
     # --- MODO 2: MATRIZ DE ARQUITECTURA (VISTA PPT) / PRICE PACK ---
     else:
