@@ -494,54 +494,7 @@ with st.sidebar:
             **💡 Tip:** Crea presets para cada ocasión y cambia rápidamente entre ellos.
             """)
 
-# ============================================================================
-# EJEMPLOS DE USO EN TU CÓDIGO
-# ============================================================================
 
-
-EJEMPLO 1: Cargar automáticamente un preset al inicio
----------------------------------------------------------
-if "preset_cargado" not in st.session_state:
-    if "Presentación Ejecutiva" in st.session_state["configs_guardadas"]:
-        cargar_configuracion("Presentación Ejecutiva")
-        st.session_state["preset_cargado"] = True
-        st.rerun()
-
-
-EJEMPLO 2: Crear presets predefinidos al inicio de la app
----------------------------------------------------------
-# Crear preset por defecto si no existe
-if "configs_guardadas" not in st.session_state or not st.session_state["configs_guardadas"]:
-    # Configurar valores default
-    st.session_state["slider_nombres"] = 16
-    st.session_state["slider_precios"] = 20
-    st.session_state["slider_ancho"] = 0.7
-    # ... etc
-    
-    # Guardar como "Default"
-    guardar_configuracion("Default")
-
-
-EJEMPLO 3: Mostrar preset actual en el título
----------------------------------------------------------
-preset_actual = "Sin preset"
-for nombre, config in st.session_state["configs_guardadas"].items():
-    # Comparar si los valores actuales coinciden con algún preset
-    if (st.session_state.get("slider_nombres") == config["diseno"]["slider_nombres"] and
-        st.session_state.get("slider_precios") == config["diseno"]["slider_precios"]):
-        preset_actual = nombre
-        break
-
-st.sidebar.success(f"📌 Preset actual: **{preset_actual}**")
-
-
-EJEMPLO 4: Botón de reset con confirmación
----------------------------------------------------------
-if st.sidebar.button("🔄 Reset a valores default"):
-    if "Default" in st.session_state["configs_guardadas"]:
-        cargar_configuracion("Default")
-        st.success("✅ Reseteado a valores default")
-        st.rerun()
 
 
 # --- FUNCIÓN PARA CARGAR CONFIGURACIÓN ---
