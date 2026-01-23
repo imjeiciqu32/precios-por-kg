@@ -21,7 +21,7 @@ if "slider_pkg" not in st.session_state:
 if "slider_som" not in st.session_state:
     st.session_state["slider_som"] = 13
 if "slider_ancho" not in st.session_state:
-    st.session_state["slider_ancho"] = 0.6
+    st.session_state["slider_ancho"] = 0.8
 if "slider_opacidad" not in st.session_state:
     st.session_state["slider_opacidad"] = 1.0
 if "slider_alto" not in st.session_state:
