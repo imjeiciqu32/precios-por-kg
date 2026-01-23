@@ -455,32 +455,36 @@ def cargar_configuracion(nombre):
     
     config = st.session_state["configs_guardadas"][nombre]
     
-    # Aplicar cada valor individualmente usando setattr-like pattern
-    if "diseno" in config:
-        st.session_state["slider_nombres"] = config["diseno"].get("slider_nombres", 14)
-        st.session_state["slider_precios"] = config["diseno"].get("slider_precios", 18)
-        st.session_state["slider_pkg"] = config["diseno"].get("slider_pkg", 16)
-        st.session_state["slider_som"] = config["diseno"].get("slider_som", 13)
-        st.session_state["slider_ancho"] = config["diseno"].get("slider_ancho", 0.6)
-        st.session_state["slider_alto_barras"] = config["diseno"].get("slider_alto_barras", 1.0)
-        st.session_state["slider_opacidad"] = config["diseno"].get("slider_opacidad", 1.0)
-        st.session_state["slider_alto"] = config["diseno"].get("slider_alto", 950)
-        st.session_state["slider_espacio"] = config["diseno"].get("slider_espacio", 0.03)
-        st.session_state["slider_margen_b"] = config["diseno"].get("slider_margen_b", 400)
-        st.session_state["slider_angulo"] = config["diseno"].get("slider_angulo", -90)
+    # Extraer todos los valores primero, sin tocar session_state
+    valores_diseno = config.get("diseno", {})
+    valores_grid = config.get("grid", {})
+    valores_colores = config.get("colores_personalizados", {})
     
-    if "grid" in config:
-        st.session_state["grid_color"] = config["grid"].get("grid_color", "#DCDCDC")
-        st.session_state["grid_grosor"] = config["grid"].get("grid_grosor", 1.0)
-        st.session_state["grid_opacidad"] = config["grid"].get("grid_opacidad", 0.5)
-        st.session_state["grid_estilo"] = config["grid"].get("grid_estilo", "solid")
-        st.session_state["grid_y_visible"] = config["grid"].get("grid_y_visible", True)
-        st.session_state["grid_x_visible"] = config["grid"].get("grid_x_visible", False)
-        st.session_state["nticks_y"] = config["grid"].get("nticks_y", 10)
-        st.session_state["grid_layer"] = config["grid"].get("grid_layer", "below traces")
+    # Aplicar diseño
+    st.session_state["slider_nombres"] = valores_diseno.get("slider_nombres", 14)
+    st.session_state["slider_precios"] = valores_diseno.get("slider_precios", 18)
+    st.session_state["slider_pkg"] = valores_diseno.get("slider_pkg", 16)
+    st.session_state["slider_som"] = valores_diseno.get("slider_som", 13)
+    st.session_state["slider_ancho"] = valores_diseno.get("slider_ancho", 0.6)
+    st.session_state["slider_alto_barras"] = valores_diseno.get("slider_alto_barras", 1.0)
+    st.session_state["slider_opacidad"] = valores_diseno.get("slider_opacidad", 1.0)
+    st.session_state["slider_alto"] = valores_diseno.get("slider_alto", 950)
+    st.session_state["slider_espacio"] = valores_diseno.get("slider_espacio", 0.03)
+    st.session_state["slider_margen_b"] = valores_diseno.get("slider_margen_b", 400)
+    st.session_state["slider_angulo"] = valores_diseno.get("slider_angulo", -90)
     
-    if "colores_personalizados" in config:
-        st.session_state["custom_colors"] = config["colores_personalizados"]
+    # Aplicar grid
+    st.session_state["grid_color"] = valores_grid.get("grid_color", "#DCDCDC")
+    st.session_state["grid_grosor"] = valores_grid.get("grid_grosor", 1.0)
+    st.session_state["grid_opacidad"] = valores_grid.get("grid_opacidad", 0.5)
+    st.session_state["grid_estilo"] = valores_grid.get("grid_estilo", "solid")
+    st.session_state["grid_y_visible"] = valores_grid.get("grid_y_visible", True)
+    st.session_state["grid_x_visible"] = valores_grid.get("grid_x_visible", False)
+    st.session_state["nticks_y"] = valores_grid.get("nticks_y", 10)
+    st.session_state["grid_layer"] = valores_grid.get("grid_layer", "below traces")
+    
+    # Aplicar colores
+    st.session_state["custom_colors"] = valores_colores
     
     return True
 
@@ -879,6 +883,7 @@ with st.sidebar:
                                 st.rerun()
     
     # --- SECCIÓN: CONFIGURACIONES GUARDADAS ---
+    st.markdown("---")
     
     with st.expander("💾 Configuraciones", expanded=False):
         st.markdown("### Guardar/Cargar Presets")
