@@ -1237,28 +1237,29 @@ if not st.session_state.data.empty:
 
             fig.update_layout(
                 height=alto_grafico, width=1950, template="plotly_white", showlegend=False, 
-                margin=dict(t=50, b=margen_b, l=40, r=40)
+                margin=dict(t=50, b=margen_b, l=40, r=40),
+                # Configuración de layer para el grid
+                xaxis_layer=st.session_state.get("grid_layer", "below traces"),
+                yaxis_layer=st.session_state.get("grid_layer", "below traces"),
             )
             
             fig.update_xaxes(
                 tickangle=angulo_nombres, 
                 tickfont=dict(size=t_nombres, color="black"),
                 showline=False,
-                showgrid=grid_x_visible,  # ⭐ CONFIGURACIÓN GRID X
+                showgrid=grid_x_visible,
                 gridcolor=grid_color,
                 gridwidth=grid_grosor,
                 griddash=grid_estilo,
-                layer=grid_z_order,
                 row=2, col=1
             )
             
             fig.update_yaxes(showticklabels=False, showgrid=False, row=1, col=1)
             fig.update_yaxes(
-                showgrid=grid_y_visible,  # ⭐ CONFIGURACIÓN GRID Y
+                showgrid=grid_y_visible,
                 gridcolor=grid_color,
                 gridwidth=grid_grosor,
                 griddash=grid_estilo,
-                layer=grid_z_order,
                 nticks=nticks_y,
                 tickprefix="$", 
                 tickfont=dict(size=14), 
@@ -1388,26 +1389,27 @@ if not st.session_state.data.empty:
             fig.update_layout(
                 height=alto_grafico,
                 margin=dict(b=margen_b, t=50, l=50, r=50),
-                template="plotly_white", 
+                template="plotly_white",
+                # Configuración de layer para el grid
+                xaxis_layer=st.session_state.get("grid_layer", "below traces"),
+                yaxis_layer=st.session_state.get("grid_layer", "below traces"),
                 xaxis=dict(
                     tickmode='array', 
                     tickvals=list(df_p.index), 
                     ticktext=["<b>"+str(t)+"</b>" for t in df_p["Producto"]],
                     tickangle=angulo_nombres,
                     tickfont=dict(color="#000000", size=t_nombres, family="Verdana"),
-                    showgrid=grid_x_visible,  # ⭐ CONFIGURACIÓN GRID X
+                    showgrid=grid_x_visible,
                     gridcolor=grid_color,
                     gridwidth=grid_grosor,
                     griddash=grid_estilo,
-                    layer=grid_z_order,
                 ),
                 yaxis=dict(
                     tickprefix="$", 
-                    showgrid=grid_y_visible,  # ⭐ CONFIGURACIÓN GRID Y
+                    showgrid=grid_y_visible,
                     gridcolor=grid_color,
                     gridwidth=grid_grosor,
                     griddash=grid_estilo,
-                    layer=grid_z_order,
                     nticks=nticks_y,
                 )
             )
