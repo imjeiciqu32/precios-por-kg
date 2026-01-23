@@ -728,44 +728,6 @@ with st.sidebar:
                 """, unsafe_allow_html=True)
 
 
-# === APLICAR CONFIGURACIÓN DE GRID EN TUS GRÁFICOS ===
-# Agrega este código en la sección donde generas tus gráficos con plotly o matplotlib
-
-# EJEMPLO PARA PLOTLY (si usas plotly):
-"""
-fig.update_xaxes(
-    showgrid=st.session_state.get("grid_x_visible", False),
-    gridwidth=st.session_state.get("grid_grosor", 1.0),
-    gridcolor=st.session_state.get("grid_color", "#E0E0E0"),
-    griddash=st.session_state.get("grid_estilo", "solid"),
-)
-
-fig.update_yaxes(
-    showgrid=st.session_state.get("grid_y_visible", True),
-    gridwidth=st.session_state.get("grid_grosor", 1.0),
-    gridcolor=st.session_state.get("grid_color", "#E0E0E0"),
-    griddash=st.session_state.get("grid_estilo", "solid"),
-    nticks=st.session_state.get("nticks_y", 10),
-)
-"""
-
-# EJEMPLO PARA MATPLOTLIB (si usas matplotlib):
-"""
-ax.grid(
-    visible=st.session_state.get("grid_y_visible", True),
-    which='major',
-    axis='y' if not st.session_state.get("grid_x_visible", False) else 'both',
-    color=st.session_state.get("grid_color", "#E0E0E0"),
-    linestyle=st.session_state.get("grid_estilo", "solid"),
-    linewidth=st.session_state.get("grid_grosor", 1.0),
-    alpha=st.session_state.get("grid_opacidad", 0.5),
-    zorder=st.session_state.get("grid_z_order", 0)
-)
-
-# Para controlar el número de líneas en matplotlib:
-from matplotlib.ticker import MaxNLocator
-ax.yaxis.set_major_locator(MaxNLocator(nbins=st.session_state.get("nticks_y", 10)))
-"""
         
         # ✨ SELECTOR DE COLORES PERSONALIZADOS CORREGIDO
         with st.expander("🎨 Colores Personalizados (Opcional)"):
