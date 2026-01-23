@@ -643,96 +643,96 @@ with st.sidebar:
                 """, unsafe_allow_html=True)
     
         with st.expander("🎨 Colores Personalizados (Opcional)"):
-        st.markdown("**Selecciona un producto para cambiar su color:**")
-        
-        # Inicializar custom_colors si no existe
-        if "custom_colors" not in st.session_state:
-            st.session_state["custom_colors"] = {}
-        
-        # Función callback para eliminar personalización (Definida antes para mayor claridad)
-        def eliminar_personalizacion(prod):
-            """Elimina el producto del diccionario y limpia la selección si es necesario"""
-            if prod in st.session_state["custom_colors"]:
-                del st.session_state["custom_colors"][prod]
-            # Mensaje temporal de éxito
-            st.toast(f"Personalización eliminada para {prod}")
-    
-        if "data" in st.session_state and "Producto" in st.session_state.data.columns:
-            productos_disponibles = sorted(st.session_state.data["Producto"].unique().tolist())
+            st.markdown("**Selecciona un producto para cambiar su color:**")
             
-            producto_seleccionado = st.selectbox(
-                "Producto a personalizar:", 
-                ["-- Ninguno --"] + productos_disponibles, 
-                key="color_picker_producto"
-            )
+            # Inicializar custom_colors si no existe
+            if "custom_colors" not in st.session_state:
+                st.session_state["custom_colors"] = {}
             
-            if producto_seleccionado != "-- Ninguno --":
-                st.markdown("---")
-                st.markdown("#### 🎨 Personalización de Barra")
+            # Función callback para eliminar personalización (Definida antes para mayor claridad)
+            def eliminar_personalizacion(prod):
+                """Elimina el producto del diccionario y limpia la selección si es necesario"""
+                if prod in st.session_state["custom_colors"]:
+                    del st.session_state["custom_colors"][prod]
+                # Mensaje temporal de éxito
+                st.toast(f"Personalización eliminada para {prod}")
+        
+            if "data" in st.session_state and "Producto" in st.session_state.data.columns:
+                productos_disponibles = sorted(st.session_state.data["Producto"].unique().tolist())
                 
-                # Lógica de colores por defecto
-                fabricante_prod = st.session_state.data[st.session_state.data["Producto"] == producto_seleccionado]["Fabricante"].iloc[0] if "Fabricante" in st.session_state.data.columns else "OTROS"
-                
-                default_barra = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"}.get(fabricante_prod.upper(), "#999999")
-                default_texto_pkg = "#FFFFFF" if fabricante_prod.upper() == "BARCEL" else "#000000"
-                default_fondo_pkg = "#4682B4" if fabricante_prod.upper() == "BARCEL" else "#FFFFFF"
-                default_borde_pkg = "#444444" if fabricante_prod.upper() != "BARCEL" else "#333333"
-                
-                # Selectores de color
-                color_barra = st.color_picker("Color de barra", value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("barra", default_barra), key=f"cp_barra_{producto_seleccionado}")
-                
-                st.markdown("#### 📝 Personalización de Precios")
-                col_precio1, col_precio2 = st.columns(2)
-                
-                with col_precio1:
-                    st.markdown("**Precio Desembolso (arriba)**")
-                    color_texto_desembolso = st.color_picker("Color texto", value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("texto_desembolso", "#000000"), key=f"cp_td_{producto_seleccionado}")
-                    
-                    # Suponiendo que 'modo' está definido previamente en tu app
-                    modo = st.session_state.get('modo', 'Price Pack') 
-                    color_fondo_desembolso = st.color_picker("Color fondo (caja azul)", value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("fondo_desembolso", "#00B0F0"), key=f"cp_fd_{producto_seleccionado}") if modo == "Price Pack" else None
-    
-                with col_precio2:
-                    st.markdown("**Precio por Kg (dentro)**")
-                    color_texto_pkg = st.color_picker("Color texto", value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("texto_pkg", default_texto_pkg), key=f"cp_tpkg_{producto_seleccionado}")
-                    color_fondo_pkg = st.color_picker("Color fondo", value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("fondo_pkg", default_fondo_pkg), key=f"cp_fpkg_{producto_seleccionado}")
-    
-                st.markdown("#### 🔲 Personalización de Bordes")
-                col_borde1, col_borde2 = st.columns(2)
-                
-                with col_borde1:
-                    color_borde_desembolso = st.color_picker("Borde Precio Desembolso", value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("borde_desembolso", "#000000"), key=f"cp_bd_{producto_seleccionado}") if modo == "Price Pack" else None
-                
-                with col_borde2:
-                    color_borde_pkg = st.color_picker("Borde Precio por Kg", value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("borde_pkg", default_borde_pkg), key=f"cp_bpkg_{producto_seleccionado}")
-    
-                # Actualizar diccionario en Session State
-                st.session_state["custom_colors"][producto_seleccionado] = {
-                    "barra": color_barra,
-                    "texto_desembolso": color_texto_desembolso,
-                    "fondo_desembolso": color_fondo_desembolso,
-                    "texto_pkg": color_texto_pkg,
-                    "fondo_pkg": color_fondo_pkg,
-                    "borde_desembolso": color_borde_desembolso,
-                    "borde_pkg": color_borde_pkg
-                }
-                
-                st.button(
-                    f"🗑️ Quitar personalización de {producto_seleccionado}", 
-                    key=f"btn_remove_{producto_seleccionado}",
-                    on_click=eliminar_personalizacion,
-                    args=(producto_seleccionado,),
-                    use_container_width=True
+                producto_seleccionado = st.selectbox(
+                    "Producto a personalizar:", 
+                    ["-- Ninguno --"] + productos_disponibles, 
+                    key="color_picker_producto"
                 )
-    
-            # Mostrar lista de productos personalizados con opción de borrado rápido
-            if st.session_state["custom_colors"]:
-                st.markdown("---")
-                st.markdown("**📋 Productos con colores personalizados:**")
-                for prod in list(st.session_state["custom_colors"].keys()):
-                    c1, c2 = st.columns([4, 1])
-                    c1.caption(f"• {prod}")
-                    c2.button("🗑️", key=f"q_rem_{prod}", on_click=eliminar_personalizacion, args=(prod,))
+                
+                if producto_seleccionado != "-- Ninguno --":
+                    st.markdown("---")
+                    st.markdown("#### 🎨 Personalización de Barra")
+                    
+                    # Lógica de colores por defecto
+                    fabricante_prod = st.session_state.data[st.session_state.data["Producto"] == producto_seleccionado]["Fabricante"].iloc[0] if "Fabricante" in st.session_state.data.columns else "OTROS"
+                    
+                    default_barra = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"}.get(fabricante_prod.upper(), "#999999")
+                    default_texto_pkg = "#FFFFFF" if fabricante_prod.upper() == "BARCEL" else "#000000"
+                    default_fondo_pkg = "#4682B4" if fabricante_prod.upper() == "BARCEL" else "#FFFFFF"
+                    default_borde_pkg = "#444444" if fabricante_prod.upper() != "BARCEL" else "#333333"
+                    
+                    # Selectores de color
+                    color_barra = st.color_picker("Color de barra", value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("barra", default_barra), key=f"cp_barra_{producto_seleccionado}")
+                    
+                    st.markdown("#### 📝 Personalización de Precios")
+                    col_precio1, col_precio2 = st.columns(2)
+                    
+                    with col_precio1:
+                        st.markdown("**Precio Desembolso (arriba)**")
+                        color_texto_desembolso = st.color_picker("Color texto", value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("texto_desembolso", "#000000"), key=f"cp_td_{producto_seleccionado}")
+                        
+                        # Suponiendo que 'modo' está definido previamente en tu app
+                        modo = st.session_state.get('modo', 'Price Pack') 
+                        color_fondo_desembolso = st.color_picker("Color fondo (caja azul)", value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("fondo_desembolso", "#00B0F0"), key=f"cp_fd_{producto_seleccionado}") if modo == "Price Pack" else None
+        
+                    with col_precio2:
+                        st.markdown("**Precio por Kg (dentro)**")
+                        color_texto_pkg = st.color_picker("Color texto", value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("texto_pkg", default_texto_pkg), key=f"cp_tpkg_{producto_seleccionado}")
+                        color_fondo_pkg = st.color_picker("Color fondo", value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("fondo_pkg", default_fondo_pkg), key=f"cp_fpkg_{producto_seleccionado}")
+        
+                    st.markdown("#### 🔲 Personalización de Bordes")
+                    col_borde1, col_borde2 = st.columns(2)
+                    
+                    with col_borde1:
+                        color_borde_desembolso = st.color_picker("Borde Precio Desembolso", value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("borde_desembolso", "#000000"), key=f"cp_bd_{producto_seleccionado}") if modo == "Price Pack" else None
+                    
+                    with col_borde2:
+                        color_borde_pkg = st.color_picker("Borde Precio por Kg", value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("borde_pkg", default_borde_pkg), key=f"cp_bpkg_{producto_seleccionado}")
+        
+                    # Actualizar diccionario en Session State
+                    st.session_state["custom_colors"][producto_seleccionado] = {
+                        "barra": color_barra,
+                        "texto_desembolso": color_texto_desembolso,
+                        "fondo_desembolso": color_fondo_desembolso,
+                        "texto_pkg": color_texto_pkg,
+                        "fondo_pkg": color_fondo_pkg,
+                        "borde_desembolso": color_borde_desembolso,
+                        "borde_pkg": color_borde_pkg
+                    }
+                    
+                    st.button(
+                        f"🗑️ Quitar personalización de {producto_seleccionado}", 
+                        key=f"btn_remove_{producto_seleccionado}",
+                        on_click=eliminar_personalizacion,
+                        args=(producto_seleccionado,),
+                        use_container_width=True
+                    )
+        
+                # Mostrar lista de productos personalizados con opción de borrado rápido
+                if st.session_state["custom_colors"]:
+                    st.markdown("---")
+                    st.markdown("**📋 Productos con colores personalizados:**")
+                    for prod in list(st.session_state["custom_colors"].keys()):
+                        c1, c2 = st.columns([4, 1])
+                        c1.caption(f"• {prod}")
+                        c2.button("🗑️", key=f"q_rem_{prod}", on_click=eliminar_personalizacion, args=(prod,))
         
     # --- SECCIÓN 4: HERRAMIENTAS AVANZADAS ---
     if not st.session_state.data.empty:
