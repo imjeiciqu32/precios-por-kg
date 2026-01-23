@@ -1318,13 +1318,15 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
         # === CONTROLES DE PERSONALIZACIÓN ===
         with st.expander("⚙️ Personalizar tamaño de tarjetas", expanded=False):
             st.markdown("#### 📐 Dimensiones de Tarjeta")
-            col_dim1, col_dim2, col_dim3 = st.columns(3)
+            col_dim1, col_dim2, col_dim3, col_dim4 = st.columns(4)
             with col_dim1:
                 ancho_tarjeta = st.slider("Ancho (px)", 200, 600, 300, 20, key="ancho_card")
             with col_dim2:
                 alto_tarjeta = st.slider("Alto (px)", 150, 400, 220, 20, key="alto_card")
             with col_dim3:
                 padding_tarjeta = st.slider("Padding (px)", 10, 40, 18, 2, key="pad_card")
+            with col_dim4:
+                separacion_tarjetas = st.slider("Separación entre tarjetas (px)", 0, 50, 5, 5, key="sep_card")
             
             st.markdown("#### 🔤 Tamaños de Texto")
             col_txt1, col_txt2, col_txt3, col_txt4, col_txt5 = st.columns(5)
@@ -1424,7 +1426,7 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
             return img
         
         # Función para crear HTML de tarjeta (para vista previa)
-        def crear_tarjeta_html(sel_a, sel_b, v_a, v_b, tipo_metrica, ancho, alto, pad, s_prod, s_precio, s_vs, s_idx, s_label, b_width, b_top_width, shadow, radius):
+        def crear_tarjeta_html(sel_a, sel_b, v_a, v_b, tipo_metrica, ancho, alto, pad, s_prod, s_precio, s_vs, s_idx, s_label, b_width, b_top_width, shadow, radius, separacion):
             idx = int((v_a / v_b * 100)) if v_b > 0 else 0
             color = "#0B3C8C" if idx <= 100 else "#D32F2F"
             label_metrica = "Index Desembolso" if tipo_metrica == "desembolso" else "Index $/Kg"
@@ -1444,7 +1446,7 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                         flex-direction:column; 
                         justify-content:space-between;
                         box-shadow: 0 4px {shadow}px rgba(0,0,0,0.12);
-                        margin: 5px;">
+                        margin: {separacion}px;">
                 <div style="display:flex; 
                             justify-content:space-between; 
                             font-size:{s_prod}px; 
@@ -1498,7 +1500,8 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                     card_html = crear_tarjeta_html(sel_a, sel_b, v_a, v_b, "desembolso", 
                                                    ancho_tarjeta, alto_tarjeta, padding_tarjeta,
                                                    size_producto, size_precio, size_vs, size_index, size_label,
-                                                   border_width, border_top_width, shadow_intensity, border_radius)
+                                                   border_width, border_top_width, shadow_intensity, border_radius,
+                                                   separacion_tarjetas)
                     st.markdown(card_html, unsafe_allow_html=True)
                     
                     # Generar imagen y botón de descarga
@@ -1536,7 +1539,8 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
                     card_html = crear_tarjeta_html(sel_a, sel_b, v_a, v_b, "precio_kg",
                                                    ancho_tarjeta, alto_tarjeta, padding_tarjeta,
                                                    size_producto, size_precio, size_vs, size_index, size_label,
-                                                   border_width, border_top_width, shadow_intensity, border_radius)
+                                                   border_width, border_top_width, shadow_intensity, border_radius,
+                                                   separacion_tarjetas)
                     st.markdown(card_html, unsafe_allow_html=True)
                     
                     # Generar imagen y botón de descarga
