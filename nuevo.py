@@ -452,15 +452,25 @@ def cargar_configuracion(nombre):
     """Carga una configuración guardada"""
     if nombre not in st.session_state["configs_guardadas"]:
         return False
+    
     config = st.session_state["configs_guardadas"][nombre]
+    
+    # Crear diccionario temporal para evitar modificar session_state durante iteración
+    updates = {}
+    
     if "diseno" in config:
-        for key, value in config["diseno"].items():
-            st.session_state[key] = value
+        updates.update(config["diseno"])
+    
     if "grid" in config:
-        for key, value in config["grid"].items():
-            st.session_state[key] = value
+        updates.update(config["grid"])
+    
     if "colores_personalizados" in config:
-        st.session_state["custom_colors"] = config["colores_personalizados"]
+        updates["custom_colors"] = config["colores_personalizados"]
+    
+    # Aplicar todos los cambios de una vez
+    for key, value in updates.items():
+        st.session_state[key] = value
+    
     return True
 
 def exportar_configuracion(nombre):
@@ -858,7 +868,6 @@ with st.sidebar:
                                 st.rerun()
     
     # --- SECCIÓN: CONFIGURACIONES GUARDADAS ---
-    st.markdown("---")
     
     with st.expander("💾 Configuraciones", expanded=False):
         st.markdown("### Guardar/Cargar Presets")
