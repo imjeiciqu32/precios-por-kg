@@ -354,6 +354,17 @@ def importar_datos_macro(token, series_lista):
         return df_final
     return None
     
+
+
+# ============================================================================
+# CÓDIGO DEL SIDEBAR - SIN SISTEMA DE CONFIGURACIONES GUARDADAS
+# ============================================================================
+# Este código va después de tus imports
+# Incluye: gestión de estado y sidebar completo (SIN sistema de presets)
+# ============================================================================
+
+import io
+
 # --- 3. GESTIÓN DE ESTADO ---
 if "data" not in st.session_state or st.session_state.get("last_modo") != modo:
     if DB_FILE is not None and os.path.exists(DB_FILE):
@@ -365,140 +376,6 @@ if "data" not in st.session_state or st.session_state.get("last_modo") != modo:
     
     st.session_state.last_modo = modo
 
-
-# ============================================================================
-# CÓDIGO COMPLETO DEL SIDEBAR - COPIAR Y PEGAR COMPLETO
-# ============================================================================
-# Este archivo contiene:
-# 1. Funciones de configuración (van al inicio del archivo, después de imports)
-# 2. Todo el código del sidebar completo (reemplaza tu bloque "with st.sidebar:")
-# ============================================================================
-
-# ============================================================================
-# PARTE 1: FUNCIONES - PEGAR AL INICIO DEL ARCHIVO (después de imports)
-# ============================================================================
-
-import json
-from datetime import datetime
-import io
-
-# --- INICIALIZACIÓN DE SESSION STATE ---
-if "configs_guardadas" not in st.session_state:
-    st.session_state["configs_guardadas"] = {}
-
-# --- FUNCIÓN PARA GUARDAR CONFIGURACIÓN ---
-def guardar_configuracion(nombre):
-    """Guarda la configuración actual completa"""
-    config = {
-        "nombre": nombre,
-        "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "diseno": {
-            "slider_nombres": st.session_state.get("slider_nombres", 14),
-            "slider_precios": st.session_state.get("slider_precios", 18),
-            "slider_pkg": st.session_state.get("slider_pkg", 16),
-            "slider_som": st.session_state.get("slider_som", 13),
-            "slider_ancho": st.session_state.get("slider_ancho", 0.6),
-            "slider_alto_barras": st.session_state.get("slider_alto_barras", 1.0),
-            "slider_opacidad": st.session_state.get("slider_opacidad", 1.0),
-            "slider_alto": st.session_state.get("slider_alto", 950),
-            "slider_espacio": st.session_state.get("slider_espacio", 0.03),
-            "slider_margen_b": st.session_state.get("slider_margen_b", 400),
-            "slider_angulo": st.session_state.get("slider_angulo", -90)
-        },
-        "grid": {
-            "grid_color": st.session_state.get("grid_color", "#DCDCDC"),
-            "grid_grosor": st.session_state.get("grid_grosor", 1.0),
-            "grid_opacidad": st.session_state.get("grid_opacidad", 0.5),
-            "grid_estilo": st.session_state.get("grid_estilo", "solid"),
-            "grid_y_visible": st.session_state.get("grid_y_visible", True),
-            "grid_x_visible": st.session_state.get("grid_x_visible", False),
-            "nticks_y": st.session_state.get("nticks_y", 10),
-            "grid_layer": st.session_state.get("grid_layer", "below traces")
-        },
-        "colores_personalizados": st.session_state.get("custom_colors", {})
-    }
-    st.session_state["configs_guardadas"][nombre] = config
-    return config
-
-def cargar_configuracion(nombre):
-    """Carga una configuración guardada"""
-    if nombre not in st.session_state["configs_guardadas"]:
-        return False
-    
-    config = st.session_state["configs_guardadas"][nombre]
-    
-    # Extraer todos los valores primero, sin tocar session_state
-    valores_diseno = config.get("diseno", {})
-    valores_grid = config.get("grid", {})
-    valores_colores = config.get("colores_personalizados", {})
-    
-    # Aplicar diseño
-    st.session_state["slider_nombres"] = valores_diseno.get("slider_nombres", 14)
-    st.session_state["slider_precios"] = valores_diseno.get("slider_precios", 18)
-    st.session_state["slider_pkg"] = valores_diseno.get("slider_pkg", 16)
-    st.session_state["slider_som"] = valores_diseno.get("slider_som", 13)
-    st.session_state["slider_ancho"] = valores_diseno.get("slider_ancho", 0.6)
-    st.session_state["slider_alto_barras"] = valores_diseno.get("slider_alto_barras", 1.0)
-    st.session_state["slider_opacidad"] = valores_diseno.get("slider_opacidad", 1.0)
-    st.session_state["slider_alto"] = valores_diseno.get("slider_alto", 950)
-    st.session_state["slider_espacio"] = valores_diseno.get("slider_espacio", 0.03)
-    st.session_state["slider_margen_b"] = valores_diseno.get("slider_margen_b", 400)
-    st.session_state["slider_angulo"] = valores_diseno.get("slider_angulo", -90)
-    
-    # Aplicar grid
-    st.session_state["grid_color"] = valores_grid.get("grid_color", "#DCDCDC")
-    st.session_state["grid_grosor"] = valores_grid.get("grid_grosor", 1.0)
-    st.session_state["grid_opacidad"] = valores_grid.get("grid_opacidad", 0.5)
-    st.session_state["grid_estilo"] = valores_grid.get("grid_estilo", "solid")
-    st.session_state["grid_y_visible"] = valores_grid.get("grid_y_visible", True)
-    st.session_state["grid_x_visible"] = valores_grid.get("grid_x_visible", False)
-    st.session_state["nticks_y"] = valores_grid.get("nticks_y", 10)
-    st.session_state["grid_layer"] = valores_grid.get("grid_layer", "below traces")
-    
-    # Aplicar colores
-    st.session_state["custom_colors"] = valores_colores
-    
-    return True
-
-def exportar_configuracion(nombre):
-    """Exporta configuración como archivo JSON"""
-    if nombre not in st.session_state["configs_guardadas"]:
-        return None
-    config = st.session_state["configs_guardadas"][nombre]
-    json_str = json.dumps(config, indent=2, ensure_ascii=False)
-    return json_str
-
-def importar_configuracion(json_str):
-    """Importa configuración desde JSON"""
-    try:
-        config = json.loads(json_str)
-        nombre = config.get("nombre", f"Importada_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
-        st.session_state["configs_guardadas"][nombre] = config
-        return nombre
-    except:
-        return None
-
-def eliminar_configuracion(nombre):
-    """Elimina una configuración guardada"""
-    if nombre in st.session_state["configs_guardadas"]:
-        del st.session_state["configs_guardadas"][nombre]
-        return True
-    return False
-
-def duplicar_configuracion(nombre_original, nombre_nuevo):
-    """Crea una copia de una configuración"""
-    if nombre_original not in st.session_state["configs_guardadas"]:
-        return False
-    config_original = st.session_state["configs_guardadas"][nombre_original].copy()
-    config_original["nombre"] = nombre_nuevo
-    config_original["fecha"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    st.session_state["configs_guardadas"][nombre_nuevo] = config_original
-    return True
-
-
-# ============================================================================
-# PARTE 2: SIDEBAR COMPLETO - REEMPLAZA TODO TU BLOQUE "with st.sidebar:"
-# ============================================================================
 
 # --- 4. BARRA LATERAL (GESTIÓN MEJORADA CON DISEÑO PREMIUM) ---
 with st.sidebar:
@@ -678,24 +555,24 @@ with st.sidebar:
             st.rerun()
             
         with st.expander("📏 Dimensiones y Espaciado"):
-            alto_grafico = st.slider("Alto del Gráfico", 400, 1500, value=st.session_state["slider_alto"], key="slider_alto")
-            espacio_v = st.slider("Espacio entre Gráficos", 0.0, 0.2, value=st.session_state["slider_espacio"], key="slider_espacio")
-            margen_b = st.slider("Margen Inferior (Nombres)", 50, 600, value=st.session_state["slider_margen_b"], key="slider_margen_b")
+            alto_grafico = st.slider("Alto del Gráfico", 400, 1500, value=st.session_state.get("slider_alto", 950), key="slider_alto")
+            espacio_v = st.slider("Espacio entre Gráficos", 0.0, 0.2, value=st.session_state.get("slider_espacio", 0.03), key="slider_espacio")
+            margen_b = st.slider("Margen Inferior (Nombres)", 50, 600, value=st.session_state.get("slider_margen_b", 400), key="slider_margen_b")
             
             col_barras1, col_barras2 = st.columns(2)
             with col_barras1:
-                ancho_barras = st.slider("Ancho de Barras", 0.1, 1.0, value=st.session_state["slider_ancho"], key="slider_ancho")
+                ancho_barras = st.slider("Ancho de Barras", 0.1, 1.0, value=st.session_state.get("slider_ancho", 0.6), key="slider_ancho")
             with col_barras2:
                 alto_barras = st.slider("Alto de Barras (escala Y)", 0.1, 2.0, value=st.session_state.get("slider_alto_barras", 1.0), step=0.1, key="slider_alto_barras", help="Multiplica la altura de las barras. >1 = más altas, <1 = más bajas")
             
-            opacidad_barras = st.slider("Opacidad Barras", 0.1, 1.0, value=st.session_state["slider_opacidad"], key="slider_opacidad")
+            opacidad_barras = st.slider("Opacidad Barras", 0.1, 1.0, value=st.session_state.get("slider_opacidad", 1.0), key="slider_opacidad")
         
         with st.expander("🔡 Tipografía y Texto"):
-            t_nombres = st.slider("Tamaño Nombres", 8, 30, value=st.session_state["slider_nombres"], key="slider_nombres")
-            t_precios = st.slider("Tamaño Precios ($)", 10, 40, value=st.session_state["slider_precios"], key="slider_precios")
-            t_pkg = st.slider("Tamaño $/Kg", 10, 40, value=st.session_state["slider_pkg"], key="slider_pkg")
-            t_som = st.slider("Tamaño SOM (%)", 8, 25, value=st.session_state["slider_som"], key="slider_som")
-            angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, value=st.session_state["slider_angulo"], key="slider_angulo")
+            t_nombres = st.slider("Tamaño Nombres", 8, 30, value=st.session_state.get("slider_nombres", 14), key="slider_nombres")
+            t_precios = st.slider("Tamaño Precios ($)", 10, 40, value=st.session_state.get("slider_precios", 18), key="slider_precios")
+            t_pkg = st.slider("Tamaño $/Kg", 10, 40, value=st.session_state.get("slider_pkg", 16), key="slider_pkg")
+            t_som = st.slider("Tamaño SOM (%)", 8, 25, value=st.session_state.get("slider_som", 13), key="slider_som")
+            angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, value=st.session_state.get("slider_angulo", -90), key="slider_angulo")
         
         with st.expander("📊 Líneas Divisorias (Grid)"):
             st.markdown("#### Visibilidad del Grid")
@@ -768,6 +645,10 @@ with st.sidebar:
         with st.expander("🎨 Colores Personalizados (Opcional)"):
             st.markdown("**Selecciona un producto para cambiar su color:**")
             
+            # Inicializar custom_colors si no existe
+            if "custom_colors" not in st.session_state:
+                st.session_state["custom_colors"] = {}
+            
             if "Producto" in st.session_state.data.columns:
                 productos_disponibles = sorted(st.session_state.data["Producto"].unique().tolist())
                 
@@ -824,6 +705,10 @@ with st.sidebar:
                         color_borde_pkg = st.color_picker("Borde Precio por Kg", value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("borde_pkg", default_borde_pkg), 
                                                          key=f"color_borde_pkg_{producto_seleccionado}")
                     
+                    # Guardar colores (asegurarse de que el producto existe en el dict)
+                    if producto_seleccionado not in st.session_state["custom_colors"]:
+                        st.session_state["custom_colors"][producto_seleccionado] = {}
+                    
                     st.session_state["custom_colors"][producto_seleccionado] = {
                         "barra": color_barra,
                         "texto_desembolso": color_texto_desembolso,
@@ -836,12 +721,21 @@ with st.sidebar:
                     
                     st.success(f"✅ Colores personalizados aplicados a: {producto_seleccionado}")
                     
-                    if st.button(f"🗑️ Quitar personalización de {producto_seleccionado}", key=f"remove_custom_{producto_seleccionado}"):
-                        if producto_seleccionado in st.session_state["custom_colors"]:
-                            del st.session_state["custom_colors"][producto_seleccionado]
-                            st.success(f"✅ Personalización eliminada de {producto_seleccionado}")
-                            st.rerun()
+                    # BOTÓN ARREGLADO: Ahora usa on_click callback
+                    def eliminar_personalizacion(prod):
+                        """Función callback para eliminar personalización"""
+                        if prod in st.session_state["custom_colors"]:
+                            del st.session_state["custom_colors"][prod]
+                    
+                    st.button(
+                        f"🗑️ Quitar personalización de {producto_seleccionado}", 
+                        key=f"remove_custom_{producto_seleccionado}",
+                        on_click=eliminar_personalizacion,
+                        args=(producto_seleccionado,),
+                        use_container_width=True
+                    )
                 
+                # Mostrar lista de productos personalizados
                 if st.session_state["custom_colors"]:
                     st.markdown("---")
                     st.markdown("**📋 Productos con colores personalizados:**")
@@ -850,10 +744,13 @@ with st.sidebar:
                         with col_prod:
                             st.caption(f"• {prod}")
                         with col_btn:
-                            if st.button("🗑️", key=f"quick_remove_{prod}"):
-                                del st.session_state["custom_colors"][prod]
-                                st.rerun()
-    
+                            # BOTÓN ARREGLADO: También usa on_click
+                            st.button(
+                                "🗑️", 
+                                key=f"quick_remove_{prod}",
+                                on_click=eliminar_personalizacion,
+                                args=(prod,)
+                            )
     
     # --- SECCIÓN 4: HERRAMIENTAS AVANZADAS ---
     if not st.session_state.data.empty:
@@ -906,6 +803,11 @@ with st.sidebar:
             </p>
         </div>
     """, unsafe_allow_html=True)
+
+
+# ============================================================================
+# FIN DEL CÓDIGO DEL SIDEBAR
+# ============================================================================
     
 # --- 5. PANEL PRINCIPAL ---
 iconos_modo = {
