@@ -565,7 +565,7 @@ with st.sidebar:
                 </div>
             """, unsafe_allow_html=True)
     
-    # --- SECCIÓN 3: CONTROLES DE DISEÑO (MOVIDOS ANTES DEL FOOTER) ---
+   # --- SECCIÓN 3: CONTROLES DE DISEÑO (MOVIDOS ANTES DEL FOOTER) ---
     if not st.session_state.data.empty:
         st.markdown("<br>", unsafe_allow_html=True)
         st.divider()
@@ -583,11 +583,20 @@ with st.sidebar:
             st.session_state["slider_margen_b"] = 400
             st.session_state["slider_angulo"] = -90
             st.session_state["custom_colors"] = {}
-
+            # Nuevos resets para grid
+            st.session_state["grid_color"] = "#E0E0E0"
+            st.session_state["grid_grosor"] = 1.0
+            st.session_state["grid_opacidad"] = 0.5
+            st.session_state["grid_estilo"] = "solid"
+            st.session_state["grid_y_visible"] = True
+            st.session_state["grid_x_visible"] = False
+            st.session_state["nticks_y"] = 10
+            st.session_state["grid_z_order"] = 0
+            
         if st.button("Resetear Todo el Diseño"):
             reset_diseno()
             st.rerun()
-
+            
         with st.expander("📏 Dimensiones y Espaciado"):
             alto_grafico = st.slider("Alto del Gráfico", 400, 1500, value=st.session_state["slider_alto"], key="slider_alto")
             espacio_v = st.slider("Espacio entre Gráficos", 0.0, 0.2, value=st.session_state["slider_espacio"], key="slider_espacio")
@@ -601,6 +610,162 @@ with st.sidebar:
             t_pkg = st.slider("Tamaño $/Kg", 10, 40, value=st.session_state["slider_pkg"], key="slider_pkg")
             t_som = st.slider("Tamaño SOM (%)", 8, 25, value=st.session_state["slider_som"], key="slider_som")
             angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, value=st.session_state["slider_angulo"], key="slider_angulo")
+        
+        # === NUEVO EXPANDER PARA LÍNEAS DIVISORIAS / GRID ===
+        with st.expander("📊 Líneas Divisorias (Grid)"):
+            st.markdown("#### Visibilidad del Grid")
+            col_vis1, col_vis2 = st.columns(2)
+            with col_vis1:
+                grid_y_visible = st.checkbox(
+                    "Mostrar líneas horizontales (Y)", 
+                    value=st.session_state.get("grid_y_visible", True),
+                    key="grid_y_visible",
+                    help="Líneas horizontales del eje Y"
+                )
+            with col_vis2:
+                grid_x_visible = st.checkbox(
+                    "Mostrar líneas verticales (X)", 
+                    value=st.session_state.get("grid_x_visible", False),
+                    key="grid_x_visible",
+                    help="Líneas verticales del eje X"
+                )
+            
+            st.markdown("#### Estilo de Líneas")
+            col_style1, col_style2, col_style3 = st.columns(3)
+            
+            with col_style1:
+                grid_color = st.color_picker(
+                    "Color de Líneas",
+                    value=st.session_state.get("grid_color", "#E0E0E0"),
+                    key="grid_color",
+                    help="Color de las líneas divisorias"
+                )
+            
+            with col_style2:
+                grid_grosor = st.slider(
+                    "Grosor de Líneas",
+                    0.1, 5.0, 
+                    value=st.session_state.get("grid_grosor", 1.0),
+                    step=0.1,
+                    key="grid_grosor",
+                    help="Grosor de las líneas en puntos"
+                )
+            
+            with col_style3:
+                grid_opacidad = st.slider(
+                    "Opacidad de Líneas",
+                    0.0, 1.0,
+                    value=st.session_state.get("grid_opacidad", 0.5),
+                    step=0.05,
+                    key="grid_opacidad",
+                    help="Transparencia de las líneas"
+                )
+            
+            col_style4, col_style5 = st.columns(2)
+            
+            with col_style4:
+                grid_estilo = st.selectbox(
+                    "Estilo de Línea",
+                    options=["solid", "dashed", "dotted", "dashdot"],
+                    index=["solid", "dashed", "dotted", "dashdot"].index(
+                        st.session_state.get("grid_estilo", "solid")
+                    ),
+                    key="grid_estilo",
+                    help="Tipo de línea: continua, discontinua, punteada, etc."
+                )
+            
+            with col_style5:
+                grid_z_order = st.selectbox(
+                    "Posición de Grid",
+                    options=[("Detrás de barras", 0), ("Delante de barras", 3)],
+                    format_func=lambda x: x[0],
+                    index=0 if st.session_state.get("grid_z_order", 0) == 0 else 1,
+                    key="grid_z_order_select",
+                    help="Si las líneas aparecen detrás o delante de las barras"
+                )
+                grid_z_order = grid_z_order[1]
+                st.session_state["grid_z_order"] = grid_z_order
+            
+            st.markdown("#### Cantidad de Líneas")
+            col_qty1, col_qty2 = st.columns(2)
+            
+            with col_qty1:
+                nticks_y = st.slider(
+                    "Número de líneas horizontales",
+                    3, 30,
+                    value=st.session_state.get("nticks_y", 10),
+                    key="nticks_y",
+                    help="Cantidad de divisiones en el eje Y"
+                )
+            
+            with col_qty2:
+                st.info("💡 **Tip**: Más líneas = grid más denso. Menos líneas = gráfico más limpio.")
+            
+            # Preview de configuración actual
+            st.markdown("---")
+            st.markdown("#### 👁️ Vista Previa de Configuración")
+            preview_cols = st.columns(3)
+            with preview_cols[0]:
+                st.markdown(f"""
+                    <div style='background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd;'>
+                        <div style='font-size: 12px; color: #666; margin-bottom: 5px;'>Color</div>
+                        <div style='background: {grid_color}; height: 30px; border-radius: 3px; border: 1px solid #ccc;'></div>
+                    </div>
+                """, unsafe_allow_html=True)
+            with preview_cols[1]:
+                st.markdown(f"""
+                    <div style='background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd;'>
+                        <div style='font-size: 12px; color: #666; margin-bottom: 5px;'>Grosor & Opacidad</div>
+                        <div style='font-weight: bold; font-size: 18px; color: #333;'>{grid_grosor}px · {int(grid_opacidad*100)}%</div>
+                    </div>
+                """, unsafe_allow_html=True)
+            with preview_cols[2]:
+                st.markdown(f"""
+                    <div style='background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd;'>
+                        <div style='font-size: 12px; color: #666; margin-bottom: 5px;'>Estilo & Líneas</div>
+                        <div style='font-weight: bold; font-size: 18px; color: #333;'>{grid_estilo.title()} · {nticks_y} líneas</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+
+# === APLICAR CONFIGURACIÓN DE GRID EN TUS GRÁFICOS ===
+# Agrega este código en la sección donde generas tus gráficos con plotly o matplotlib
+
+# EJEMPLO PARA PLOTLY (si usas plotly):
+"""
+fig.update_xaxes(
+    showgrid=st.session_state.get("grid_x_visible", False),
+    gridwidth=st.session_state.get("grid_grosor", 1.0),
+    gridcolor=st.session_state.get("grid_color", "#E0E0E0"),
+    griddash=st.session_state.get("grid_estilo", "solid"),
+)
+
+fig.update_yaxes(
+    showgrid=st.session_state.get("grid_y_visible", True),
+    gridwidth=st.session_state.get("grid_grosor", 1.0),
+    gridcolor=st.session_state.get("grid_color", "#E0E0E0"),
+    griddash=st.session_state.get("grid_estilo", "solid"),
+    nticks=st.session_state.get("nticks_y", 10),
+)
+"""
+
+# EJEMPLO PARA MATPLOTLIB (si usas matplotlib):
+"""
+ax.grid(
+    visible=st.session_state.get("grid_y_visible", True),
+    which='major',
+    axis='y' if not st.session_state.get("grid_x_visible", False) else 'both',
+    color=st.session_state.get("grid_color", "#E0E0E0"),
+    linestyle=st.session_state.get("grid_estilo", "solid"),
+    linewidth=st.session_state.get("grid_grosor", 1.0),
+    alpha=st.session_state.get("grid_opacidad", 0.5),
+    zorder=st.session_state.get("grid_z_order", 0)
+)
+
+# Para controlar el número de líneas en matplotlib:
+from matplotlib.ticker import MaxNLocator
+ax.yaxis.set_major_locator(MaxNLocator(nbins=st.session_state.get("nticks_y", 10)))
+"""
         
         # ✨ SELECTOR DE COLORES PERSONALIZADOS CORREGIDO
         with st.expander("🎨 Colores Personalizados (Opcional)"):
