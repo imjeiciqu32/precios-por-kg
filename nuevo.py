@@ -363,7 +363,11 @@ def importar_datos_macro(token, series_lista):
 # Incluye: gestión de estado y sidebar completo (SIN sistema de presets)
 # ============================================================================
 
+
 import io
+# Inicializar custom_colors si no existe
+if "custom_colors" not in st.session_state:
+    st.session_state["custom_colors"] = {}
 
 # --- 3. GESTIÓN DE ESTADO ---
 if "data" not in st.session_state or st.session_state.get("last_modo") != modo:
