@@ -4748,11 +4748,7 @@ if modo == "Indicadores Macro":
 
 
 # ============================================================================
-# CÓDIGO COMPLETO - COPIAR Y PEGAR AL FINAL DE TU APARTADO MACRO
-# ============================================================================
-# Instrucciones: Copia TODO este archivo y pégalo DESPUÉS de:
-# else:
-#     st.error("❌ Error al conectar con Banxico")
+# CÓDIGO FINAL - COPIAR Y PEGAR AL FINAL DE TU APARTADO MACRO
 # ============================================================================
 
 import pandas as pd
@@ -4762,21 +4758,14 @@ from io import BytesIO
 import re
 import plotly.graph_objects as go
 
-# ==================== FUNCIONES DEL PROCESADOR ====================
-
 def descargar_y_procesar_expectativas(url_github):
     try:
         response = requests.get(url_github, timeout=30)
         response.raise_for_status()
         
         with zipfile.ZipFile(BytesIO(response.content)) as zip_ref:
-            archivo_csv = None
-            for archivo in zip_ref.namelist():
-                if "Microdatos_2020" in archivo and archivo.endswith(".csv"):
-                    archivo_csv = archivo
-                    break
-            
-            if not archivo_csv:
+            archivo_csv = "Microdatos_2020_01.csv"
+            if archivo_csv not in zip_ref.namelist():
                 return None
             
             with zip_ref.open(archivo_csv) as csv_file:
@@ -4791,7 +4780,7 @@ def descargar_y_procesar_expectativas(url_github):
             "Inflación subyacente para", "Inflación subyacente al cierre",
             "Valor del tipo de cambio promedio durante", "Valor del tipo de cambio al cierre",
             "Tasa nacional de desocupación al cierre", "Tasa nacional de desocupación promedio",
-            "Percepción - clima de negocios",
+            "Percepción - clima de negocios -",
         ]
         
         mascara = pd.Series([False] * len(df_ultima), index=df_ultima.index)
@@ -4805,16 +4794,26 @@ def descargar_y_procesar_expectativas(url_github):
         
         def categorizar(variable):
             v = variable.lower()
-            if 'inflación general' in v and 'para' in v: return 'Inflación General - Mensual'
-            elif 'inflación general' in v and 'cierre' in v: return 'Inflación General - Anual'
-            elif 'inflación subyacente' in v and 'para' in v: return 'Inflación Subyacente - Mensual'
-            elif 'inflación subyacente' in v and 'cierre' in v: return 'Inflación Subyacente - Anual'
-            elif 'tipo de cambio promedio durante' in v: return 'Tipo de Cambio - Mensual'
-            elif 'tipo de cambio al cierre' in v: return 'Tipo de Cambio - Anual'
-            elif 'desocupación al cierre' in v: return 'Desempleo - Anual'
-            elif 'desocupación promedio' in v: return 'Desempleo - Promedio'
-            elif 'clima de negocios' in v: return 'Clima de Negocios'
-            else: return 'Otros'
+            if 'inflación general' in v and 'para' in v and 'probabilidad' not in v: 
+                return 'Inflación General - Mensual'
+            elif 'inflación general' in v and 'cierre' in v and 'probabilidad' not in v: 
+                return 'Inflación General - Anual'
+            elif 'inflación subyacente' in v and 'para' in v and 'probabilidad' not in v: 
+                return 'Inflación Subyacente - Mensual'
+            elif 'inflación subyacente' in v and 'cierre' in v and 'probabilidad' not in v: 
+                return 'Inflación Subyacente - Anual'
+            elif 'tipo de cambio promedio durante' in v: 
+                return 'Tipo de Cambio - Mensual'
+            elif 'tipo de cambio al cierre' in v: 
+                return 'Tipo de Cambio - Anual'
+            elif 'desocupación al cierre' in v: 
+                return 'Desempleo - Anual'
+            elif 'desocupación promedio' in v: 
+                return 'Desempleo - Promedio'
+            elif 'clima de negocios' in v and ('mejor' in v or 'igual' in v or 'empeorará' in v): 
+                return 'Clima de Negocios'
+            else: 
+                return 'Otros'
         
         def extraer_periodo(variable):
             match_anio = re.search(r'(202[5-9]|20[3-9]\d)', variable)
@@ -4830,25 +4829,24 @@ def descargar_y_procesar_expectativas(url_github):
         
         df_limpio['Categoria'] = df_limpio['Variable'].apply(categorizar)
         df_limpio['Proyeccion_Para'] = df_limpio['Variable'].apply(extraer_periodo)
+        df_limpio = df_limpio[df_limpio['Categoria'] != 'Otros']
         df_limpio = df_limpio.sort_values(['Categoria', 'Proyeccion_Para'])
         
         proyecciones = {}
         for categoria in df_limpio['Categoria'].unique():
             df_cat = df_limpio[df_limpio['Categoria'] == categoria]
-            proyecciones[categoria] = df_cat[['Proyeccion_Para', 'Valor']].to_dict('records')
+            proyecciones[categoria] = df_cat[['Proyeccion_Para', 'Valor', 'Variable']].to_dict('records')
         
         return proyecciones
         
     except Exception as e:
         return None
 
-# ==================== INTERFAZ DE PROYECCIONES ====================
-
 st.markdown("---")
 st.markdown("### 🔮 Proyecciones y Expectativas Futuras")
 st.caption("Datos de la Encuesta de Expectativas de Banxico - Actualización Mensual")
 
-URL_GITHUB_EXPECTATIVAS = "https://github.com/imjeiciqu32/precios-por-kg/blob/main/dataset-1.zip"
+URL_GITHUB_EXPECTATIVAS = "https://github.com/imjeiciqu32/precios-por-kg/raw/main/dataset-1.zip"
 
 @st.cache_data(ttl=3600)
 def cargar_proyecciones():
@@ -4984,9 +4982,9 @@ if proyecciones:
         st.markdown("#### 🏢 Percepción del Clima de Negocios")
         if 'Clima de Negocios' in proyecciones:
             df_clima = pd.DataFrame(proyecciones['Clima de Negocios'])
-            mejorara = df_clima[df_clima['Proyeccion_Para'].str.contains('Mejorara', na=False)]
-            igual = df_clima[df_clima['Proyeccion_Para'].str.contains('Igual', na=False)]
-            empeorara = df_clima[df_clima['Proyeccion_Para'].str.contains('Empeorara', na=False)]
+            mejorara = df_clima[df_clima['Variable'].str.contains('mejor', case=False, na=False)]
+            igual = df_clima[df_clima['Variable'].str.contains('igual', case=False, na=False)]
+            empeorara = df_clima[df_clima['Variable'].str.contains('empeorará', case=False, na=False)]
             
             if not mejorara.empty and not igual.empty and not empeorara.empty:
                 val_mejora = mejorara['Valor'].iloc[0]
@@ -5030,7 +5028,6 @@ if proyecciones:
     st.info("💡 **Nota:** Estas proyecciones se actualizan automáticamente desde la Encuesta de Expectativas de Banxico.")
 else:
     st.warning("⚠️ No se pudieron cargar las proyecciones. Verifica la conexión a GitHub.")
-
 
 
 
