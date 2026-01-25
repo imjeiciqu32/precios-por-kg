@@ -4748,7 +4748,7 @@ if modo == "Indicadores Macro":
 
 
 # ============================================================================
-# CÓDIGO FINAL MEJORADO - COPIAR Y PEGAR AL FINAL DE TU APARTADO MACRO
+# CÓDIGO FINAL AJUSTADO - COPIAR Y PEGAR AL FINAL DE TU APARTADO MACRO
 # ============================================================================
 
 import pandas as pd
@@ -4775,6 +4775,7 @@ def descargar_y_procesar_expectativas(url_github):
         
         VARIABLES_INTERES = [
             "Inflación general para",
+            "Inflación general al cierre",
             "Inflación subyacente para",
             "Valor del tipo de cambio promedio durante",
             "Valor del tipo de cambio al cierre",
@@ -4801,6 +4802,8 @@ def descargar_y_procesar_expectativas(url_github):
             v = variable.lower()
             if 'inflación general para' in v and 'probabilidad' not in v: 
                 return 'Inflación General - Mensual'
+            elif 'inflación general al cierre' in v and 'probabilidad' not in v: 
+                return 'Inflación General - Anual'
             elif 'inflación subyacente para' in v and 'probabilidad' not in v: 
                 return 'Inflación Subyacente - Mensual'
             elif 'tipo de cambio promedio durante' in v: 
@@ -4809,10 +4812,16 @@ def descargar_y_procesar_expectativas(url_github):
                 return 'Tipo de Cambio - Anual'
             elif 'desocupación al cierre' in v: 
                 return 'Desempleo - Anual'
-            elif 'clima de negocios' in v and ('mejor' in v or 'igual' in v or 'empeorará' in v): 
-                return 'Clima de Negocios'
-            elif 'economía del país' in v and 'mejor' in v: 
-                return 'Economía del País'
+            elif 'clima de negocios - mejor' in v:
+                return 'Clima - Mejorará'
+            elif 'clima de negocios - permanecerá igual' in v:
+                return 'Clima - Igual'
+            elif 'clima de negocios - empeorará' in v:
+                return 'Clima - Empeorará'
+            elif 'economía del país' in v and 'mejor' in v and 'sí' in v: 
+                return 'Economía - Mejor'
+            elif 'economía del país' in v and 'mejor' in v and 'no' in v: 
+                return 'Economía - Peor'
             else: 
                 return 'Otros'
         
@@ -4863,7 +4872,6 @@ with st.spinner("📥 Cargando proyecciones..."):
     else:
         proyecciones, fecha_encuesta = None, None
 
-# Mostrar fecha de encuesta
 if fecha_encuesta:
     meses_es = {1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',
                 7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'}
@@ -4891,6 +4899,25 @@ if proyecciones:
                 yaxis_title="Inflación (%)", xaxis_title="Periodo",
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5))
             st.plotly_chart(fig, use_container_width=True)
+        
+        # NUEVA SECCIÓN: Inflación al cierre de año
+        if 'Inflación General - Anual' in proyecciones:
+            st.markdown("##### 📅 Inflación General al Cierre de Año")
+            df_anual = pd.DataFrame(proyecciones['Inflación General - Anual'])
+            df_anual = df_anual.sort_values('Proyeccion_Para')
+            
+            cols = st.columns(len(df_anual))
+            for idx, (_, row) in enumerate(df_anual.iterrows()):
+                year = row['Proyeccion_Para'][:4]
+                valor = row['Valor']
+                color = "#43e97b" if valor < 3 else "#FFE082" if valor < 4 else "#f5576c"
+                emoji = "🟢" if valor < 3 else "🟡" if valor < 4 else "🔴"
+                with cols[idx]:
+                    st.markdown(f"""<div style='background:{color};padding:18px;border-radius:8px;text-align:center;
+                        box-shadow:0 2px 4px rgba(0,0,0,0.1);'>
+                        <div style='font-size:14px;font-weight:bold;color:#333;margin-bottom:5px;'>{emoji} {year}</div>
+                        <div style='font-size:28px;font-weight:bold;color:#1a1a1a;'>{valor:.2f}%</div>
+                    </div>""", unsafe_allow_html=True)
         
         if 'Inflación Subyacente - Mensual' in proyecciones:
             st.markdown("##### 📊 Inflación Subyacente 2026")
@@ -4960,14 +4987,16 @@ if proyecciones:
             df_desemp = pd.DataFrame(proyecciones['Desempleo - Anual'])
             df_desemp = df_desemp.sort_values('Proyeccion_Para')
             
-            # Gráfica mejorada
+            # Gráfica con colores morados/azules
             fig = go.Figure()
+            colors = ['rgba(102, 126, 234, 0.8)' if v < 3 else 
+                     'rgba(155, 135, 245, 0.8)' if v < 3.5 else 
+                     'rgba(186, 104, 200, 0.8)' for v in df_desemp['Valor']]
+            
             fig.add_trace(go.Bar(
                 x=[row['Proyeccion_Para'][:4] for _, row in df_desemp.iterrows()],
                 y=df_desemp['Valor'], 
-                marker_color=['rgba(67, 233, 123, 0.7)' if v < 3.5 else 
-                             'rgba(102, 126, 234, 0.7)' if v < 4.5 else 
-                             'rgba(255, 75, 75, 0.7)' for v in df_desemp['Valor']],
+                marker_color=colors,
                 text=[f"{v:.2f}%" for v in df_desemp['Valor']], 
                 textposition='outside',
                 textfont=dict(size=12, color='#333'),
@@ -4982,17 +5011,21 @@ if proyecciones:
             )
             st.plotly_chart(fig, use_container_width=True)
             
-            # Tarjetas debajo de la gráfica
+            # Tarjetas con gradientes morados/azules
             st.markdown("##### 📊 Detalle por Año")
             cols = st.columns(len(df_desemp))
+            gradients = [
+                "linear-gradient(135deg,#667eea 0%,#764ba2 100%)",
+                "linear-gradient(135deg,#9b87f5 0%,#7e57c2 100%)",
+                "linear-gradient(135deg,#ba68c8 0%,#9c27b0 100%)"
+            ]
             for idx, (_, row) in enumerate(df_desemp.iterrows()):
                 year = row['Proyeccion_Para'][:4]
                 valor = row['Valor']
-                gradient = "linear-gradient(135deg,#43e97b 0%,#38f9d7 100%)" if valor < 3.5 else \
-                          "linear-gradient(135deg,#667eea 0%,#764ba2 100%)" if valor < 4.5 else \
-                          "linear-gradient(135deg,#fa709a 0%,#fee140 100%)"
+                gradient = gradients[idx % len(gradients)]
                 with cols[idx]:
-                    st.markdown(f"""<div style='background:{gradient};padding:20px;border-radius:8px;text-align:center;'>
+                    st.markdown(f"""<div style='background:{gradient};padding:20px;border-radius:8px;text-align:center;
+                        box-shadow:0 4px 8px rgba(0,0,0,0.15);'>
                         <div style='font-size:14px;font-weight:bold;color:white;'>{year}</div>
                         <div style='font-size:32px;font-weight:bold;color:white;'>{valor:.2f}%</div>
                         <div style='font-size:11px;color:rgba(255,255,255,0.8);margin-top:5px;'>de la PEA</div>
@@ -5003,88 +5036,85 @@ if proyecciones:
     with tab_p4:
         st.markdown("#### 🏢 Percepciones Económicas")
         
-        if 'Clima de Negocios' in proyecciones:
-            df_clima = pd.DataFrame(proyecciones['Clima de Negocios'])
-            mejorara = df_clima[df_clima['Variable'].str.contains('mejor', case=False, na=False) & 
-                               ~df_clima['Variable'].str.contains('permanecerá|empeorará', case=False, na=False)]
-            igual = df_clima[df_clima['Variable'].str.contains('permanecerá igual', case=False, na=False)]
-            empeorara = df_clima[df_clima['Variable'].str.contains('empeorará', case=False, na=False)]
-            
-            if not mejorara.empty and not igual.empty and not empeorara.empty:
-                val_mejora = mejorara['Valor'].iloc[0]
-                val_igual = igual['Valor'].iloc[0]
-                val_empeora = empeorara['Valor'].iloc[0]
-                
-                # Normalizar a 100%
-                total = val_mejora + val_igual + val_empeora
-                if total > 0:
-                    val_mejora = (val_mejora / total) * 100
-                    val_igual = (val_igual / total) * 100
-                    val_empeora = (val_empeora / total) * 100
-                
-                st.markdown("##### Clima de Negocios (Próximos 6 Meses)")
-                fig = go.Figure(data=[go.Pie(
-                    labels=['Mejorará', 'Permanecerá Igual', 'Empeorará'],
-                    values=[val_mejora, val_igual, val_empeora], 
-                    hole=.4,
-                    marker_colors=['#43e97b', '#667eea', '#f5576c'], 
-                    textinfo='label+percent',
-                    textfont_size=14, 
-                    hovertemplate='<b>%{label}</b><br>%{value:.1f}%<extra></extra>'
-                )])
-                fig.update_layout(height=350, showlegend=True,
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.1, xanchor="center", x=0.5))
-                st.plotly_chart(fig, use_container_width=True)
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.markdown(f"""<div style='background:linear-gradient(135deg,#43e97b 0%,#38f9d7 100%);
-                        padding:20px;border-radius:10px;color:white;text-align:center;'>
-                        <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>📈 Mejorará</div>
-                        <div style='font-size:36px;font-weight:bold;'>{val_mejora:.1f}%</div>
-                    </div>""", unsafe_allow_html=True)
-                with col2:
-                    st.markdown(f"""<div style='background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
-                        padding:20px;border-radius:10px;color:white;text-align:center;'>
-                        <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>➡️ Igual</div>
-                        <div style='font-size:36px;font-weight:bold;'>{val_igual:.1f}%</div>
-                    </div>""", unsafe_allow_html=True)
-                with col3:
-                    st.markdown(f"""<div style='background:linear-gradient(135deg,#fa709a 0%,#fee140 100%);
-                        padding:20px;border-radius:10px;color:white;text-align:center;'>
-                        <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>📉 Empeorará</div>
-                        <div style='font-size:36px;font-weight:bold;'>{val_empeora:.1f}%</div>
-                    </div>""", unsafe_allow_html=True)
+        # Clima de negocios corregido
+        val_mejora = val_igual = val_empeora = None
+        if 'Clima - Mejorará' in proyecciones:
+            val_mejora = proyecciones['Clima - Mejorará'][0]['Valor']
+        if 'Clima - Igual' in proyecciones:
+            val_igual = proyecciones['Clima - Igual'][0]['Valor']
+        if 'Clima - Empeorará' in proyecciones:
+            val_empeora = proyecciones['Clima - Empeorará'][0]['Valor']
         
-        if 'Economía del País' in proyecciones:
-            df_econ = pd.DataFrame(proyecciones['Economía del País'])
-            mejor_si = df_econ[df_econ['Variable'].str.contains('sí', case=False, na=False)]
-            mejor_no = df_econ[df_econ['Variable'].str.contains('no', case=False, na=False)]
+        if val_mejora is not None and val_igual is not None and val_empeora is not None:
+            # Normalizar a 100%
+            total = val_mejora + val_igual + val_empeora
+            if total > 0:
+                val_mejora = (val_mejora / total) * 100
+                val_igual = (val_igual / total) * 100
+                val_empeora = (val_empeora / total) * 100
             
-            if not mejor_si.empty and not mejor_no.empty:
-                val_si = mejor_si['Valor'].iloc[0]
-                val_no = mejor_no['Valor'].iloc[0]
-                
-                # Normalizar a 100%
-                total = val_si + val_no
-                if total > 0:
-                    val_si = (val_si / total) * 100
-                    val_no = (val_no / total) * 100
-                
-                st.markdown("##### Situación Económica vs Hace un Año")
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.markdown(f"""<div style='background:linear-gradient(135deg,#43e97b 0%,#38f9d7 100%);
-                        padding:25px;border-radius:10px;color:white;text-align:center;'>
-                        <div style='font-size:16px;opacity:0.9;margin-bottom:10px;'>✅ Mejor que Hace un Año</div>
-                        <div style='font-size:42px;font-weight:bold;'>{val_si:.1f}%</div>
-                    </div>""", unsafe_allow_html=True)
-                with col2:
-                    st.markdown(f"""<div style='background:linear-gradient(135deg,#fa709a 0%,#fee140 100%);
-                        padding:25px;border-radius:10px;color:white;text-align:center;'>
-                        <div style='font-size:16px;opacity:0.9;margin-bottom:10px;'>❌ Peor que Hace un Año</div>
-                        <div style='font-size:42px;font-weight:bold;'>{val_no:.1f}%</div>
-                    </div>""", unsafe_allow_html=True)
+            st.markdown("##### Clima de Negocios (Próximos 6 Meses)")
+            fig = go.Figure(data=[go.Pie(
+                labels=['Mejorará', 'Permanecerá Igual', 'Empeorará'],
+                values=[val_mejora, val_igual, val_empeora], 
+                hole=.4,
+                marker_colors=['#43e97b', '#667eea', '#f5576c'], 
+                textinfo='label+percent',
+                textfont_size=14, 
+                hovertemplate='<b>%{label}</b><br>%{value:.1f}%<extra></extra>'
+            )])
+            fig.update_layout(height=350, showlegend=True,
+                legend=dict(orientation="h", yanchor="bottom", y=-0.1, xanchor="center", x=0.5))
+            st.plotly_chart(fig, use_container_width=True)
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown(f"""<div style='background:linear-gradient(135deg,#43e97b 0%,#38f9d7 100%);
+                    padding:20px;border-radius:10px;color:white;text-align:center;'>
+                    <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>📈 Mejorará</div>
+                    <div style='font-size:36px;font-weight:bold;'>{val_mejora:.1f}%</div>
+                </div>""", unsafe_allow_html=True)
+            with col2:
+                st.markdown(f"""<div style='background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+                    padding:20px;border-radius:10px;color:white;text-align:center;'>
+                    <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>➡️ Igual</div>
+                    <div style='font-size:36px;font-weight:bold;'>{val_igual:.1f}%</div>
+                </div>""", unsafe_allow_html=True)
+            with col3:
+                st.markdown(f"""<div style='background:linear-gradient(135deg,#fa709a 0%,#fee140 100%);
+                    padding:20px;border-radius:10px;color:white;text-align:center;'>
+                    <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>📉 Empeorará</div>
+                    <div style='font-size:36px;font-weight:bold;'>{val_empeora:.1f}%</div>
+                </div>""", unsafe_allow_html=True)
+        
+        # Economía del país
+        val_si = val_no = None
+        if 'Economía - Mejor' in proyecciones:
+            val_si = proyecciones['Economía - Mejor'][0]['Valor']
+        if 'Economía - Peor' in proyecciones:
+            val_no = proyecciones['Economía - Peor'][0]['Valor']
+        
+        if val_si is not None and val_no is not None:
+            # Normalizar a 100%
+            total = val_si + val_no
+            if total > 0:
+                val_si = (val_si / total) * 100
+                val_no = (val_no / total) * 100
+            
+            st.markdown("##### Situación Económica vs Hace un Año")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f"""<div style='background:linear-gradient(135deg,#43e97b 0%,#38f9d7 100%);
+                    padding:25px;border-radius:10px;color:white;text-align:center;'>
+                    <div style='font-size:16px;opacity:0.9;margin-bottom:10px;'>✅ Mejor que Hace un Año</div>
+                    <div style='font-size:42px;font-weight:bold;'>{val_si:.1f}%</div>
+                </div>""", unsafe_allow_html=True)
+            with col2:
+                st.markdown(f"""<div style='background:linear-gradient(135deg,#fa709a 0%,#fee140 100%);
+                    padding:25px;border-radius:10px;color:white;text-align:center;'>
+                    <div style='font-size:16px;opacity:0.9;margin-bottom:10px;'>❌ Peor que Hace un Año</div>
+                    <div style='font-size:42px;font-weight:bold;'>{val_no:.1f}%</div>
+                </div>""", unsafe_allow_html=True)
         
         st.caption("Fuente: Encuesta de Expectativas - Banxico")
     
