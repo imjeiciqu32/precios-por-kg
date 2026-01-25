@@ -4849,6 +4849,17 @@ def cargar_proyecciones():
 with st.spinner("📥 Cargando proyecciones..."):
     proyecciones = cargar_proyecciones()
 
+if proyecciones is None:
+    st.error("Error al cargar. Probando descarga directa...")
+    try:
+        response = requests.get(URL_GITHUB_EXPECTATIVAS, timeout=30)
+        st.write(f"Status code: {response.status_code}")
+        st.write(f"Content type: {response.headers.get('content-type')}")
+        st.write(f"Tamaño: {len(response.content)} bytes")
+    except Exception as e:
+        st.write(f"Error: {str(e)}")
+    
+
 if proyecciones:
     tab_p1, tab_p2, tab_p3, tab_p4 = st.tabs(["📈 Inflación", "💱 Tipo de Cambio", "👥 Desempleo", "🏢 Economía"])
     
