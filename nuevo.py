@@ -4853,7 +4853,8 @@ URL_GITHUB_EXPECTATIVAS = "https://raw.githubusercontent.com/imjeiciqu32/precios
 
 @st.cache_data(ttl=3600)
 def cargar_proyecciones():
-    return descargar_y_procesar_expectativas(URL_GITHUB_EXPECTATIVAS)
+    proyecciones, fecha = descargar_y_procesar_expectativas(URL_GITHUB_EXPECTATIVAS)
+    return proyecciones, fecha
 
 with st.spinner("📥 Cargando proyecciones..."):
     resultado = cargar_proyecciones()
