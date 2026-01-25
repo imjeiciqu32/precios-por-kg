@@ -4747,6 +4747,351 @@ if modo == "Indicadores Macro":
         st.error("❌ Error al conectar con Banxico")
 
 
+============================================================================
+PROCESADOR AUTOMÁTICO - ENCUESTA DE EXPECTATIVAS BANXICO DESDE GITHUB
+============================================================================
+Descarga el ZIP desde GitHub y extrae solo las proyecciones relevantes
+============================================================================
+
+
+import pandas as pd
+import requests
+import zipfile
+from io import BytesIO
+import re
+
+# ============================================================================
+# CONFIGURACIÓN
+# ============================================================================
+
+# URL del ZIP en tu GitHub
+GITHUB_ZIP_URL = "https://github.com/imjeiciqu32/precios-por-kg/blob/main/dataset-1.zip"
+
+# Variables que te interesan (filtro)
+VARIABLES_INTERES = [
+    # INFLACIÓN
+    "Inflación general para",  # Captura todos los meses de 2026
+    "Inflación general al cierre",  # Captura 2025, 2026, 2027, 2028
+    "Inflación subyacente para",  # Meses
+    "Inflación subyacente al cierre",  # Años
+    
+    # TIPO DE CAMBIO
+    "Valor del tipo de cambio promedio durante",  # Meses 2026
+    "Valor del tipo de cambio al cierre",  # Años
+    
+    # DESEMPLEO
+    "Tasa nacional de desocupación al cierre",
+    "Tasa nacional de desocupación promedio",
+    
+    # CLIMA DE NEGOCIOS
+    "Percepción - clima de negocios",
+]
+
+# ============================================================================
+# FUNCIÓN PRINCIPAL
+# ============================================================================
+
+def descargar_y_procesar_expectativas(url_github=None):
+    
+    if url_github is None:
+        url_github = GITHUB_ZIP_URL
+    print("="*80)
+    print("PROCESADOR DE EXPECTATIVAS BANXICO")
+    print("="*80)
+    
+    try:
+        # 1. Descargar el ZIP desde GitHub
+        print(f"\n📥 Descargando ZIP desde GitHub...")
+        print(f"   URL: {url_github}")
+        
+        response = requests.get(url_github, timeout=30)
+        response.raise_for_status()
+        
+        print(f"✅ ZIP descargado ({len(response.content) / 1024:.1f} KB)")
+        
+        # 2. Extraer el ZIP
+        print("\n📦 Extrayendo archivos...")
+        
+        with zipfile.ZipFile(BytesIO(response.content)) as zip_ref:
+            archivos = zip_ref.namelist()
+            print(f"   Archivos en el ZIP: {archivos}")
+            
+            # Buscar el archivo Microdatos_2020_01.csv
+            archivo_csv = None
+            for archivo in archivos:
+                if "Microdatos_2020" in archivo and archivo.endswith(".csv"):
+                    archivo_csv = archivo
+                    break
+            
+            if not archivo_csv:
+                print("❌ No se encontró Microdatos_2020_01.csv en el ZIP")
+                return None
+            
+            print(f"✅ Encontrado: {archivo_csv}")
+            
+            # 3. Leer el CSV
+            print(f"\n📊 Leyendo {archivo_csv}...")
+            
+            with zip_ref.open(archivo_csv) as csv_file:
+                df = pd.read_csv(csv_file)
+            
+            print(f"✅ CSV leído: {len(df)} filas, {len(df.columns)} columnas")
+            print(f"   Columnas: {list(df.columns)}")
+        
+        # 4. Obtener la última encuesta (última fecha)
+        print("\n📅 Filtrando última encuesta...")
+        
+        # Convertir fecha a datetime
+        df['FechaEncuesta'] = pd.to_datetime(df['FechaEncuesta'], format='%m/%d/%Y')
+        
+        # Obtener la fecha más reciente
+        fecha_mas_reciente = df['FechaEncuesta'].max()
+        
+        print(f"   Fecha más reciente: {fecha_mas_reciente.strftime('%d/%m/%Y')}")
+        
+        # Filtrar solo la última encuesta
+        df_ultima = df[df['FechaEncuesta'] == fecha_mas_reciente].copy()
+        
+        print(f"✅ Última encuesta: {len(df_ultima)} registros")
+        
+        # 5. Filtrar solo las variables de interés
+        print("\n🔍 Filtrando variables de interés...")
+        
+        df_filtrado = filtrar_variables_interes(df_ultima)
+        
+        print(f"✅ Variables filtradas: {len(df_filtrado)} registros")
+        
+        # 6. Limpiar y estructurar los datos
+        print("\n🧹 Limpiando y estructurando datos...")
+        
+        df_limpio = limpiar_datos(df_filtrado)
+        
+        print(f"✅ Datos limpios: {len(df_limpio)} proyecciones")
+        
+        return df_limpio
+        
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Error descargando desde GitHub: {e}")
+        return None
+    except Exception as e:
+        print(f"❌ Error procesando datos: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
+# ============================================================================
+# FUNCIÓN PARA FILTRAR VARIABLES
+# ============================================================================
+
+def filtrar_variables_interes(df):    
+    # Crear una máscara para filtrar
+    mascara = pd.Series([False] * len(df), index=df.index)
+    
+    # Aplicar filtros
+    for patron in VARIABLES_INTERES:
+        mascara_patron = df['NombreAbsolutoLargo'].str.contains(patron, case=False, na=False)
+        mascara = mascara | mascara_patron
+        
+        # Debug: ver cuántos registros coinciden con cada patrón
+        num_coincidencias = mascara_patron.sum()
+        if num_coincidencias > 0:
+            print(f"   ✓ '{patron}': {num_coincidencias} registros")
+    
+    # Aplicar el filtro
+    df_filtrado = df[mascara].copy()
+    
+    return df_filtrado
+
+
+# ============================================================================
+# FUNCIÓN PARA LIMPIAR DATOS
+# ============================================================================
+
+def limpiar_datos(df):
+    
+    # Crear una estructura limpia
+    df_limpio = df[['FechaEncuesta', 'NombreAbsolutoLargo', 'NombreRelativoCorto', 'Dato']].copy()
+    
+    # Renombrar columnas
+    df_limpio.columns = ['Fecha', 'Variable', 'Periodo', 'Valor']
+    
+    # Convertir Valor a numérico
+    df_limpio['Valor'] = pd.to_numeric(df_limpio['Valor'], errors='coerce')
+    
+    # Categorizar por tipo de variable
+    df_limpio['Categoria'] = df_limpio['Variable'].apply(categorizar_variable)
+    
+    # Extraer el año/mes de proyección
+    df_limpio['Proyeccion_Para'] = df_limpio['Variable'].apply(extraer_periodo_proyeccion)
+    
+    # Ordenar por categoría y periodo
+    df_limpio = df_limpio.sort_values(['Categoria', 'Proyeccion_Para'])
+    
+    return df_limpio
+
+
+def categorizar_variable(variable):
+    variable_lower = variable.lower()
+    
+    if 'inflación general' in variable_lower and 'para' in variable_lower:
+        return 'Inflación General - Mensual'
+    elif 'inflación general' in variable_lower and 'cierre' in variable_lower:
+        return 'Inflación General - Anual'
+    elif 'inflación subyacente' in variable_lower and 'para' in variable_lower:
+        return 'Inflación Subyacente - Mensual'
+    elif 'inflación subyacente' in variable_lower and 'cierre' in variable_lower:
+        return 'Inflación Subyacente - Anual'
+    elif 'tipo de cambio promedio durante' in variable_lower:
+        return 'Tipo de Cambio - Mensual'
+    elif 'tipo de cambio al cierre' in variable_lower:
+        return 'Tipo de Cambio - Anual'
+    elif 'desocupación al cierre' in variable_lower:
+        return 'Desempleo - Anual'
+    elif 'desocupación promedio' in variable_lower:
+        return 'Desempleo - Promedio'
+    elif 'clima de negocios' in variable_lower:
+        return 'Clima de Negocios'
+    else:
+        return 'Otros'
+
+
+def extraer_periodo_proyeccion(variable):    
+    # Buscar años (2025, 2026, 2027, etc.)
+    match_anio = re.search(r'(202[5-9]|20[3-9]\d)', variable)
+    if match_anio:
+        anio = match_anio.group(1)
+        
+        # Buscar mes (enero, febrero, etc.)
+        meses = {
+            'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
+            'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
+            'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12'
+        }
+        
+        for mes_nombre, mes_num in meses.items():
+            if mes_nombre in variable.lower():
+                return f"{anio}-{mes_num}"
+        
+        # Si no hay mes, es anual
+        return f"{anio}-12"  # Asumimos cierre de año
+    
+    return "N/A"
+
+
+# ============================================================================
+# FUNCIÓN PARA EXPORTAR DATOS LIMPIOS
+# ============================================================================
+
+def exportar_proyecciones(df, formato='csv', nombre_archivo='proyecciones_banxico'):
+    """
+    Exporta las proyecciones a diferentes formatos
+    
+    Args:
+        df: DataFrame con las proyecciones
+        formato: 'csv', 'excel', o 'json'
+        nombre_archivo: Nombre base del archivo
+    """
+    
+    if formato == 'csv':
+        archivo = f"{nombre_archivo}.csv"
+        df.to_csv(archivo, index=False)
+        print(f"💾 Guardado: {archivo}")
+    
+    elif formato == 'excel':
+        archivo = f"{nombre_archivo}.xlsx"
+        with pd.ExcelWriter(archivo, engine='openpyxl') as writer:
+            # Hoja principal con todos los datos
+            df.to_excel(writer, sheet_name='Todas', index=False)
+            
+            # Hojas separadas por categoría
+            for categoria in df['Categoria'].unique():
+                df_cat = df[df['Categoria'] == categoria]
+                nombre_hoja = categoria[:31]  # Excel limita a 31 caracteres
+                df_cat.to_excel(writer, sheet_name=nombre_hoja, index=False)
+        
+        print(f"💾 Guardado: {archivo}")
+    
+    elif formato == 'json':
+        archivo = f"{nombre_archivo}.json"
+        df.to_json(archivo, orient='records', indent=2, force_ascii=False)
+        print(f"💾 Guardado: {archivo}")
+
+
+# ============================================================================
+# FUNCIÓN PARA MOSTRAR RESUMEN
+# ============================================================================
+
+def mostrar_resumen(df):    
+    print("\n" + "="*80)
+    print("RESUMEN DE PROYECCIONES")
+    print("="*80)
+    
+    # Resumen por categoría
+    print("\n📊 Proyecciones por categoría:")
+    resumen = df.groupby('Categoria').agg({
+        'Variable': 'count',
+        'Valor': ['mean', 'min', 'max']
+    }).round(2)
+    print(resumen)
+    
+    # Proyecciones de inflación mensual 2026
+    print("\n📈 INFLACIÓN GENERAL 2026 (Mensual):")
+    infl_2026 = df[(df['Categoria'] == 'Inflación General - Mensual') & 
+                   (df['Proyeccion_Para'].str.startswith('2026'))]
+    
+    if len(infl_2026) > 0:
+        for _, row in infl_2026.iterrows():
+            print(f"   {row['Proyeccion_Para']}: {row['Valor']:.2f}%")
+    else:
+        print("   (No disponible)")
+    
+    # Proyecciones de tipo de cambio 2026
+    print("\n💵 TIPO DE CAMBIO 2026 (Mensual):")
+    tc_2026 = df[(df['Categoria'] == 'Tipo de Cambio - Mensual') & 
+                 (df['Proyeccion_Para'].str.startswith('2026'))]
+    
+    if len(tc_2026) > 0:
+        for _, row in tc_2026.iterrows():
+            print(f"   {row['Proyeccion_Para']}: ${row['Valor']:.2f}")
+    else:
+        print("   (No disponible)")
+    
+    # Proyecciones anuales
+    print("\n📅 PROYECCIONES ANUALES:")
+    anuales = df[df['Categoria'].str.contains('Anual')]
+    
+    for categoria in anuales['Categoria'].unique():
+        print(f"\n{categoria}:")
+        datos_cat = anuales[anuales['Categoria'] == categoria]
+        for _, row in datos_cat.iterrows():
+            print(f"   {row['Proyeccion_Para']}: {row['Valor']:.2f}")
+
+
+
+# ============================================================================
+# FUNCIÓN PARA INTEGRAR EN STREAMLIT
+# ============================================================================
+
+def obtener_proyecciones_para_streamlit(url_github):
+    
+    df = descargar_y_procesar_expectativas(url_github)
+    
+    if df is None:
+        return None
+    
+    # Organizar en diccionario por categoría
+    proyecciones = {}
+    
+    for categoria in df['Categoria'].unique():
+        df_cat = df[df['Categoria'] == categoria]
+        proyecciones[categoria] = df_cat[['Proyeccion_Para', 'Valor']].to_dict('records')
+    
+    return proyecciones
+
+
+
+
 # ============================================================================
 # 🤖 CHATBOT DE PRICING IA - ALIMENTADO POR ANÁLISIS ULTRA 2.6
 # ============================================================================
