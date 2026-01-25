@@ -4856,7 +4856,11 @@ def cargar_proyecciones():
     return descargar_y_procesar_expectativas(URL_GITHUB_EXPECTATIVAS)
 
 with st.spinner("📥 Cargando proyecciones..."):
-    proyecciones, fecha_encuesta = cargar_proyecciones()
+    resultado = cargar_proyecciones()
+    if resultado and len(resultado) == 2:
+        proyecciones, fecha_encuesta = resultado
+    else:
+        proyecciones, fecha_encuesta = None, None
 
 # Mostrar fecha de encuesta
 if fecha_encuesta:
