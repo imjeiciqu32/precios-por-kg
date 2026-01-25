@@ -4764,11 +4764,9 @@ def descargar_y_procesar_expectativas(url_github):
         
         df = pd.read_excel(BytesIO(response.content), engine='openpyxl')
         
-        # Verificar que las columnas existan
         if 'NombreAbsolutoLargo' not in df.columns or 'Dato' not in df.columns:
             return None
         
-        # Filtrar variables de interés
         VARIABLES_INTERES = [
             "Inflación general para",
             "Inflación subyacente para",
@@ -4791,8 +4789,6 @@ def descargar_y_procesar_expectativas(url_github):
         df_filtrado = df_filtrado[['NombreAbsolutoLargo', 'Dato']].copy()
         df_filtrado.columns = ['Variable', 'Valor']
         df_filtrado['Valor'] = pd.to_numeric(df_filtrado['Valor'], errors='coerce')
-        
-        # Agrupar por variable y calcular promedio
         df_agrupado = df_filtrado.groupby('Variable')['Valor'].mean().reset_index()
         
         def categorizar(variable):
@@ -4839,7 +4835,9 @@ def descargar_y_procesar_expectativas(url_github):
         return proyecciones
         
     except Exception as e:
-        st.error(f"Error en procesamiento: {str(e)}")
+        import traceback
+        st.error(f"Error: {str(e)}")
+        st.code(traceback.format_exc())
         return None
 
 st.markdown("---")
@@ -4850,24 +4848,10 @@ URL_GITHUB_EXPECTATIVAS = "https://raw.githubusercontent.com/imjeiciqu32/precios
 
 @st.cache_data(ttl=3600)
 def cargar_proyecciones():
-    try:
-        return descargar_y_procesar_expectativas(URL_GITHUB_EXPECTATIVAS)
-    except:
-        return None
+    return descargar_y_procesar_expectativas(URL_GITHUB_EXPECTATIVAS)
 
 with st.spinner("📥 Cargando proyecciones..."):
     proyecciones = cargar_proyecciones()
-
-if proyecciones is None:
-    st.error("Error al cargar. Probando descarga directa...")
-    try:
-        response = requests.get(URL_GITHUB_EXPECTATIVAS, timeout=30)
-        st.write(f"Status code: {response.status_code}")
-        st.write(f"Content type: {response.headers.get('content-type')}")
-        st.write(f"Tamaño: {len(response.content)} bytes")
-    except Exception as e:
-        st.write(f"Error: {str(e)}")
-    
 
 if proyecciones:
     tab_p1, tab_p2, tab_p3, tab_p4 = st.tabs(["📈 Inflación", "💱 Tipo de Cambio", "👥 Desempleo", "🏢 Economía"])
@@ -5045,7 +5029,7 @@ if proyecciones:
     st.markdown("---")
     st.info("💡 **Nota:** Estas proyecciones se actualizan automáticamente desde la Encuesta de Expectativas de Banxico. Los valores son promedios de las respuestas de expertos.")
 else:
-    st.warning("⚠️ No se pudieron cargar las proyecciones. Verifica la conexión a GitHub.")
+    st.warning("⚠️ No se pudieron cargar las proyecciones.")
 
 
 
