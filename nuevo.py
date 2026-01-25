@@ -4748,238 +4748,218 @@ if modo == "Indicadores Macro":
 
 
 # ============================================================================
-# INTEGRACIÓN DE PROYECCIONES - AGREGAR AL FINAL DEL APARTADO MACRO
+# CÓDIGO COMPLETO - COPIAR Y PEGAR AL FINAL DE TU APARTADO MACRO
 # ============================================================================
-# Copiar esto DESPUÉS de tu código existente de Indicadores Macro
-# (después de la sección de "EXPLORADOR AVANZADO")
+# Instrucciones: Copia TODO este archivo y pégalo DESPUÉS de:
+# else:
+#     st.error("❌ Error al conectar con Banxico")
 # ============================================================================
 
-# ==================== SECCIÓN DE PROYECCIONES ====================
+import pandas as pd
+import requests
+import zipfile
+from io import BytesIO
+import re
+import plotly.graph_objects as go
+
+# ==================== FUNCIONES DEL PROCESADOR ====================
+
+def descargar_y_procesar_expectativas(url_github):
+    try:
+        response = requests.get(url_github, timeout=30)
+        response.raise_for_status()
+        
+        with zipfile.ZipFile(BytesIO(response.content)) as zip_ref:
+            archivo_csv = None
+            for archivo in zip_ref.namelist():
+                if "Microdatos_2020" in archivo and archivo.endswith(".csv"):
+                    archivo_csv = archivo
+                    break
+            
+            if not archivo_csv:
+                return None
+            
+            with zip_ref.open(archivo_csv) as csv_file:
+                df = pd.read_csv(csv_file)
+        
+        df['FechaEncuesta'] = pd.to_datetime(df['FechaEncuesta'], format='%m/%d/%Y')
+        fecha_mas_reciente = df['FechaEncuesta'].max()
+        df_ultima = df[df['FechaEncuesta'] == fecha_mas_reciente].copy()
+        
+        VARIABLES_INTERES = [
+            "Inflación general para", "Inflación general al cierre",
+            "Inflación subyacente para", "Inflación subyacente al cierre",
+            "Valor del tipo de cambio promedio durante", "Valor del tipo de cambio al cierre",
+            "Tasa nacional de desocupación al cierre", "Tasa nacional de desocupación promedio",
+            "Percepción - clima de negocios",
+        ]
+        
+        mascara = pd.Series([False] * len(df_ultima), index=df_ultima.index)
+        for patron in VARIABLES_INTERES:
+            mascara = mascara | df_ultima['NombreAbsolutoLargo'].str.contains(patron, case=False, na=False)
+        
+        df_filtrado = df_ultima[mascara].copy()
+        df_limpio = df_filtrado[['FechaEncuesta', 'NombreAbsolutoLargo', 'NombreRelativoCorto', 'Dato']].copy()
+        df_limpio.columns = ['Fecha', 'Variable', 'Periodo', 'Valor']
+        df_limpio['Valor'] = pd.to_numeric(df_limpio['Valor'], errors='coerce')
+        
+        def categorizar(variable):
+            v = variable.lower()
+            if 'inflación general' in v and 'para' in v: return 'Inflación General - Mensual'
+            elif 'inflación general' in v and 'cierre' in v: return 'Inflación General - Anual'
+            elif 'inflación subyacente' in v and 'para' in v: return 'Inflación Subyacente - Mensual'
+            elif 'inflación subyacente' in v and 'cierre' in v: return 'Inflación Subyacente - Anual'
+            elif 'tipo de cambio promedio durante' in v: return 'Tipo de Cambio - Mensual'
+            elif 'tipo de cambio al cierre' in v: return 'Tipo de Cambio - Anual'
+            elif 'desocupación al cierre' in v: return 'Desempleo - Anual'
+            elif 'desocupación promedio' in v: return 'Desempleo - Promedio'
+            elif 'clima de negocios' in v: return 'Clima de Negocios'
+            else: return 'Otros'
+        
+        def extraer_periodo(variable):
+            match_anio = re.search(r'(202[5-9]|20[3-9]\d)', variable)
+            if match_anio:
+                anio = match_anio.group(1)
+                meses = {'enero':'01','febrero':'02','marzo':'03','abril':'04','mayo':'05','junio':'06',
+                        'julio':'07','agosto':'08','septiembre':'09','octubre':'10','noviembre':'11','diciembre':'12'}
+                for mes_nombre, mes_num in meses.items():
+                    if mes_nombre in variable.lower():
+                        return f"{anio}-{mes_num}"
+                return f"{anio}-12"
+            return "N/A"
+        
+        df_limpio['Categoria'] = df_limpio['Variable'].apply(categorizar)
+        df_limpio['Proyeccion_Para'] = df_limpio['Variable'].apply(extraer_periodo)
+        df_limpio = df_limpio.sort_values(['Categoria', 'Proyeccion_Para'])
+        
+        proyecciones = {}
+        for categoria in df_limpio['Categoria'].unique():
+            df_cat = df_limpio[df_limpio['Categoria'] == categoria]
+            proyecciones[categoria] = df_cat[['Proyeccion_Para', 'Valor']].to_dict('records')
+        
+        return proyecciones
+        
+    except Exception as e:
+        return None
+
+# ==================== INTERFAZ DE PROYECCIONES ====================
+
 st.markdown("---")
 st.markdown("### 🔮 Proyecciones y Expectativas Futuras")
 st.caption("Datos de la Encuesta de Expectativas de Banxico - Actualización Mensual")
 
-# Importar la función del procesador
-from procesar_expectativas_banxico import obtener_proyecciones_para_streamlit
-
-# URL del ZIP en GitHub
 URL_GITHUB_EXPECTATIVAS = "https://raw.githubusercontent.com/imjeiciqu32/precios-por-kg/main/dataset-1.zip"
 
-# Cachear los datos para no descargar en cada rerun
-@st.cache_data(ttl=3600)  # Cache por 1 hora
+@st.cache_data(ttl=3600)
 def cargar_proyecciones():
-    """Carga las proyecciones desde GitHub"""
     try:
-        proyecciones = obtener_proyecciones_para_streamlit(URL_GITHUB_EXPECTATIVAS)
-        return proyecciones
-    except Exception as e:
-        st.error(f"Error cargando proyecciones: {e}")
+        return descargar_y_procesar_expectativas(URL_GITHUB_EXPECTATIVAS)
+    except:
         return None
 
-# Cargar proyecciones
-with st.spinner("📥 Cargando proyecciones desde la encuesta de Banxico..."):
+with st.spinner("📥 Cargando proyecciones..."):
     proyecciones = cargar_proyecciones()
 
 if proyecciones:
-    # ==================== TABS DE PROYECCIONES ====================
-    tab_p1, tab_p2, tab_p3, tab_p4 = st.tabs([
-        "📈 Inflación", 
-        "💱 Tipo de Cambio", 
-        "👥 Desempleo",
-        "🏢 Clima de Negocios"
-    ])
+    tab_p1, tab_p2, tab_p3, tab_p4 = st.tabs(["📈 Inflación", "💱 Tipo de Cambio", "👥 Desempleo", "🏢 Clima"])
     
-    # ==================== TAB 1: INFLACIÓN ====================
     with tab_p1:
         st.markdown("#### 📊 Proyecciones de Inflación General")
-        
-        # Obtener datos de inflación mensual
         if 'Inflación General - Mensual' in proyecciones:
-            df_infl_mensual = pd.DataFrame(proyecciones['Inflación General - Mensual'])
-            df_infl_mensual['Proyeccion_Para'] = pd.to_datetime(df_infl_mensual['Proyeccion_Para'])
-            df_infl_mensual = df_infl_mensual.sort_values('Proyeccion_Para')
+            df_infl = pd.DataFrame(proyecciones['Inflación General - Mensual'])
+            df_infl['Proyeccion_Para'] = pd.to_datetime(df_infl['Proyeccion_Para'])
+            df_infl = df_infl.sort_values('Proyeccion_Para')
             
-            # Gráfica de proyección mensual
             fig = go.Figure()
-            
-            fig.add_trace(go.Scatter(
-                x=df_infl_mensual['Proyeccion_Para'],
-                y=df_infl_mensual['Valor'],
-                name='Proyección',
-                line=dict(color='rgb(102, 126, 234)', width=3, dash='dot'),
-                mode='lines+markers',
-                marker=dict(size=8, color='rgb(102, 126, 234)'),
-                fill='tozeroy',
-                fillcolor='rgba(102, 126, 234, 0.2)',
-                hovertemplate='%{x|%b %Y}<br>%{y:.2f}%<extra></extra>'
-            ))
-            
-            fig.update_layout(
-                title="Inflación General Proyectada (Mensual 2026)",
-                hovermode='x',
-                height=400,
-                yaxis_title="Inflación (%)",
-                xaxis_title="Periodo",
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
-            )
-            
+            fig.add_trace(go.Scatter(x=df_infl['Proyeccion_Para'], y=df_infl['Valor'], name='Proyección',
+                line=dict(color='rgb(102, 126, 234)', width=3, dash='dot'), mode='lines+markers',
+                marker=dict(size=8), fill='tozeroy', fillcolor='rgba(102, 126, 234, 0.2)',
+                hovertemplate='%{x|%b %Y}<br>%{y:.2f}%<extra></extra>'))
+            fig.update_layout(title="Inflación General Proyectada (Mensual 2026)", hovermode='x', height=400,
+                yaxis_title="Inflación (%)", xaxis_title="Periodo",
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5))
             st.plotly_chart(fig, use_container_width=True)
         
-        # Proyecciones anuales
         col1, col2 = st.columns(2)
-        
         with col1:
             st.markdown("##### 📅 Proyección Anual")
             if 'Inflación General - Anual' in proyecciones:
                 df_anual = pd.DataFrame(proyecciones['Inflación General - Anual'])
                 df_anual = df_anual.sort_values('Proyeccion_Para')
-                
                 for _, row in df_anual.iterrows():
                     year = row['Proyeccion_Para'][:4]
                     valor = row['Valor']
-                    
-                    # Color según valor
-                    if valor < 3:
-                        color = "#43e97b"
-                        emoji = "🟢"
-                    elif valor < 4:
-                        color = "#FFE082"
-                        emoji = "🟡"
-                    else:
-                        color = "#f5576c"
-                        emoji = "🔴"
-                    
-                    st.markdown(f"""
-                    <div style='background: {color}; padding: 15px; border-radius: 8px; 
-                                margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
-                        <div style='font-size: 16px; font-weight: bold; color: #333;'>
-                            {emoji} Cierre {year}
-                        </div>
-                        <div style='font-size: 32px; font-weight: bold; color: #1a1a1a;'>
-                            {valor:.2f}%
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    color = "#43e97b" if valor < 3 else "#FFE082" if valor < 4 else "#f5576c"
+                    emoji = "🟢" if valor < 3 else "🟡" if valor < 4 else "🔴"
+                    st.markdown(f"""<div style='background:{color};padding:15px;border-radius:8px;margin-bottom:10px;'>
+                        <div style='font-size:16px;font-weight:bold;color:#333;'>{emoji} Cierre {year}</div>
+                        <div style='font-size:32px;font-weight:bold;color:#1a1a1a;'>{valor:.2f}%</div>
+                    </div>""", unsafe_allow_html=True)
         
         with col2:
             st.markdown("##### 📊 Inflación Subyacente")
             if 'Inflación Subyacente - Anual' in proyecciones:
                 df_sub = pd.DataFrame(proyecciones['Inflación Subyacente - Anual'])
                 df_sub = df_sub.sort_values('Proyeccion_Para')
-                
                 for _, row in df_sub.iterrows():
                     year = row['Proyeccion_Para'][:4]
                     valor = row['Valor']
-                    
-                    st.markdown(f"""
-                    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                                padding: 15px; border-radius: 8px; margin-bottom: 10px; 
-                                box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
-                        <div style='font-size: 16px; font-weight: bold; color: white;'>
-                            Cierre {year}
-                        </div>
-                        <div style='font-size: 32px; font-weight: bold; color: white;'>
-                            {valor:.2f}%
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-        
+                    st.markdown(f"""<div style='background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+                        padding:15px;border-radius:8px;margin-bottom:10px;'>
+                        <div style='font-size:16px;font-weight:bold;color:white;'>Cierre {year}</div>
+                        <div style='font-size:32px;font-weight:bold;color:white;'>{valor:.2f}%</div>
+                    </div>""", unsafe_allow_html=True)
         st.caption("Fuente: Encuesta de Expectativas - Banxico")
     
-    # ==================== TAB 2: TIPO DE CAMBIO ====================
     with tab_p2:
         st.markdown("#### 💱 Proyecciones de Tipo de Cambio USD/MXN")
-        
-        # Obtener datos mensuales
         if 'Tipo de Cambio - Mensual' in proyecciones:
-            df_tc_mensual = pd.DataFrame(proyecciones['Tipo de Cambio - Mensual'])
-            df_tc_mensual['Proyeccion_Para'] = pd.to_datetime(df_tc_mensual['Proyeccion_Para'])
-            df_tc_mensual = df_tc_mensual.sort_values('Proyeccion_Para')
+            df_tc = pd.DataFrame(proyecciones['Tipo de Cambio - Mensual'])
+            df_tc['Proyeccion_Para'] = pd.to_datetime(df_tc['Proyeccion_Para'])
+            df_tc = df_tc.sort_values('Proyeccion_Para')
             
-            # Gráfica
             fig = go.Figure()
-            
-            fig.add_trace(go.Scatter(
-                x=df_tc_mensual['Proyeccion_Para'],
-                y=df_tc_mensual['Valor'],
-                name='Proyección TC',
-                line=dict(color='rgb(255, 75, 75)', width=3, dash='dot'),
-                mode='lines+markers',
-                marker=dict(size=8, color='rgb(255, 75, 75)'),
-                fill='tozeroy',
-                fillcolor='rgba(255, 75, 75, 0.2)',
-                hovertemplate='%{x|%b %Y}<br>$%{y:.2f} MXN<extra></extra>'
-            ))
-            
-            fig.update_layout(
-                title="Tipo de Cambio Proyectado (Mensual 2026)",
-                hovermode='x',
-                height=400,
-                yaxis_title="MXN por USD",
-                xaxis_title="Periodo",
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
-            )
-            
+            fig.add_trace(go.Scatter(x=df_tc['Proyeccion_Para'], y=df_tc['Valor'], name='Proyección TC',
+                line=dict(color='rgb(255, 75, 75)', width=3, dash='dot'), mode='lines+markers',
+                marker=dict(size=8), fill='tozeroy', fillcolor='rgba(255, 75, 75, 0.2)',
+                hovertemplate='%{x|%b %Y}<br>$%{y:.2f} MXN<extra></extra>'))
+            fig.update_layout(title="Tipo de Cambio Proyectado (Mensual 2026)", hovermode='x', height=400,
+                yaxis_title="MXN por USD", xaxis_title="Periodo",
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5))
             st.plotly_chart(fig, use_container_width=True)
         
-        # Proyecciones anuales
         st.markdown("##### 📅 Proyección al Cierre de Año")
-        
         if 'Tipo de Cambio - Anual' in proyecciones:
             df_tc_anual = pd.DataFrame(proyecciones['Tipo de Cambio - Anual'])
             df_tc_anual = df_tc_anual.sort_values('Proyeccion_Para')
-            
             cols = st.columns(len(df_tc_anual))
-            
             for idx, (_, row) in enumerate(df_tc_anual.iterrows()):
                 year = row['Proyeccion_Para'][:4]
                 valor = row['Valor']
-                
                 with cols[idx]:
-                    st.markdown(f"""
-                    <div style='background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
-                                padding: 20px; border-radius: 10px; color: white; text-align: center;
-                                box-shadow: 0 4px 8px rgba(0,0,0,0.1);'>
-                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>💱 {year}</div>
-                        <div style='font-size: 32px; font-weight: bold;'>${valor:.2f}</div>
-                        <div style='font-size: 12px; opacity: 0.8; margin-top: 5px;'>MXN/USD</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-        
+                    st.markdown(f"""<div style='background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);
+                        padding:20px;border-radius:10px;color:white;text-align:center;'>
+                        <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>💱 {year}</div>
+                        <div style='font-size:32px;font-weight:bold;'>${valor:.2f}</div>
+                        <div style='font-size:12px;opacity:0.8;margin-top:5px;'>MXN/USD</div>
+                    </div>""", unsafe_allow_html=True)
         st.caption("Fuente: Encuesta de Expectativas - Banxico")
     
-    # ==================== TAB 3: DESEMPLEO ====================
     with tab_p3:
         st.markdown("#### 👥 Proyecciones de Tasa de Desempleo")
-        
         col1, col2 = st.columns(2)
-        
         with col1:
             st.markdown("##### 📊 Desempleo al Cierre de Año")
             if 'Desempleo - Anual' in proyecciones:
                 df_desemp = pd.DataFrame(proyecciones['Desempleo - Anual'])
                 df_desemp = df_desemp.sort_values('Proyeccion_Para')
-                
-                # Crear gráfica
                 fig = go.Figure()
-                
-                fig.add_trace(go.Bar(
-                    x=[row['Proyeccion_Para'][:4] for _, row in df_desemp.iterrows()],
-                    y=df_desemp['Valor'],
-                    marker_color='rgba(102, 126, 234, 0.7)',
-                    text=[f"{v:.2f}%" for v in df_desemp['Valor']],
-                    textposition='outside',
-                    hovertemplate='%{x}<br>%{y:.2f}%<extra></extra>'
-                ))
-                
-                fig.update_layout(
-                    title="Tasa de Desocupación Proyectada",
-                    height=350,
-                    yaxis_title="(%)",
-                    xaxis_title="Año",
-                    showlegend=False
-                )
-                
+                fig.add_trace(go.Bar(x=[row['Proyeccion_Para'][:4] for _, row in df_desemp.iterrows()],
+                    y=df_desemp['Valor'], marker_color='rgba(102, 126, 234, 0.7)',
+                    text=[f"{v:.2f}%" for v in df_desemp['Valor']], textposition='outside',
+                    hovertemplate='%{x}<br>%{y:.2f}%<extra></extra>'))
+                fig.update_layout(title="Tasa de Desocupación Proyectada", height=350,
+                    yaxis_title="(%)", xaxis_title="Año", showlegend=False)
                 st.plotly_chart(fig, use_container_width=True)
         
         with col2:
@@ -4987,44 +4967,23 @@ if proyecciones:
             if 'Desempleo - Anual' in proyecciones:
                 df_desemp = pd.DataFrame(proyecciones['Desempleo - Anual'])
                 df_desemp = df_desemp.sort_values('Proyeccion_Para')
-                
                 for _, row in df_desemp.iterrows():
                     year = row['Proyeccion_Para'][:4]
                     valor = row['Valor']
-                    
-                    # Color según valor
-                    if valor < 3.5:
-                        gradient = "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)"
-                    elif valor < 4.5:
-                        gradient = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-                    else:
-                        gradient = "linear-gradient(135deg, #fa709a 0%, #fee140 100%)"
-                    
-                    st.markdown(f"""
-                    <div style='background: {gradient}; padding: 15px; border-radius: 8px; 
-                                margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
-                        <div style='font-size: 16px; font-weight: bold; color: white;'>
-                            Cierre {year}
-                        </div>
-                        <div style='font-size: 32px; font-weight: bold; color: white;'>
-                            {valor:.2f}%
-                        </div>
-                        <div style='font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 5px;'>
-                            de la PEA
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-        
+                    gradient = "linear-gradient(135deg,#43e97b 0%,#38f9d7 100%)" if valor < 3.5 else \
+                              "linear-gradient(135deg,#667eea 0%,#764ba2 100%)" if valor < 4.5 else \
+                              "linear-gradient(135deg,#fa709a 0%,#fee140 100%)"
+                    st.markdown(f"""<div style='background:{gradient};padding:15px;border-radius:8px;margin-bottom:10px;'>
+                        <div style='font-size:16px;font-weight:bold;color:white;'>Cierre {year}</div>
+                        <div style='font-size:32px;font-weight:bold;color:white;'>{valor:.2f}%</div>
+                        <div style='font-size:12px;color:rgba(255,255,255,0.8);margin-top:5px;'>de la PEA</div>
+                    </div>""", unsafe_allow_html=True)
         st.caption("Fuente: Encuesta de Expectativas - Banxico")
     
-    # ==================== TAB 4: CLIMA DE NEGOCIOS ====================
     with tab_p4:
         st.markdown("#### 🏢 Percepción del Clima de Negocios")
-        
         if 'Clima de Negocios' in proyecciones:
             df_clima = pd.DataFrame(proyecciones['Clima de Negocios'])
-            
-            # Extraer las 3 categorías
             mejorara = df_clima[df_clima['Proyeccion_Para'].str.contains('Mejorara', na=False)]
             igual = df_clima[df_clima['Proyeccion_Para'].str.contains('Igual', na=False)]
             empeorara = df_clima[df_clima['Proyeccion_Para'].str.contains('Empeorara', na=False)]
@@ -5034,76 +4993,43 @@ if proyecciones:
                 val_igual = igual['Valor'].iloc[0]
                 val_empeora = empeorara['Valor'].iloc[0]
                 
-                # Crear gráfica de dona
-                fig = go.Figure(data=[go.Pie(
-                    labels=['Mejorará', 'Permanecerá Igual', 'Empeorará'],
-                    values=[val_mejora, val_igual, val_empeora],
-                    hole=.4,
-                    marker_colors=['#43e97b', '#667eea', '#f5576c'],
-                    textinfo='label+percent',
-                    textfont_size=14,
-                    hovertemplate='<b>%{label}</b><br>%{value:.1f}%<extra></extra>'
-                )])
-                
-                fig.update_layout(
-                    title="Expectativas para los Próximos 6 Meses",
-                    height=400,
-                    showlegend=True,
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.1, xanchor="center", x=0.5)
-                )
-                
+                fig = go.Figure(data=[go.Pie(labels=['Mejorará', 'Permanecerá Igual', 'Empeorará'],
+                    values=[val_mejora, val_igual, val_empeora], hole=.4,
+                    marker_colors=['#43e97b', '#667eea', '#f5576c'], textinfo='label+percent',
+                    textfont_size=14, hovertemplate='<b>%{label}</b><br>%{value:.1f}%<extra></extra>')])
+                fig.update_layout(title="Expectativas para los Próximos 6 Meses", height=400,
+                    showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=-0.1, xanchor="center", x=0.5))
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # Tarjetas informativas
                 st.markdown("##### 📊 Desglose de Expectativas")
                 col1, col2, col3 = st.columns(3)
-                
                 with col1:
-                    st.markdown(f"""
-                    <div style='background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); 
-                                padding: 20px; border-radius: 10px; color: white; text-align: center;'>
-                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>📈 Mejorará</div>
-                        <div style='font-size: 36px; font-weight: bold;'>{val_mejora:.1f}%</div>
-                        <div style='font-size: 12px; opacity: 0.8; margin-top: 5px;'>Optimistas</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
+                    st.markdown(f"""<div style='background:linear-gradient(135deg,#43e97b 0%,#38f9d7 100%);
+                        padding:20px;border-radius:10px;color:white;text-align:center;'>
+                        <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>📈 Mejorará</div>
+                        <div style='font-size:36px;font-weight:bold;'>{val_mejora:.1f}%</div>
+                        <div style='font-size:12px;opacity:0.8;margin-top:5px;'>Optimistas</div>
+                    </div>""", unsafe_allow_html=True)
                 with col2:
-                    st.markdown(f"""
-                    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                                padding: 20px; border-radius: 10px; color: white; text-align: center;'>
-                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>➡️ Igual</div>
-                        <div style='font-size: 36px; font-weight: bold;'>{val_igual:.1f}%</div>
-                        <div style='font-size: 12px; opacity: 0.8; margin-top: 5px;'>Neutrales</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
+                    st.markdown(f"""<div style='background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+                        padding:20px;border-radius:10px;color:white;text-align:center;'>
+                        <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>➡️ Igual</div>
+                        <div style='font-size:36px;font-weight:bold;'>{val_igual:.1f}%</div>
+                        <div style='font-size:12px;opacity:0.8;margin-top:5px;'>Neutrales</div>
+                    </div>""", unsafe_allow_html=True)
                 with col3:
-                    st.markdown(f"""
-                    <div style='background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); 
-                                padding: 20px; border-radius: 10px; color: white; text-align: center;'>
-                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>📉 Empeorará</div>
-                        <div style='font-size: 36px; font-weight: bold;'>{val_empeora:.1f}%</div>
-                        <div style='font-size: 12px; opacity: 0.8; margin-top: 5px;'>Pesimistas</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-        
+                    st.markdown(f"""<div style='background:linear-gradient(135deg,#fa709a 0%,#fee140 100%);
+                        padding:20px;border-radius:10px;color:white;text-align:center;'>
+                        <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>📉 Empeorará</div>
+                        <div style='font-size:36px;font-weight:bold;'>{val_empeora:.1f}%</div>
+                        <div style='font-size:12px;opacity:0.8;margin-top:5px;'>Pesimistas</div>
+                    </div>""", unsafe_allow_html=True)
         st.caption("Fuente: Encuesta de Expectativas - Banxico")
     
-    # ==================== NOTA DE ACTUALIZACIÓN ====================
     st.markdown("---")
-    st.info("""
-    💡 **Nota:** Estas proyecciones se actualizan automáticamente desde la 
-    Encuesta de Expectativas de Banxico. Los datos se descargan directamente 
-    desde GitHub y corresponden a la última encuesta disponible (Diciembre 2025).
-    """)
-
+    st.info("💡 **Nota:** Estas proyecciones se actualizan automáticamente desde la Encuesta de Expectativas de Banxico.")
 else:
     st.warning("⚠️ No se pudieron cargar las proyecciones. Verifica la conexión a GitHub.")
-
-# ============================================================================
-# FIN DE LA INTEGRACIÓN
-# ============================================================================
 
 
 
