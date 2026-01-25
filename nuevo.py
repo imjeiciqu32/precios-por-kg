@@ -4748,7 +4748,7 @@ if modo == "Indicadores Macro":
 
 
 # ============================================================================
-# CÓDIGO FINAL AJUSTADO - COPIAR Y PEGAR AL FINAL DE TU APARTADO MACRO
+# CÓDIGO FINAL CORREGIDO - COPIAR Y PEGAR AL FINAL DE TU APARTADO MACRO
 # ============================================================================
 
 import pandas as pd
@@ -4775,13 +4775,17 @@ def descargar_y_procesar_expectativas(url_github):
         
         VARIABLES_INTERES = [
             "Inflación general para",
-            "Inflación general al cierre",
+            "Inflación general al cierre de",
             "Inflación subyacente para",
             "Valor del tipo de cambio promedio durante",
             "Valor del tipo de cambio al cierre",
             "Tasa nacional de desocupación al cierre",
-            "Percepción - clima de negocios -",
-            "Percepción - economía del país -",
+            "Nivel de la tasa de interés del cete a 28 días al cierre",
+            "Percepción - clima de negocios - mejor",
+            "Percepción - clima de negocios - permanecerá igual",
+            "Percepción - clima de negocios - empeorará",
+            "Percepción - economía del país - mejor - sí",
+            "Percepción - economía del país - mejor - no",
         ]
         
         mascara = pd.Series([False] * len(df), index=df.index)
@@ -4800,9 +4804,9 @@ def descargar_y_procesar_expectativas(url_github):
         
         def categorizar(variable):
             v = variable.lower()
-            if 'inflación general para' in v and 'probabilidad' not in v: 
+            if 'inflación general para' in v and 'probabilidad' not in v and 'cierre' not in v: 
                 return 'Inflación General - Mensual'
-            elif 'inflación general al cierre' in v and 'probabilidad' not in v: 
+            elif 'inflación general al cierre de' in v and 'probabilidad' not in v: 
                 return 'Inflación General - Anual'
             elif 'inflación subyacente para' in v and 'probabilidad' not in v: 
                 return 'Inflación Subyacente - Mensual'
@@ -4812,15 +4816,17 @@ def descargar_y_procesar_expectativas(url_github):
                 return 'Tipo de Cambio - Anual'
             elif 'desocupación al cierre' in v: 
                 return 'Desempleo - Anual'
+            elif 'cete a 28 días al cierre' in v:
+                return 'CETE 28 - Anual'
             elif 'clima de negocios - mejor' in v:
                 return 'Clima - Mejorará'
             elif 'clima de negocios - permanecerá igual' in v:
                 return 'Clima - Igual'
             elif 'clima de negocios - empeorará' in v:
                 return 'Clima - Empeorará'
-            elif 'economía del país' in v and 'mejor' in v and 'sí' in v: 
+            elif 'economía del país - mejor - sí' in v: 
                 return 'Economía - Mejor'
-            elif 'economía del país' in v and 'mejor' in v and 'no' in v: 
+            elif 'economía del país - mejor - no' in v: 
                 return 'Economía - Peor'
             else: 
                 return 'Otros'
@@ -4900,7 +4906,7 @@ if proyecciones:
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5))
             st.plotly_chart(fig, use_container_width=True)
         
-        # NUEVA SECCIÓN: Inflación al cierre de año
+        # Inflación al cierre de año
         if 'Inflación General - Anual' in proyecciones:
             st.markdown("##### 📅 Inflación General al Cierre de Año")
             df_anual = pd.DataFrame(proyecciones['Inflación General - Anual'])
@@ -4979,6 +4985,24 @@ if proyecciones:
                         <div style='font-size:32px;font-weight:bold;'>${valor:.2f}</div>
                         <div style='font-size:12px;opacity:0.8;margin-top:5px;'>MXN/USD</div>
                     </div>""", unsafe_allow_html=True)
+        
+        # CETES 28 días
+        if 'CETE 28 - Anual' in proyecciones:
+            st.markdown("##### 💰 Tasa CETE 28 días al Cierre de Año")
+            df_cete = pd.DataFrame(proyecciones['CETE 28 - Anual'])
+            df_cete = df_cete.sort_values('Proyeccion_Para')
+            cols = st.columns(len(df_cete))
+            for idx, (_, row) in enumerate(df_cete.iterrows()):
+                year = row['Proyeccion_Para'][:4]
+                valor = row['Valor']
+                with cols[idx]:
+                    st.markdown(f"""<div style='background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+                        padding:20px;border-radius:10px;color:white;text-align:center;'>
+                        <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>📊 {year}</div>
+                        <div style='font-size:32px;font-weight:bold;'>{valor:.2f}%</div>
+                        <div style='font-size:12px;opacity:0.8;margin-top:5px;'>CETE 28d</div>
+                    </div>""", unsafe_allow_html=True)
+        
         st.caption("Fuente: Encuesta de Expectativas - Banxico")
     
     with tab_p3:
@@ -5038,11 +5062,11 @@ if proyecciones:
         
         # Clima de negocios corregido
         val_mejora = val_igual = val_empeora = None
-        if 'Clima - Mejorará' in proyecciones:
+        if 'Clima - Mejorará' in proyecciones and len(proyecciones['Clima - Mejorará']) > 0:
             val_mejora = proyecciones['Clima - Mejorará'][0]['Valor']
-        if 'Clima - Igual' in proyecciones:
+        if 'Clima - Igual' in proyecciones and len(proyecciones['Clima - Igual']) > 0:
             val_igual = proyecciones['Clima - Igual'][0]['Valor']
-        if 'Clima - Empeorará' in proyecciones:
+        if 'Clima - Empeorará' in proyecciones and len(proyecciones['Clima - Empeorará']) > 0:
             val_empeora = proyecciones['Clima - Empeorará'][0]['Valor']
         
         if val_mejora is not None and val_igual is not None and val_empeora is not None:
@@ -5089,9 +5113,9 @@ if proyecciones:
         
         # Economía del país
         val_si = val_no = None
-        if 'Economía - Mejor' in proyecciones:
+        if 'Economía - Mejor' in proyecciones and len(proyecciones['Economía - Mejor']) > 0:
             val_si = proyecciones['Economía - Mejor'][0]['Valor']
-        if 'Economía - Peor' in proyecciones:
+        if 'Economía - Peor' in proyecciones and len(proyecciones['Economía - Peor']) > 0:
             val_no = proyecciones['Economía - Peor'][0]['Valor']
         
         if val_si is not None and val_no is not None:
