@@ -4773,26 +4773,24 @@ def descargar_y_procesar_expectativas(url_github):
             df['FechaEncuesta'] = pd.to_datetime(df['FechaEncuesta'], format='%m/%d/%Y', errors='coerce')
             fecha_encuesta = df['FechaEncuesta'].max()
         
-        VARIABLES_INTERES = [
-            "Inflación general para",
-            "Inflación general al cierre de",
-            "Inflación subyacente para",
-            "Valor del tipo de cambio promedio durante",
-            "Valor del tipo de cambio al cierre",
-            "Tasa nacional de desocupación al cierre",
-            "Nivel de la tasa de interés del cete a 28 días al cierre",
-            "Percepción - clima de negocios - mejor",
-            "Percepción - clima de negocios - permanecerá igual",
-            "Percepción - clima de negocios - empeorará",
-            "Percepción - economía del país - mejor - sí",
-            "Percepción - economía del país - mejor - no",
-        ]
-        
-        mascara = pd.Series([False] * len(df), index=df.index)
-        for patron in VARIABLES_INTERES:
-            mascara = mascara | df['NombreAbsolutoLargo'].str.contains(patron, case=False, na=False)
-        
-        df_filtrado = df[mascara].copy()
+        # Filtrar variables EXACTAS
+        df_filtrado = df[
+            (df['NombreAbsolutoLargo'].str.contains('Inflación general para', case=False, na=False) & 
+             ~df['NombreAbsolutoLargo'].str.contains('probabilidad', case=False, na=False)) |
+            (df['NombreAbsolutoLargo'].str.contains('Inflación general al cierre de', case=False, na=False) & 
+             ~df['NombreAbsolutoLargo'].str.contains('probabilidad', case=False, na=False)) |
+            (df['NombreAbsolutoLargo'].str.contains('Inflación subyacente para', case=False, na=False) & 
+             ~df['NombreAbsolutoLargo'].str.contains('probabilidad', case=False, na=False)) |
+            df['NombreAbsolutoLargo'].str.contains('Valor del tipo de cambio promedio durante', case=False, na=False) |
+            df['NombreAbsolutoLargo'].str.contains('Valor del tipo de cambio al cierre de', case=False, na=False) |
+            (df['NombreAbsolutoLargo'].str.contains('Tasa nacional de desocupación al cierre de', case=False, na=False)) |
+            (df['NombreAbsolutoLargo'].str.contains('Nivel de la tasa de interés del cete a 28 días al cierre de', case=False, na=False)) |
+            (df['NombreAbsolutoLargo'] == 'Percepción - clima de negocios - mejor') |
+            (df['NombreAbsolutoLargo'] == 'Percepción - clima de negocios - permanecerá igual') |
+            (df['NombreAbsolutoLargo'] == 'Percepción - clima de negocios - empeorará') |
+            (df['NombreAbsolutoLargo'] == 'Percepción - economía del país - mejor - sí') |
+            (df['NombreAbsolutoLargo'] == 'Percepción - economía del país - mejor - no')
+        ].copy()
         
         if len(df_filtrado) == 0:
             return None, None
@@ -4803,8 +4801,20 @@ def descargar_y_procesar_expectativas(url_github):
         df_agrupado = df_filtrado.groupby('Variable')['Valor'].mean().reset_index()
         
         def categorizar(variable):
+            # EXACTO - sin .lower()
+            if variable == 'Percepción - clima de negocios - mejor':
+                return 'Clima - Mejorará'
+            elif variable == 'Percepción - clima de negocios - permanecerá igual':
+                return 'Clima - Igual'
+            elif variable == 'Percepción - clima de negocios - empeorará':
+                return 'Clima - Empeorará'
+            elif variable == 'Percepción - economía del país - mejor - sí':
+                return 'Economía - Mejor'
+            elif variable == 'Percepción - economía del país - mejor - no':
+                return 'Economía - Peor'
+            
             v = variable.lower()
-            if 'inflación general para' in v and 'probabilidad' not in v and 'cierre' not in v: 
+            if 'inflación general para' in v and 'cierre' not in v and 'probabilidad' not in v: 
                 return 'Inflación General - Mensual'
             elif 'inflación general al cierre de' in v and 'probabilidad' not in v: 
                 return 'Inflación General - Anual'
@@ -4812,22 +4822,12 @@ def descargar_y_procesar_expectativas(url_github):
                 return 'Inflación Subyacente - Mensual'
             elif 'tipo de cambio promedio durante' in v: 
                 return 'Tipo de Cambio - Mensual'
-            elif 'tipo de cambio al cierre' in v: 
+            elif 'tipo de cambio al cierre de' in v: 
                 return 'Tipo de Cambio - Anual'
-            elif 'desocupación al cierre' in v: 
+            elif 'desocupación al cierre de' in v: 
                 return 'Desempleo - Anual'
-            elif 'cete a 28 días al cierre' in v:
+            elif 'cete a 28 días al cierre de' in v:
                 return 'CETE 28 - Anual'
-            elif 'Percepción - clima de negocios - mejor' in v:
-                return 'Percepción - clima de negocios - mejorará'
-            elif 'Percepción - clima de negocios - permanecerá igual' in v:
-                return 'Percepción - clima de negocios - permanecerá igual'
-            elif 'Percepción - clima de negocios - empeorará' in v:
-                return 'Percepción - clima de negocios - empeorará'
-            elif 'Percepción - economía del país - mejor - sí' in v: 
-                return 'Economía - Mejor'
-            elif 'Percepción - economía del país - mejor - no' in v: 
-                return 'Economía - Peor'
             else: 
                 return 'Otros'
         
@@ -4912,15 +4912,15 @@ if proyecciones:
             df_anual = pd.DataFrame(proyecciones['Inflación General - Anual'])
             df_anual = df_anual.sort_values('Proyeccion_Para')
             
-            cols = st.columns(len(df_anual))
+            cols = st.columns(min(len(df_anual), 4))
             for idx, (_, row) in enumerate(df_anual.iterrows()):
                 year = row['Proyeccion_Para'][:4]
                 valor = row['Valor']
                 color = "#43e97b" if valor < 3 else "#FFE082" if valor < 4 else "#f5576c"
                 emoji = "🟢" if valor < 3 else "🟡" if valor < 4 else "🔴"
-                with cols[idx]:
+                with cols[idx % len(cols)]:
                     st.markdown(f"""<div style='background:{color};padding:18px;border-radius:8px;text-align:center;
-                        box-shadow:0 2px 4px rgba(0,0,0,0.1);'>
+                        box-shadow:0 2px 4px rgba(0,0,0,0.1);margin-bottom:10px;'>
                         <div style='font-size:14px;font-weight:bold;color:#333;margin-bottom:5px;'>{emoji} {year}</div>
                         <div style='font-size:28px;font-weight:bold;color:#1a1a1a;'>{valor:.2f}%</div>
                     </div>""", unsafe_allow_html=True)
@@ -4974,13 +4974,13 @@ if proyecciones:
             st.markdown("##### 📅 Proyección al Cierre de Año")
             df_tc_anual = pd.DataFrame(proyecciones['Tipo de Cambio - Anual'])
             df_tc_anual = df_tc_anual.sort_values('Proyeccion_Para')
-            cols = st.columns(len(df_tc_anual))
+            cols = st.columns(min(len(df_tc_anual), 4))
             for idx, (_, row) in enumerate(df_tc_anual.iterrows()):
                 year = row['Proyeccion_Para'][:4]
                 valor = row['Valor']
-                with cols[idx]:
+                with cols[idx % len(cols)]:
                     st.markdown(f"""<div style='background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);
-                        padding:20px;border-radius:10px;color:white;text-align:center;'>
+                        padding:20px;border-radius:10px;color:white;text-align:center;margin-bottom:10px;'>
                         <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>💱 {year}</div>
                         <div style='font-size:32px;font-weight:bold;'>${valor:.2f}</div>
                         <div style='font-size:12px;opacity:0.8;margin-top:5px;'>MXN/USD</div>
@@ -4991,13 +4991,13 @@ if proyecciones:
             st.markdown("##### 💰 Tasa CETE 28 días al Cierre de Año")
             df_cete = pd.DataFrame(proyecciones['CETE 28 - Anual'])
             df_cete = df_cete.sort_values('Proyeccion_Para')
-            cols = st.columns(len(df_cete))
+            cols = st.columns(min(len(df_cete), 4))
             for idx, (_, row) in enumerate(df_cete.iterrows()):
                 year = row['Proyeccion_Para'][:4]
                 valor = row['Valor']
-                with cols[idx]:
+                with cols[idx % len(cols)]:
                     st.markdown(f"""<div style='background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
-                        padding:20px;border-radius:10px;color:white;text-align:center;'>
+                        padding:20px;border-radius:10px;color:white;text-align:center;margin-bottom:10px;'>
                         <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>📊 {year}</div>
                         <div style='font-size:32px;font-weight:bold;'>{valor:.2f}%</div>
                         <div style='font-size:12px;opacity:0.8;margin-top:5px;'>CETE 28d</div>
@@ -5011,7 +5011,6 @@ if proyecciones:
             df_desemp = pd.DataFrame(proyecciones['Desempleo - Anual'])
             df_desemp = df_desemp.sort_values('Proyeccion_Para')
             
-            # Gráfica con colores morados/azules
             fig = go.Figure()
             colors = ['rgba(102, 126, 234, 0.8)' if v < 3 else 
                      'rgba(155, 135, 245, 0.8)' if v < 3.5 else 
@@ -5035,7 +5034,6 @@ if proyecciones:
             )
             st.plotly_chart(fig, use_container_width=True)
             
-            # Tarjetas con gradientes morados/azules
             st.markdown("##### 📊 Detalle por Año")
             cols = st.columns(len(df_desemp))
             gradients = [
@@ -5060,7 +5058,7 @@ if proyecciones:
     with tab_p4:
         st.markdown("#### 🏢 Percepciones Económicas")
         
-        # Clima de negocios corregido
+        # Clima de negocios
         val_mejora = val_igual = val_empeora = None
         if 'Clima - Mejorará' in proyecciones and len(proyecciones['Clima - Mejorará']) > 0:
             val_mejora = proyecciones['Clima - Mejorará'][0]['Valor']
@@ -5070,7 +5068,6 @@ if proyecciones:
             val_empeora = proyecciones['Clima - Empeorará'][0]['Valor']
         
         if val_mejora is not None and val_igual is not None and val_empeora is not None:
-            # Normalizar a 100%
             total = val_mejora + val_igual + val_empeora
             if total > 0:
                 val_mejora = (val_mejora / total) * 100
@@ -5119,7 +5116,6 @@ if proyecciones:
             val_no = proyecciones['Economía - Peor'][0]['Valor']
         
         if val_si is not None and val_no is not None:
-            # Normalizar a 100%
             total = val_si + val_no
             if total > 0:
                 val_si = (val_si / total) * 100
