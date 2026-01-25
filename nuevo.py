@@ -4748,7 +4748,7 @@ if modo == "Indicadores Macro":
 
 
 # ============================================================================
-# 🤖 CHATBOT DE ANÁLISIS INTELIGENTE - PANEL FLOTANTE
+# 🤖 CHATBOT DE ANÁLISIS INTELIGENTE - VERSIÓN FINAL CORREGIDA
 # ============================================================================
 # Copiar y pegar este código AL FINAL de tu app (después del sidebar)
 # ============================================================================
@@ -4757,444 +4757,301 @@ import re
 from datetime import datetime
 
 # ============================================================================
-# MOTOR DE ANÁLISIS INTELIGENTE (SIN API)
+# MOTOR DE ANÁLISIS INTELIGENTE
 # ============================================================================
 
 class PricingChatbot:
     """Motor de análisis inteligente para pricing"""
     
-    def __init__(self, df):
+    def __init__(self, df, modo):
         self.df = df
-        self.context = []  # Memoria de la conversación
+        self.modo = modo
+        self.context = []
         
+        # Detectar columnas disponibles
+        self._detect_columns()
+        
+    def _detect_columns(self):
+        """Detecta las columnas disponibles según el modo"""
+        cols = list(self.df.columns)
+        
+        # Columnas estándar
+        self.col_producto = 'Producto' if 'Producto' in cols else None
+        self.col_fabricante = 'Fabricante' if 'Fabricante' in cols else None
+        self.col_precio = 'Precio ($)' if 'Precio ($)' in cols else None
+        self.col_gramaje = 'Gramaje (g)' if 'Gramaje (g)' in cols else None
+        self.col_som = 'SOM (%)' if 'SOM (%)' in cols else None
+        self.col_ocasion = 'Ocasión' if 'Ocasión' in cols else None
+        
+        # Buscar columna de precio por kg (puede tener varios nombres)
+        precio_kg_cols = [c for c in cols if 'precio' in c.lower() and 'kg' in c.lower()]
+        self.col_precio_kg = precio_kg_cols[0] if precio_kg_cols else None
+        
+        # Si no existe precio por kg, calcularlo
+        if not self.col_precio_kg and self.col_precio and self.col_gramaje:
+            try:
+                self.df['_precio_kg_calc'] = (self.df[self.col_precio] / self.df[self.col_gramaje]) * 1000
+                self.col_precio_kg = '_precio_kg_calc'
+            except:
+                pass
+    
     def analyze_query(self, query):
-        """Analiza la consulta del usuario y genera respuesta"""
+        """Analiza la consulta del usuario"""
         query = query.lower().strip()
         
-        # Guardar en contexto
-        self.context.append({"role": "user", "content": query})
+        if len(self.df) == 0:
+            return "❌ No hay datos cargados. Carga una plantilla primero."
         
-        # Detectar tipo de consulta
-        if any(word in query for word in ["simula", "simulación", "qué pasaría", "si subo", "si bajo", "cambio"]):
-            response = self._simulate_price_change(query)
-        
-        elif any(word in query for word in ["compara", "comparación", "vs", "versus", "diferencia"]):
-            response = self._compare_products(query)
-        
-        elif any(word in query for word in ["recomienda", "recomendación", "sugerencia", "qué debería", "consejo"]):
-            response = self._get_recommendations(query)
-        
-        elif any(word in query for word in ["más caro", "más barato", "mayor precio", "menor precio", "top", "ranking"]):
-            response = self._find_extremes(query)
-        
-        elif any(word in query for word in ["promedio", "media", "precio medio"]):
-            response = self._calculate_averages(query)
-        
-        elif any(word in query for word in ["productos", "lista", "muestra", "cuáles", "cuantos"]):
-            response = self._list_products(query)
-        
-        elif any(word in query for word in ["oportunidad", "gap", "brecha", "competencia"]):
-            response = self._find_opportunities(query)
-        
-        else:
-            response = self._general_analysis(query)
-        
-        # Guardar respuesta en contexto
-        self.context.append({"role": "assistant", "content": response})
-        
-        return response
+        try:
+            # Detectar tipo de consulta
+            if any(w in query for w in ["simula", "simulación", "qué pasa", "si subo", "si bajo"]):
+                return self._simulate_price_change(query)
+            elif any(w in query for w in ["compara", "vs", "versus"]):
+                return self._compare_products(query)
+            elif any(w in query for w in ["recomienda", "recomendación", "oportunidad"]):
+                return self._get_recommendations(query)
+            elif any(w in query for w in ["más caro", "más barato", "top", "ranking"]):
+                return self._find_extremes(query)
+            elif any(w in query for w in ["promedio", "media"]):
+                return self._calculate_averages(query)
+            elif any(w in query for w in ["lista", "muestra", "productos"]):
+                return self._list_products(query)
+            else:
+                return self._general_analysis(query)
+        except Exception as e:
+            return f"❌ Error: {str(e)}\n\nIntenta reformular tu pregunta."
     
     def _simulate_price_change(self, query):
         """Simula cambios de precio"""
-        try:
-            # Extraer porcentaje
-            percent_match = re.search(r'(\d+)%', query)
-            percent = float(percent_match.group(1)) if percent_match else 10
+        if not self.col_precio or not self.col_precio_kg:
+            return "❌ No hay información de precios disponible."
+        
+        # Extraer porcentaje
+        percent_match = re.search(r'(\d+)%?', query)
+        percent = float(percent_match.group(1)) if percent_match else 10
+        
+        # Subida o bajada
+        is_increase = "subo" in query or "sube" in query or "aumenta" in query
+        sign = 1 if is_increase else -1
+        
+        # Buscar producto
+        productos = self._extract_products(query)
+        
+        if not productos:
+            # Análisis general
+            avg = self.df[self.col_precio_kg].mean()
+            new = avg * (1 + sign * percent / 100)
+            vol_change = -1.5 * sign * percent
             
-            # Determinar si es subida o bajada
-            is_increase = any(word in query for word in ["subo", "sube", "aumenta", "incrementa"])
-            sign = 1 if is_increase else -1
-            
-            # Extraer producto específico o usar todos
-            productos = self._extract_products(query)
-            
-            if not productos:
-                # Análisis general
-                avg_price = self.df['Precio por Kg'].mean()
-                new_price = avg_price * (1 + (sign * percent / 100))
-                
-                # Estimar impacto en volumen (elasticidad asumida -1.5)
-                volume_change = -1.5 * (sign * percent)
-                
-                response = f"""📊 **Simulación de Precio**
+            return f"""📊 **Simulación General**
 
-🔸 Escenario: {'Aumentar' if is_increase else 'Reducir'} precios en {percent}%
+🔸 {'Aumentar' if is_increase else 'Reducir'} precios **{percent}%**
 
-**Situación Actual:**
-• Precio promedio: ${avg_price:.2f}/kg
+**Actual:** ${avg:.2f}/kg promedio
+**Nuevo:** ${new:.2f}/kg promedio
 
-**Nuevo Escenario:**
-• Precio promedio: ${new_price:.2f}/kg
-• Cambio en volumen estimado: {volume_change:+.1f}%
+**Impacto estimado:**
+• Volumen: {vol_change:+.1f}%
+• Revenue: {(sign*percent + vol_change):+.1f}%
 
-⚠️ **Impacto estimado:**
-{"📈 Mayor margen pero menor volumen" if is_increase else "📉 Menor margen pero mayor volumen"}
-
-💡 **Recomendación:** {"Considera aplicar este aumento solo en productos con baja elasticidad." if is_increase else "Asegúrate de tener capacidad para absorber el aumento en demanda."}
+{'📈 Mayor margen, menor volumen' if is_increase else '📉 Menor margen, mayor volumen'}
 """
-            else:
-                # Análisis por producto
-                producto = productos[0]
-                prod_data = self.df[self.df['Producto'].str.contains(producto, case=False, na=False)]
+        else:
+            # Producto específico
+            prod = self.df[self.df[self.col_producto].str.contains(productos[0], case=False, na=False)]
+            if len(prod) > 0:
+                p = prod.iloc[0]
+                new_price = p[self.col_precio] * (1 + sign * percent / 100)
+                new_kg = p[self.col_precio_kg] * (1 + sign * percent / 100)
+                vol_change = -1.5 * sign * percent
                 
-                if len(prod_data) > 0:
-                    current_price = prod_data['Precio por Kg'].iloc[0]
-                    new_price = current_price * (1 + (sign * percent / 100))
-                    volume_change = -1.5 * (sign * percent)
-                    
-                    response = f"""📊 **Simulación: {prod_data['Producto'].iloc[0]}**
+                return f"""📊 **Simulación: {p[self.col_producto]}**
 
-🔸 Cambio propuesto: {sign * percent:+.0f}%
+**Actual:**
+• ${p[self.col_precio]:.2f} (${p[self.col_precio_kg]:.2f}/kg)
 
-**Precio Actual:** ${current_price:.2f}/kg
-**Precio Nuevo:** ${new_price:.2f}/kg
+**Nuevo (+{sign*percent:.0f}%):**
+• ${new_price:.2f} (${new_kg:.2f}/kg)
 
-**Impacto Estimado:**
-• Cambio en volumen: {volume_change:+.1f}%
-• Cambio en revenue: {(sign * percent + volume_change):+.1f}%
-
-{"📈 **Insight:** Aumento agresivo - monitorea la reacción competitiva" if abs(percent) > 10 else "✅ **Insight:** Cambio moderado - bajo riesgo"}
+**Impacto:**
+• Volumen: {vol_change:+.1f}%
+• Revenue: {(sign*percent + vol_change):+.1f}%
 """
-                else:
-                    response = f"❌ No encontré el producto '{producto}'. ¿Podrías verificar el nombre?"
-            
-            return response
-            
-        except Exception as e:
-            return "❌ No pude procesar la simulación. ¿Podrías reformular tu pregunta?"
+            return f"❌ No encontré '{productos[0]}'"
     
     def _compare_products(self, query):
         """Compara productos o marcas"""
-        try:
-            # Detectar si compara marcas o productos
-            if "barcel" in query and "sabritas" in query:
-                # Comparación de marcas
-                barcel = self.df[self.df['Fabricante'].str.contains('BARCEL', case=False, na=False)]
-                sabritas = self.df[self.df['Fabricante'].str.contains('SABRITAS', case=False, na=False)]
+        if not self.col_fabricante or not self.col_precio_kg:
+            return "❌ No hay información suficiente para comparar."
+        
+        # Buscar fabricantes en la query
+        fabs_en_query = [f for f in self.df[self.col_fabricante].unique() 
+                        if f.lower() in query.lower()]
+        
+        if len(fabs_en_query) >= 2:
+            # Comparar marcas
+            d1 = self.df[self.df[self.col_fabricante] == fabs_en_query[0]]
+            d2 = self.df[self.df[self.col_fabricante] == fabs_en_query[1]]
+            
+            avg1 = d1[self.col_precio_kg].mean()
+            avg2 = d2[self.col_precio_kg].mean()
+            diff = ((avg1 - avg2) / avg2) * 100
+            
+            return f"""📊 **{fabs_en_query[0]} vs {fabs_en_query[1]}**
+
+• {fabs_en_query[0]}: ${avg1:.2f}/kg ({len(d1)} productos)
+• {fabs_en_query[1]}: ${avg2:.2f}/kg ({len(d2)} productos)
+
+**Diferencia:** {abs(diff):.1f}% ({fabs_en_query[0] if diff > 0 else fabs_en_query[1]} más caro)
+"""
+        else:
+            # Comparar productos
+            prods = self._extract_products(query)
+            if len(prods) >= 2:
+                p1 = self.df[self.df[self.col_producto].str.contains(prods[0], case=False, na=False)]
+                p2 = self.df[self.df[self.col_producto].str.contains(prods[1], case=False, na=False)]
                 
-                if len(barcel) > 0 and len(sabritas) > 0:
-                    barcel_avg = barcel['Precio por Kg'].mean()
-                    sabritas_avg = sabritas['Precio por Kg'].mean()
-                    diff_pct = ((barcel_avg - sabritas_avg) / sabritas_avg) * 100
+                if len(p1) > 0 and len(p2) > 0:
+                    r1, r2 = p1.iloc[0], p2.iloc[0]
+                    diff = ((r1[self.col_precio_kg] - r2[self.col_precio_kg]) / r2[self.col_precio_kg]) * 100
                     
-                    response = f"""📊 **Comparativa: Barcel vs Sabritas**
+                    return f"""📊 **Comparativa**
 
-**Precio Promedio por Kg:**
-• Barcel: ${barcel_avg:.2f}/kg
-• Sabritas: ${sabritas_avg:.2f}/kg
+**{r1[self.col_producto]}**
+• ${r1[self.col_precio]:.2f} (${r1[self.col_precio_kg]:.2f}/kg)
 
-**Diferencia:** {abs(diff_pct):.1f}% ({'Barcel más caro' if diff_pct > 0 else 'Sabritas más caro'})
+**{r2[self.col_producto]}**
+• ${r2[self.col_precio]:.2f} (${r2[self.col_precio_kg]:.2f}/kg)
 
-**Productos analizados:**
-• Barcel: {len(barcel)} productos
-• Sabritas: {len(sabritas)} productos
-
-💡 **Insight:** {'Barcel puede tener oportunidad de cerrar brecha en ciertos productos' if diff_pct > 0 else 'Barcel tiene ventaja de precio vs Sabritas'}
-
-¿Quieres ver qué productos específicos tienen mayor brecha?
+**Diferencia:** {abs(diff):.1f}% por kg
 """
-                else:
-                    response = "❌ No encontré suficientes productos de ambas marcas para comparar."
-            else:
-                # Comparación de productos específicos
-                productos = self._extract_products(query)
-                if len(productos) >= 2:
-                    prod1_data = self.df[self.df['Producto'].str.contains(productos[0], case=False, na=False)]
-                    prod2_data = self.df[self.df['Producto'].str.contains(productos[1], case=False, na=False)]
-                    
-                    if len(prod1_data) > 0 and len(prod2_data) > 0:
-                        p1_price = prod1_data['Precio por Kg'].iloc[0]
-                        p2_price = prod2_data['Precio por Kg'].iloc[0]
-                        diff = p1_price - p2_price
-                        diff_pct = (diff / p2_price) * 100
-                        
-                        response = f"""📊 **Comparativa de Productos**
-
-**{prod1_data['Producto'].iloc[0]}**
-• Precio: ${p1_price:.2f}/kg
-
-**{prod2_data['Producto'].iloc[0]}**
-• Precio: ${p2_price:.2f}/kg
-
-**Diferencia:** ${abs(diff):.2f}/kg ({abs(diff_pct):.1f}%)
-
-{f"📈 {prod1_data['Producto'].iloc[0]} es {abs(diff_pct):.1f}% más caro" if diff > 0 else f"📉 {prod2_data['Producto'].iloc[0]} es {abs(diff_pct):.1f}% más caro"}
-"""
-                    else:
-                        response = "❌ No encontré uno o ambos productos. Verifica los nombres."
-                else:
-                    response = "Para comparar, menciona al menos 2 productos. Ej: 'Compara Takis vs Doritos'"
-            
-            return response
-            
-        except Exception as e:
-            return "❌ Hubo un error en la comparación. Intenta de nuevo."
+            return "Menciona 2 productos o marcas para comparar.\nEj: 'Compara Takis vs Doritos'"
     
     def _get_recommendations(self, query):
-        """Genera recomendaciones de pricing"""
-        try:
-            # Calcular métricas clave
-            avg_price = self.df['Precio por Kg'].mean()
-            median_price = self.df['Precio por Kg'].median()
-            
-            # Productos por encima y debajo del promedio
-            above_avg = self.df[self.df['Precio por Kg'] > avg_price * 1.15]
-            below_avg = self.df[self.df['Precio por Kg'] < avg_price * 0.85]
-            
-            recommendations = []
-            
-            if len(above_avg) > 0:
-                top_expensive = above_avg.nlargest(3, 'Precio por Kg')
-                recommendations.append(f"""
-🔴 **Productos Premium (revisar justificación de precio):**
-{chr(10).join([f"• {row['Producto']}: ${row['Precio por Kg']:.2f}/kg" for _, row in top_expensive.iterrows()])}
-""")
-            
-            if len(below_avg) > 0:
-                top_cheap = below_avg.nsmallest(3, 'Precio por Kg')
-                recommendations.append(f"""
-🟢 **Oportunidad de incremento (bajo precio relativo):**
-{chr(10).join([f"• {row['Producto']}: ${row['Precio por Kg']:.2f}/kg" for _, row in top_cheap.iterrows()])}
-💡 Considera aumentar 5-8% en estos productos.
-""")
-            
-            # Análisis por fabricante
-            if 'Fabricante' in self.df.columns:
-                fab_prices = self.df.groupby('Fabricante')['Precio por Kg'].agg(['mean', 'std']).reset_index()
-                fab_prices = fab_prices.sort_values('mean', ascending=False)
-                
-                recommendations.append(f"""
-📊 **Posicionamiento por Marca (Precio promedio/kg):**
-{chr(10).join([f"• {row['Fabricante']}: ${row['mean']:.2f}" for _, row in fab_prices.iterrows()])}
-""")
-            
-            response = f"""💡 **Recomendaciones de Pricing**
-
-**Análisis del Portfolio:**
-• Precio promedio: ${avg_price:.2f}/kg
-• Precio mediano: ${median_price:.2f}/kg
-• Rango: ${self.df['Precio por Kg'].min():.2f} - ${self.df['Precio por Kg'].max():.2f}/kg
-
-{''.join(recommendations)}
-
-🎯 **Próximos pasos sugeridos:**
-1. Revisar productos premium - ¿El precio está justificado?
-2. Evaluar oportunidades de aumento en productos económicos
-3. Monitorear reacción competitiva post-cambios
-
-¿Quieres analizar algún producto específico?
-"""
-            
-            return response
-            
-        except Exception as e:
-            return "❌ Error generando recomendaciones. Intenta de nuevo."
+        """Genera recomendaciones"""
+        if not self.col_precio_kg:
+            return "❌ No hay información de precios."
+        
+        avg = self.df[self.col_precio_kg].mean()
+        caros = self.df[self.df[self.col_precio_kg] > avg * 1.15].nlargest(3, self.col_precio_kg)
+        baratos = self.df[self.df[self.col_precio_kg] < avg * 0.85].nsmallest(3, self.col_precio_kg)
+        
+        recs = [f"💡 **Recomendaciones de Pricing**\n\n**Precio promedio:** ${avg:.2f}/kg\n"]
+        
+        if len(caros) > 0:
+            recs.append("\n🔴 **Productos Premium (revisar):**")
+            for _, r in caros.iterrows():
+                recs.append(f"• {r[self.col_producto]}: ${r[self.col_precio_kg]:.2f}/kg")
+        
+        if len(baratos) > 0:
+            recs.append("\n\n🟢 **Oportunidad de incremento:**")
+            for _, r in baratos.iterrows():
+                recs.append(f"• {r[self.col_producto]}: ${r[self.col_precio_kg]:.2f}/kg")
+            recs.append("\n💡 Considera aumentar 5-8% en estos productos")
+        
+        return "\n".join(recs)
     
     def _find_extremes(self, query):
-        """Encuentra productos más caros/baratos"""
-        try:
-            n = 5  # Top 5 por defecto
-            
-            if "más caro" in query or "mayor precio" in query:
-                top = self.df.nlargest(n, 'Precio por Kg')
-                title = f"🔴 **Top {n} Productos Más Caros (por kg)**"
-            else:
-                top = self.df.nsmallest(n, 'Precio por Kg')
-                title = f"🟢 **Top {n} Productos Más Económicos (por kg)**"
-            
-            product_list = []
-            for i, (_, row) in enumerate(top.iterrows(), 1):
-                product_list.append(f"{i}. **{row['Producto']}**")
-                product_list.append(f"   💰 ${row['Precio por Kg']:.2f}/kg")
-                if 'Fabricante' in row:
-                    product_list.append(f"   🏭 {row['Fabricante']}")
-                product_list.append("")
-            
-            response = f"""{title}
-
-{chr(10).join(product_list)}
-
-💡 ¿Quieres simular un cambio de precio en alguno?
-"""
-            
-            return response
-            
-        except Exception as e:
-            return "❌ Error buscando productos. Intenta de nuevo."
+        """Encuentra extremos"""
+        if not self.col_precio_kg:
+            return "❌ No hay información de precios."
+        
+        if "caro" in query:
+            top = self.df.nlargest(5, self.col_precio_kg)
+            title = "🔴 **Top 5 Más Caros**"
+        else:
+            top = self.df.nsmallest(5, self.col_precio_kg)
+            title = "🟢 **Top 5 Más Económicos**"
+        
+        lines = [title, ""]
+        for i, (_, r) in enumerate(top.iterrows(), 1):
+            lines.append(f"{i}. **{r[self.col_producto]}**")
+            lines.append(f"   ${r[self.col_precio]:.2f} (${r[self.col_precio_kg]:.2f}/kg)")
+            lines.append("")
+        
+        return "\n".join(lines)
     
     def _calculate_averages(self, query):
         """Calcula promedios"""
-        try:
-            productos = self._extract_products(query)
-            
-            if productos:
-                # Promedio de producto específico
-                prod_data = self.df[self.df['Producto'].str.contains(productos[0], case=False, na=False)]
-                if len(prod_data) > 0:
-                    response = f"""📊 **Análisis: {prod_data['Producto'].iloc[0]}**
+        if not self.col_precio_kg:
+            return "❌ No hay información de precios."
+        
+        prods = self._extract_products(query)
+        if prods:
+            p = self.df[self.df[self.col_producto].str.contains(prods[0], case=False, na=False)]
+            if len(p) > 0:
+                r = p.iloc[0]
+                return f"""📊 **{r[self.col_producto]}**
 
-• Precio por kg: ${prod_data['Precio por Kg'].iloc[0]:.2f}
-• Fabricante: {prod_data['Fabricante'].iloc[0] if 'Fabricante' in prod_data.columns else 'N/A'}
+• Precio: ${r[self.col_precio]:.2f}
+• Precio/kg: ${r[self.col_precio_kg]:.2f}/kg
+• Gramaje: {r[self.col_gramaje]:.0f}g
+• Fabricante: {r[self.col_fabricante]}
 
-📈 **Contexto del mercado:**
-• Precio promedio general: ${self.df['Precio por Kg'].mean():.2f}/kg
-• Este producto es {((prod_data['Precio por Kg'].iloc[0] / self.df['Precio por Kg'].mean() - 1) * 100):+.1f}% vs promedio
+**vs Mercado:**
+• Promedio: ${self.df[self.col_precio_kg].mean():.2f}/kg
+• Este producto: {((r[self.col_precio_kg]/self.df[self.col_precio_kg].mean()-1)*100):+.1f}% vs promedio
 """
-                else:
-                    response = f"❌ No encontré '{productos[0]}'"
-            else:
-                # Promedio general
-                avg = self.df['Precio por Kg'].mean()
-                median = self.df['Precio por Kg'].median()
-                std = self.df['Precio por Kg'].std()
-                
-                response = f"""📊 **Estadísticas Generales**
+        
+        return f"""📊 **Estadísticas Generales**
 
-• Precio promedio: ${avg:.2f}/kg
-• Precio mediano: ${median:.2f}/kg
-• Desviación estándar: ${std:.2f}
-• Total de productos: {len(self.df)}
-
-💡 {'Alta dispersión de precios - portfolio diversificado' if std > avg * 0.3 else 'Precios relativamente homogéneos'}
+• Promedio: ${self.df[self.col_precio_kg].mean():.2f}/kg
+• Mediano: ${self.df[self.col_precio_kg].median():.2f}/kg
+• Rango: ${self.df[self.col_precio_kg].min():.2f} - ${self.df[self.col_precio_kg].max():.2f}/kg
+• Total productos: {len(self.df)}
 """
-            
-            return response
-            
-        except Exception as e:
-            return "❌ Error calculando promedios."
     
     def _list_products(self, query):
-        """Lista productos según criterios"""
-        try:
-            # Detectar fabricante
-            fabricante = None
-            for fab in self.df['Fabricante'].unique() if 'Fabricante' in self.df.columns else []:
-                if fab.lower() in query:
-                    fabricante = fab
+        """Lista productos"""
+        if not self.col_producto:
+            return "❌ No hay productos."
+        
+        filtered = self.df.copy()
+        
+        # Filtrar por fabricante
+        if self.col_fabricante:
+            for fab in self.df[self.col_fabricante].unique():
+                if fab.lower() in query.lower():
+                    filtered = filtered[filtered[self.col_fabricante] == fab]
                     break
-            
-            # Detectar rango de precio
-            price_match = re.search(r'(\d+)', query)
-            price_threshold = float(price_match.group(1)) if price_match else None
-            
-            # Filtrar
-            filtered = self.df.copy()
-            
-            if fabricante:
-                filtered = filtered[filtered['Fabricante'] == fabricante]
-            
-            if price_threshold:
-                if "menor" in query or "menos de" in query or "bajo" in query:
-                    filtered = filtered[filtered['Precio por Kg'] < price_threshold]
-                elif "mayor" in query or "más de" in query or "alto" in query:
-                    filtered = filtered[filtered['Precio por Kg'] > price_threshold]
-            
-            if len(filtered) == 0:
-                return "❌ No encontré productos con esos criterios."
-            
-            # Limitar a 10 productos
-            filtered = filtered.head(10)
-            
-            product_list = []
-            for i, (_, row) in enumerate(filtered.iterrows(), 1):
-                product_list.append(f"{i}. {row['Producto']} - ${row['Precio por Kg']:.2f}/kg")
-            
-            response = f"""📋 **Productos encontrados** ({len(filtered)} resultados)
-
-{chr(10).join(product_list)}
-
-💡 ¿Quieres analizar alguno en específico?
-"""
-            
-            return response
-            
-        except Exception as e:
-            return "❌ Error listando productos."
+        
+        if len(filtered) == 0:
+            return "❌ No encontré productos con esos criterios."
+        
+        filtered = filtered.head(10)
+        lines = [f"📋 **{len(filtered)} productos encontrados:**\n"]
+        for i, (_, r) in enumerate(filtered.iterrows(), 1):
+            lines.append(f"{i}. {r[self.col_producto]} - ${r[self.col_precio]:.2f}")
+        
+        return "\n".join(lines)
     
     def _find_opportunities(self, query):
-        """Identifica oportunidades de pricing"""
-        try:
-            # Análisis de brechas vs competencia
-            if 'Fabricante' in self.df.columns:
-                # Asumir que hay Barcel y competidores
-                barcel = self.df[self.df['Fabricante'].str.contains('BARCEL', case=False, na=False)]
-                competidores = self.df[~self.df['Fabricante'].str.contains('BARCEL', case=False, na=False)]
-                
-                if len(barcel) > 0 and len(competidores) > 0:
-                    barcel_avg = barcel['Precio por Kg'].mean()
-                    comp_avg = competidores['Precio por Kg'].mean()
-                    gap = barcel_avg - comp_avg
-                    gap_pct = (gap / comp_avg) * 100
-                    
-                    # Productos con mayor brecha
-                    opportunities = []
-                    for _, brow in barcel.iterrows():
-                        # Buscar competidores similares (simplificado)
-                        similar_comp = competidores.iloc[(competidores['Precio por Kg'] - brow['Precio por Kg']).abs().argsort()[:1]]
-                        if len(similar_comp) > 0:
-                            comp_price = similar_comp['Precio por Kg'].iloc[0]
-                            diff = brow['Precio por Kg'] - comp_price
-                            diff_pct = (diff / comp_price) * 100
-                            
-                            if abs(diff_pct) > 15:  # Brecha significativa
-                                opportunities.append({
-                                    'producto': brow['Producto'],
-                                    'precio_barcel': brow['Precio por Kg'],
-                                    'precio_comp': comp_price,
-                                    'gap': diff_pct
-                                })
-                    
-                    # Ordenar por brecha
-                    opportunities = sorted(opportunities, key=lambda x: abs(x['gap']), reverse=True)[:5]
-                    
-                    opp_text = []
-                    for opp in opportunities:
-                        emoji = "🔴" if opp['gap'] > 0 else "🟢"
-                        opp_text.append(f"{emoji} **{opp['producto']}**")
-                        opp_text.append(f"   Barcel: ${opp['precio_barcel']:.2f}/kg")
-                        opp_text.append(f"   Competencia: ${opp['precio_comp']:.2f}/kg")
-                        opp_text.append(f"   Gap: {opp['gap']:+.1f}%")
-                        opp_text.append("")
-                    
-                    response = f"""🎯 **Análisis de Oportunidades**
+        """Encuentra oportunidades"""
+        if not self.col_fabricante or not self.col_precio_kg:
+            return "❌ No hay información suficiente."
+        
+        barcel = self.df[self.df[self.col_fabricante].str.contains('BARCEL', case=False, na=False)]
+        comp = self.df[~self.df[self.col_fabricante].str.contains('BARCEL', case=False, na=False)]
+        
+        if len(barcel) == 0 or len(comp) == 0:
+            return "❌ No hay datos de Barcel o competencia."
+        
+        b_avg = barcel[self.col_precio_kg].mean()
+        c_avg = comp[self.col_precio_kg].mean()
+        gap = ((b_avg - c_avg) / c_avg) * 100
+        
+        return f"""🎯 **Análisis de Oportunidades**
 
-**Overview del Portfolio:**
-• Precio promedio Barcel: ${barcel_avg:.2f}/kg
-• Precio promedio competencia: ${comp_avg:.2f}/kg
-• Brecha global: {gap_pct:+.1f}%
+• Barcel promedio: ${b_avg:.2f}/kg
+• Competencia promedio: ${c_avg:.2f}/kg
+• Gap: {abs(gap):.1f}% ({'Barcel más caro' if gap > 0 else 'Competencia más cara'})
 
-**Top 5 Oportunidades (mayor brecha vs competencia):**
-
-{chr(10).join(opp_text)}
-
-💡 **Recomendación:**
-{"Considera reducir precios en productos rojos para ser más competitivo" if gap > 0 else "Tienes ventaja de precio - considera mantener o incluso subir precios"}
-
-¿Quieres simular un ajuste en alguno?
+{f'⚠️ Considera reducir precios para ser más competitivo' if gap > 5 else '✅ Precios competitivos'}
 """
-                else:
-                    response = "❌ No encontré suficientes datos de Barcel y competencia."
-            else:
-                response = "❌ No hay información de fabricantes para analizar brechas."
-            
-            return response
-            
-        except Exception as e:
-            return "❌ Error analizando oportunidades."
     
     def _general_analysis(self, query):
-        """Análisis general o respuesta por defecto"""
-        return f"""👋 ¡Hola! Soy tu asistente de análisis de pricing.
+        """Respuesta por defecto"""
+        return f"""👋 **Asistente de Pricing IA - {self.modo}**
 
 Puedo ayudarte con:
 
@@ -5212,212 +5069,76 @@ Puedo ayudarte con:
 • "Compara Takis vs Doritos"
 
 💡 **Recomendaciones:**
-• "Dame recomendaciones de pricing"
+• "Dame recomendaciones"
 • "¿Dónde hay oportunidades?"
+
+**Datos cargados:** {len(self.df)} productos
 
 ¿En qué te puedo ayudar?"""
     
     def _extract_products(self, query):
-        """Extrae nombres de productos de la consulta"""
+        """Extrae nombres de productos"""
+        if not self.col_producto:
+            return []
+        
         productos = []
-        for prod in self.df['Producto'].unique():
-            # Buscar palabras clave del producto en la query
-            words = prod.lower().split()
-            if any(word in query.lower() for word in words if len(word) > 3):
+        for prod in self.df[self.col_producto].unique():
+            words = [w for w in prod.lower().split() if len(w) > 3]
+            if any(w in query.lower() for w in words):
                 productos.append(prod)
-        return productos[:2]  # Máximo 2 productos
+        return productos[:2]
 
 
 # ============================================================================
-# INTERFAZ DEL CHATBOT FLOTANTE
+# INTERFAZ DEL CHATBOT
 # ============================================================================
 
-# Inicializar chatbot en session state
-if 'chatbot' not in st.session_state:
-    if not st.session_state.data.empty:
-        st.session_state['chatbot'] = PricingChatbot(st.session_state.data)
+# Inicializar chatbot
+if not st.session_state.data.empty:
+    if 'chatbot' not in st.session_state or st.session_state.get('chatbot_modo') != modo:
+        st.session_state['chatbot'] = PricingChatbot(st.session_state.data, modo)
+        st.session_state['chatbot_modo'] = modo
         st.session_state['chat_history'] = []
         st.session_state['chat_open'] = False
-    else:
-        st.session_state['chatbot'] = None
 
-# CSS para el panel flotante
-st.markdown("""
-<style>
-/* Botón flotante */
-.chat-button {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    font-size: 28px;
-    border: none;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-}
-
-.chat-button:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-}
-
-/* Panel del chat */
-.chat-panel {
-    position: fixed;
-    bottom: 100px;
-    right: 20px;
-    width: 400px;
-    max-height: 600px;
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    z-index: 999;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.chat-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 16px 20px;
-    font-weight: 600;
-    font-size: 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-    background: #f8f9fa;
-    max-height: 400px;
-}
-
-.chat-message {
-    margin-bottom: 12px;
-    padding: 12px 16px;
-    border-radius: 12px;
-    max-width: 85%;
-    word-wrap: break-word;
-    line-height: 1.5;
-}
-
-.chat-message.user {
-    background: #667eea;
-    color: white;
-    margin-left: auto;
-    text-align: right;
-}
-
-.chat-message.assistant {
-    background: white;
-    color: #333;
-    border: 1px solid #e0e0e0;
-}
-
-.chat-input-container {
-    padding: 16px;
-    background: white;
-    border-top: 1px solid #e0e0e0;
-}
-
-@media (max-width: 768px) {
-    .chat-panel {
-        width: calc(100vw - 40px);
-        right: 20px;
-    }
-}
-</style>
-""", unsafe_allow_html=True)
-
-# Renderizar chatbot si hay datos
-if st.session_state['chatbot'] is not None:
-    # Botón flotante (siempre visible)
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col3:
-        if st.button("💬", key="chat_toggle", help="Abrir Asistente IA"):
+# Renderizar chatbot
+if st.session_state.get('chatbot'):
+    # Botón en el sidebar
+    with st.sidebar:
+        st.markdown("---")
+        if st.button("🤖 Asistente de Pricing IA", use_container_width=True, type="primary"):
             st.session_state['chat_open'] = not st.session_state.get('chat_open', False)
     
-    # Panel del chat (condicional)
-    if st.session_state.get('chat_open', False):
-        with st.container():
-            st.markdown("""
-            <div style='position: fixed; bottom: 100px; right: 20px; width: 450px; max-height: 650px; 
-                        background: white; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); 
-                        z-index: 999; display: flex; flex-direction: column;'>
-                <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                            color: white; padding: 16px 20px; font-weight: 600; border-radius: 16px 16px 0 0;
-                            display: flex; justify-content: space-between; align-items: center;'>
-                    <span>🤖 Asistente de Pricing IA</span>
-                    <span style='cursor: pointer; font-size: 20px;' onclick='this.closest(".stApp").querySelector("[data-testid=chat_toggle]").click()'>✕</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+    # Panel del chat
+    if st.session_state.get('chat_open'):
+        with st.expander("💬 Asistente de Pricing IA", expanded=True):
+            st.caption(f"Modo: {modo} | Productos: {len(st.session_state.data)}")
             
-            # Área de mensajes
-            chat_container = st.container()
-            with chat_container:
-                for msg in st.session_state.get('chat_history', []):
-                    if msg['role'] == 'user':
-                        st.markdown(f"""
-                        <div style='text-align: right; margin-bottom: 12px;'>
-                            <div style='display: inline-block; background: #667eea; color: white; 
-                                        padding: 12px 16px; border-radius: 12px; max-width: 85%;'>
-                                {msg['content']}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"""
-                        <div style='text-align: left; margin-bottom: 12px;'>
-                            <div style='display: inline-block; background: white; color: #333; 
-                                        padding: 12px 16px; border-radius: 12px; max-width: 85%;
-                                        border: 1px solid #e0e0e0;'>
-                                {msg['content']}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+            # Mostrar historial
+            for msg in st.session_state.get('chat_history', []):
+                if msg['role'] == 'user':
+                    st.markdown(f"**Tú:** {msg['content']}")
+                else:
+                    st.markdown(msg['content'])
+                st.markdown("---")
             
-            # Input del usuario
-            user_input = st.text_input("Escribe tu pregunta...", key="chat_input", label_visibility="collapsed")
+            # Input
+            user_input = st.text_input("Tu pregunta:", placeholder="Ej: Muestra los productos más caros")
             
-            col_send, col_clear = st.columns([3, 1])
-            with col_send:
+            col1, col2 = st.columns([4, 1])
+            with col1:
                 if st.button("📤 Enviar", use_container_width=True, type="primary"):
                     if user_input:
-                        # Agregar mensaje del usuario
                         st.session_state['chat_history'].append({"role": "user", "content": user_input})
-                        
-                        # Obtener respuesta del chatbot
                         response = st.session_state['chatbot'].analyze_query(user_input)
-                        
-                        # Agregar respuesta del asistente
                         st.session_state['chat_history'].append({"role": "assistant", "content": response})
-                        
                         st.rerun()
             
-            with col_clear:
-                if st.button("🗑️", use_container_width=True, help="Limpiar chat"):
+            with col2:
+                if st.button("🗑️", use_container_width=True):
                     st.session_state['chat_history'] = []
                     st.rerun()
-
-else:
-    st.info("💡 Carga datos para activar el Asistente IA de Pricing")
-
 
 # ============================================================================
 # FIN DEL CHATBOT
 # ============================================================================
-
