@@ -4747,11 +4747,11 @@ if modo == "Indicadores Macro":
         st.error("❌ Error al conectar con Banxico")
 
 
-============================================================================
-PROCESADOR AUTOMÁTICO - ENCUESTA DE EXPECTATIVAS BANXICO DESDE GITHUB
-============================================================================
-Descarga el ZIP desde GitHub y extrae solo las proyecciones relevantes
-============================================================================
+#============================================================================
+#PROCESADOR AUTOMÁTICO - ENCUESTA DE EXPECTATIVAS BANXICO DESDE GITHUB
+#============================================================================
+#Descarga el ZIP desde GitHub y extrae solo las proyecciones relevantes
+#============================================================================
 
 
 import pandas as pd
