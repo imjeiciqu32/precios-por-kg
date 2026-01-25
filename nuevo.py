@@ -4747,406 +4747,406 @@ if modo == "Indicadores Macro":
         st.error("❌ Error al conectar con Banxico")
 
 
-# ============================================================================
-# CÓDIGO FINAL CON DEBUG - COPIAR Y PEGAR AL FINAL DE TU APARTADO MACRO
-# ============================================================================
-
-import pandas as pd
-import requests
-from io import BytesIO
-import re
-import plotly.graph_objects as go
-
-def descargar_y_procesar_expectativas(url_github):
-    try:
-        response = requests.get(url_github, timeout=30)
-        response.raise_for_status()
-        
-        df = pd.read_excel(BytesIO(response.content), engine='openpyxl')
-        
-        if 'NombreAbsolutoLargo' not in df.columns or 'Dato' not in df.columns:
-            return None, None, "Error: Columnas no encontradas"
-        
-        # Obtener fecha de encuesta
-        fecha_encuesta = None
-        if 'FechaEncuesta' in df.columns:
-            df['FechaEncuesta'] = pd.to_datetime(df['FechaEncuesta'], format='%m/%d/%Y', errors='coerce')
-            fecha_encuesta = df['FechaEncuesta'].max()
-        
-        # Filtrar SOLO las variables necesarias
-        df_filtrado = df[
-            df['NombreAbsolutoLargo'].str.contains(
-                'Inflación general para|Inflación general al cierre de|Inflación subyacente para|' +
-                'tipo de cambio promedio|tipo de cambio al cierre|desocupación al cierre|' +
-                'cete a 28 días al cierre|clima de negocios|economía del país',
-                case=False, na=False, regex=True
-            )
-        ].copy()
-        
-        # Excluir probabilidades
-        df_filtrado = df_filtrado[~df_filtrado['NombreAbsolutoLargo'].str.contains('probabilidad', case=False, na=False)]
-        
-        if len(df_filtrado) == 0:
-            return None, None, "No se encontraron variables"
-        
-        df_filtrado = df_filtrado[['NombreAbsolutoLargo', 'Dato']].copy()
-        df_filtrado.columns = ['Variable', 'Valor']
-        df_filtrado['Valor'] = pd.to_numeric(df_filtrado['Valor'], errors='coerce')
-        df_agrupado = df_filtrado.groupby('Variable')['Valor'].mean().reset_index()
-        
-        def categorizar(variable):
-            v = variable.lower()
+    # ============================================================================
+    # CÓDIGO FINAL CON DEBUG - COPIAR Y PEGAR AL FINAL DE TU APARTADO MACRO
+    # ============================================================================
+    
+    import pandas as pd
+    import requests
+    from io import BytesIO
+    import re
+    import plotly.graph_objects as go
+    
+    def descargar_y_procesar_expectativas(url_github):
+        try:
+            response = requests.get(url_github, timeout=30)
+            response.raise_for_status()
             
-            # Inflación mensual (tiene meses)
-            if 'inflación general para' in v and any(mes in v for mes in ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']):
-                return 'Inflación General - Mensual'
-            # Inflación anual (al cierre de)
-            elif 'inflación general al cierre de' in v:
-                return 'Inflación General - Anual'
-            elif 'inflación subyacente para' in v:
-                return 'Inflación Subyacente - Mensual'
-            elif 'tipo de cambio promedio durante' in v:
-                return 'Tipo de Cambio - Mensual'
-            elif 'tipo de cambio al cierre de' in v:
-                return 'Tipo de Cambio - Anual'
-            elif 'desocupación al cierre de' in v:
-                return 'Desempleo - Anual'
-            elif 'cete a 28 días al cierre de' in v:
-                return 'CETE 28 - Anual'
-            elif 'clima de negocios' in v and 'mejor' in v and 'permanecerá' not in v and 'empeorará' not in v:
-                return 'Clima de Negocios - Mejorará'
-            elif 'clima de negocios' in v and 'permanecerá igual' in v:
-                return 'Clima de Negocios - Igual'
-            elif 'clima de negocios' in v and 'empeorará' in v:
-                return 'Clima de Negocios - Empeorará'
-            elif 'economía del país' in v and 'mejor' in v and 'sí' in v:
-                return 'Economía del País - Mejor'
-            elif 'economía del país' in v and 'mejor' in v and 'no' in v:
-                return 'Economía del País - Peor'
-            else:
-                return 'Otros'
-        
-        def extraer_periodo(variable):
-            v = variable.lower()
+            df = pd.read_excel(BytesIO(response.content), engine='openpyxl')
             
-            # Para percepciones, no hay periodo
-            if 'percepción' in v or 'clima de negocios' in v or 'economía del país' in v:
-                return 'PERCEPCION'
+            if 'NombreAbsolutoLargo' not in df.columns or 'Dato' not in df.columns:
+                return None, None, "Error: Columnas no encontradas"
             
-            # Buscar año
-            match_anio = re.search(r'(202[5-9]|20[3-9]\d)', variable)
-            if match_anio:
-                anio = match_anio.group(1)
-                meses = {'enero':'01','febrero':'02','marzo':'03','abril':'04','mayo':'05','junio':'06',
-                        'julio':'07','agosto':'08','septiembre':'09','octubre':'10','noviembre':'11','diciembre':'12'}
+            # Obtener fecha de encuesta
+            fecha_encuesta = None
+            if 'FechaEncuesta' in df.columns:
+                df['FechaEncuesta'] = pd.to_datetime(df['FechaEncuesta'], format='%m/%d/%Y', errors='coerce')
+                fecha_encuesta = df['FechaEncuesta'].max()
+            
+            # Filtrar SOLO las variables necesarias
+            df_filtrado = df[
+                df['NombreAbsolutoLargo'].str.contains(
+                    'Inflación general para|Inflación general al cierre de|Inflación subyacente para|' +
+                    'tipo de cambio promedio|tipo de cambio al cierre|desocupación al cierre|' +
+                    'cete a 28 días al cierre|clima de negocios|economía del país',
+                    case=False, na=False, regex=True
+                )
+            ].copy()
+            
+            # Excluir probabilidades
+            df_filtrado = df_filtrado[~df_filtrado['NombreAbsolutoLargo'].str.contains('probabilidad', case=False, na=False)]
+            
+            if len(df_filtrado) == 0:
+                return None, None, "No se encontraron variables"
+            
+            df_filtrado = df_filtrado[['NombreAbsolutoLargo', 'Dato']].copy()
+            df_filtrado.columns = ['Variable', 'Valor']
+            df_filtrado['Valor'] = pd.to_numeric(df_filtrado['Valor'], errors='coerce')
+            df_agrupado = df_filtrado.groupby('Variable')['Valor'].mean().reset_index()
+            
+            def categorizar(variable):
+                v = variable.lower()
                 
-                for mes_nombre, mes_num in meses.items():
-                    if mes_nombre in v:
-                        return f"{anio}-{mes_num}"
+                # Inflación mensual (tiene meses)
+                if 'inflación general para' in v and any(mes in v for mes in ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']):
+                    return 'Inflación General - Mensual'
+                # Inflación anual (al cierre de)
+                elif 'inflación general al cierre de' in v:
+                    return 'Inflación General - Anual'
+                elif 'inflación subyacente para' in v:
+                    return 'Inflación Subyacente - Mensual'
+                elif 'tipo de cambio promedio durante' in v:
+                    return 'Tipo de Cambio - Mensual'
+                elif 'tipo de cambio al cierre de' in v:
+                    return 'Tipo de Cambio - Anual'
+                elif 'desocupación al cierre de' in v:
+                    return 'Desempleo - Anual'
+                elif 'cete a 28 días al cierre de' in v:
+                    return 'CETE 28 - Anual'
+                elif 'clima de negocios' in v and 'mejor' in v and 'permanecerá' not in v and 'empeorará' not in v:
+                    return 'Clima de Negocios - Mejorará'
+                elif 'clima de negocios' in v and 'permanecerá igual' in v:
+                    return 'Clima de Negocios - Igual'
+                elif 'clima de negocios' in v and 'empeorará' in v:
+                    return 'Clima de Negocios - Empeorará'
+                elif 'economía del país' in v and 'mejor' in v and 'sí' in v:
+                    return 'Economía del País - Mejor'
+                elif 'economía del país' in v and 'mejor' in v and 'no' in v:
+                    return 'Economía del País - Peor'
+                else:
+                    return 'Otros'
+            
+            def extraer_periodo(variable):
+                v = variable.lower()
                 
-                return f"{anio}-12"
+                # Para percepciones, no hay periodo
+                if 'percepción' in v or 'clima de negocios' in v or 'economía del país' in v:
+                    return 'PERCEPCION'
+                
+                # Buscar año
+                match_anio = re.search(r'(202[5-9]|20[3-9]\d)', variable)
+                if match_anio:
+                    anio = match_anio.group(1)
+                    meses = {'enero':'01','febrero':'02','marzo':'03','abril':'04','mayo':'05','junio':'06',
+                            'julio':'07','agosto':'08','septiembre':'09','octubre':'10','noviembre':'11','diciembre':'12'}
+                    
+                    for mes_nombre, mes_num in meses.items():
+                        if mes_nombre in v:
+                            return f"{anio}-{mes_num}"
+                    
+                    return f"{anio}-12"
+                
+                return "N/A"
             
-            return "N/A"
-        
-        df_agrupado['Categoria'] = df_agrupado['Variable'].apply(categorizar)
-        df_agrupado['Proyeccion_Para'] = df_agrupado['Variable'].apply(extraer_periodo)
-        df_agrupado = df_agrupado[df_agrupado['Categoria'] != 'Otros']
-        df_agrupado = df_agrupado.sort_values(['Categoria', 'Proyeccion_Para'])
-        
-        proyecciones = {}
-        for categoria in df_agrupado['Categoria'].unique():
-            df_cat = df_agrupado[df_agrupado['Categoria'] == categoria]
-            proyecciones[categoria] = df_cat[['Proyeccion_Para', 'Valor', 'Variable']].to_dict('records')
-        
-        debug_msg = f"Categorías encontradas: {list(proyecciones.keys())}"
-        return proyecciones, fecha_encuesta, debug_msg
-        
-    except Exception as e:
-        import traceback
-        return None, None, f"Error: {str(e)}\n{traceback.format_exc()}"
-
-st.markdown("---")
-st.markdown("### 🔮 Proyecciones y Expectativas Futuras")
-
-URL_GITHUB_EXPECTATIVAS = "https://raw.githubusercontent.com/imjeiciqu32/precios-por-kg/main/micro.xlsx"
-
-@st.cache_data(ttl=3600)
-def cargar_proyecciones():
-    proyecciones, fecha, msg = descargar_y_procesar_expectativas(URL_GITHUB_EXPECTATIVAS)
-    return proyecciones, fecha, msg
-
-with st.spinner("📥 Cargando proyecciones..."):
-    proyecciones, fecha_encuesta, debug_msg = cargar_proyecciones()
-
-# Mostrar debug
-if debug_msg:
-    with st.expander("🔍 Debug Info"):
-        st.code(debug_msg)
-
-if fecha_encuesta:
-    meses_es = {1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',
-                7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'}
-    mes_nombre = meses_es[fecha_encuesta.month]
-    st.caption(f"Datos de la Encuesta de Expectativas de Banxico - {mes_nombre} {fecha_encuesta.year}")
-else:
-    st.caption("Datos de la Encuesta de Expectativas de Banxico - Actualización Mensual")
-
-if proyecciones:
-    tab_p1, tab_p2, tab_p3, tab_p4 = st.tabs(["📈 Inflación", "💱 Tipo de Cambio", "👥 Desempleo", "🏢 Economía"])
-    
-    with tab_p1:
-        st.markdown("#### 📊 Proyecciones de Inflación General 2026")
-        if 'Inflación General - Mensual' in proyecciones:
-            df_infl = pd.DataFrame(proyecciones['Inflación General - Mensual'])
-            df_infl['Proyeccion_Para'] = pd.to_datetime(df_infl['Proyeccion_Para'])
-            df_infl = df_infl.sort_values('Proyeccion_Para')
+            df_agrupado['Categoria'] = df_agrupado['Variable'].apply(categorizar)
+            df_agrupado['Proyeccion_Para'] = df_agrupado['Variable'].apply(extraer_periodo)
+            df_agrupado = df_agrupado[df_agrupado['Categoria'] != 'Otros']
+            df_agrupado = df_agrupado.sort_values(['Categoria', 'Proyeccion_Para'])
             
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=df_infl['Proyeccion_Para'], y=df_infl['Valor'], name='Proyección',
-                line=dict(color='rgb(102, 126, 234)', width=3, dash='dot'), mode='lines+markers',
-                marker=dict(size=8), fill='tozeroy', fillcolor='rgba(102, 126, 234, 0.2)',
-                hovertemplate='%{x|%b %Y}<br>%{y:.2f}%<extra></extra>'))
-            fig.update_layout(title="Inflación General Proyectada (Mensual 2026)", hovermode='x', height=400,
-                yaxis_title="Inflación (%)", xaxis_title="Periodo",
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5))
-            st.plotly_chart(fig, use_container_width=True)
-        
-        # INFLACIÓN AL CIERRE - SUBMÓDULO SEPARADO
-        if 'Inflación General - Anual' in proyecciones:
-            st.markdown("---")
-            st.markdown("#### 📅 Inflación General al Cierre de Año")
-            df_anual = pd.DataFrame(proyecciones['Inflación General - Anual'])
-            df_anual = df_anual.sort_values('Proyeccion_Para')
+            proyecciones = {}
+            for categoria in df_agrupado['Categoria'].unique():
+                df_cat = df_agrupado[df_agrupado['Categoria'] == categoria]
+                proyecciones[categoria] = df_cat[['Proyeccion_Para', 'Valor', 'Variable']].to_dict('records')
             
-            cols = st.columns(len(df_anual))
-            for idx, (_, row) in enumerate(df_anual.iterrows()):
-                year = row['Proyeccion_Para'][:4]
-                valor = row['Valor']
-                color = "#43e97b" if valor < 3 else "#FFE082" if valor < 4 else "#f5576c"
-                emoji = "🟢" if valor < 3 else "🟡" if valor < 4 else "🔴"
-                with cols[idx]:
-                    st.markdown(f"""<div style='background:{color};padding:20px;border-radius:8px;text-align:center;
-                        box-shadow:0 2px 4px rgba(0,0,0,0.1);'>
-                        <div style='font-size:16px;font-weight:bold;color:#333;margin-bottom:8px;'>{emoji} Cierre {year}</div>
-                        <div style='font-size:32px;font-weight:bold;color:#1a1a1a;'>{valor:.2f}%</div>
-                    </div>""", unsafe_allow_html=True)
-        else:
-            st.warning("⚠️ No se encontraron datos de Inflación General al Cierre")
-        
-        st.markdown("---")
-        
-        if 'Inflación Subyacente - Mensual' in proyecciones:
-            st.markdown("#### 📊 Inflación Subyacente 2026")
-            df_sub = pd.DataFrame(proyecciones['Inflación Subyacente - Mensual'])
-            df_sub['Proyeccion_Para'] = pd.to_datetime(df_sub['Proyeccion_Para'])
-            df_sub = df_sub.sort_values('Proyeccion_Para')
+            debug_msg = f"Categorías encontradas: {list(proyecciones.keys())}"
+            return proyecciones, fecha_encuesta, debug_msg
             
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=df_sub['Proyeccion_Para'], y=df_sub['Valor'], name='Subyacente',
-                line=dict(color='rgb(155, 135, 245)', width=3, dash='dot'), mode='lines+markers',
-                marker=dict(size=8), fill='tozeroy', fillcolor='rgba(155, 135, 245, 0.2)',
-                hovertemplate='%{x|%b %Y}<br>%{y:.2f}%<extra></extra>'))
-            fig.update_layout(title="Inflación Subyacente Proyectada (Mensual 2026)", hovermode='x', height=400,
-                yaxis_title="Inflación (%)", xaxis_title="Periodo",
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5))
-            st.plotly_chart(fig, use_container_width=True)
-        
-        st.caption("Fuente: Encuesta de Expectativas - Banxico")
-    
-    with tab_p2:
-        st.markdown("#### 💱 Proyecciones de Tipo de Cambio USD/MXN")
-        if 'Tipo de Cambio - Mensual' in proyecciones:
-            df_tc = pd.DataFrame(proyecciones['Tipo de Cambio - Mensual'])
-            df_tc['Proyeccion_Para'] = pd.to_datetime(df_tc['Proyeccion_Para'])
-            df_tc = df_tc.sort_values('Proyeccion_Para')
-            
-            fig = go.Figure()
-            fig.add_trace(go.Bar(
-                x=df_tc['Proyeccion_Para'], 
-                y=df_tc['Valor'], 
-                marker_color='rgba(255, 75, 75, 0.7)',
-                text=[f'${v:.2f}' for v in df_tc['Valor']], 
-                textposition='outside',
-                textfont=dict(size=11, color='#333'),
-                hovertemplate='%{x|%b %Y}<br>$%{y:.2f} MXN<extra></extra>'
-            ))
-            fig.update_layout(
-                title="Tipo de Cambio Proyectado (Mensual 2026)", 
-                hovermode='x', 
-                height=450,
-                yaxis_title="MXN por USD", 
-                xaxis_title="Periodo",
-                showlegend=False
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        
-        if 'Tipo de Cambio - Anual' in proyecciones:
-            st.markdown("##### 📅 Proyección al Cierre de Año")
-            df_tc_anual = pd.DataFrame(proyecciones['Tipo de Cambio - Anual'])
-            df_tc_anual = df_tc_anual.sort_values('Proyeccion_Para')
-            cols = st.columns(len(df_tc_anual))
-            for idx, (_, row) in enumerate(df_tc_anual.iterrows()):
-                year = row['Proyeccion_Para'][:4]
-                valor = row['Valor']
-                with cols[idx]:
-                    st.markdown(f"""<div style='background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);
-                        padding:20px;border-radius:10px;color:white;text-align:center;'>
-                        <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>💱 {year}</div>
-                        <div style='font-size:32px;font-weight:bold;'>${valor:.2f}</div>
-                        <div style='font-size:12px;opacity:0.8;margin-top:5px;'>MXN/USD</div>
-                    </div>""", unsafe_allow_html=True)
-        
-        # CETES
-        if 'CETE 28 - Anual' in proyecciones:
-            st.markdown("##### 💰 Tasa CETE 28 días al Cierre de Año")
-            df_cete = pd.DataFrame(proyecciones['CETE 28 - Anual'])
-            df_cete = df_cete.sort_values('Proyeccion_Para')
-            cols = st.columns(len(df_cete))
-            for idx, (_, row) in enumerate(df_cete.iterrows()):
-                year = row['Proyeccion_Para'][:4]
-                valor = row['Valor']
-                with cols[idx]:
-                    st.markdown(f"""<div style='background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
-                        padding:20px;border-radius:10px;color:white;text-align:center;'>
-                        <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>📊 {year}</div>
-                        <div style='font-size:32px;font-weight:bold;'>{valor:.2f}%</div>
-                        <div style='font-size:12px;opacity:0.8;margin-top:5px;'>CETE 28d</div>
-                    </div>""", unsafe_allow_html=True)
-        else:
-            st.warning("⚠️ No se encontraron datos de CETE 28 días")
-        
-        st.caption("Fuente: Encuesta de Expectativas - Banxico")
-    
-    with tab_p3:
-        st.markdown("#### 👥 Proyecciones de Tasa de Desempleo")
-        if 'Desempleo - Anual' in proyecciones:
-            df_desemp = pd.DataFrame(proyecciones['Desempleo - Anual'])
-            df_desemp = df_desemp.sort_values('Proyeccion_Para')
-            
-            fig = go.Figure()
-            colors = ['rgba(102, 126, 234, 0.8)' if v < 3 else 
-                     'rgba(155, 135, 245, 0.8)' if v < 3.5 else 
-                     'rgba(186, 104, 200, 0.8)' for v in df_desemp['Valor']]
-            
-            fig.add_trace(go.Bar(
-                x=[row['Proyeccion_Para'][:4] for _, row in df_desemp.iterrows()],
-                y=df_desemp['Valor'], 
-                marker_color=colors,
-                text=[f"{v:.2f}%" for v in df_desemp['Valor']], 
-                textposition='outside',
-                textfont=dict(size=12, color='#333'),
-                hovertemplate='%{x}<br>%{y:.2f}%<extra></extra>'
-            ))
-            fig.update_layout(
-                title="Tasa de Desocupación Proyectada", 
-                height=400,
-                yaxis_title="(%) de la PEA", 
-                xaxis_title="Año", 
-                showlegend=False
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            
-            st.markdown("##### 📊 Detalle por Año")
-            cols = st.columns(len(df_desemp))
-            gradients = [
-                "linear-gradient(135deg,#667eea 0%,#764ba2 100%)",
-                "linear-gradient(135deg,#9b87f5 0%,#7e57c2 100%)",
-                "linear-gradient(135deg,#ba68c8 0%,#9c27b0 100%)"
-            ]
-            for idx, (_, row) in enumerate(df_desemp.iterrows()):
-                year = row['Proyeccion_Para'][:4]
-                valor = row['Valor']
-                gradient = gradients[idx % len(gradients)]
-                with cols[idx]:
-                    st.markdown(f"""<div style='background:{gradient};padding:20px;border-radius:8px;text-align:center;
-                        box-shadow:0 4px 8px rgba(0,0,0,0.15);'>
-                        <div style='font-size:14px;font-weight:bold;color:white;'>{year}</div>
-                        <div style='font-size:32px;font-weight:bold;color:white;'>{valor:.2f}%</div>
-                        <div style='font-size:11px;color:rgba(255,255,255,0.8);margin-top:5px;'>de la PEA</div>
-                    </div>""", unsafe_allow_html=True)
-        
-        st.caption("Fuente: Encuesta de Expectativas - Banxico")
-    
-    with tab_p4:
-        st.markdown("#### 🏢 Percepciones Económicas")
-        
-        # Clima de negocios - SIN NORMALIZAR
-        val_mejora = val_igual = val_empeora = None
-        if 'Clima de Negocios - Mejorará' in proyecciones:
-            val_mejora = proyecciones['Clima de Negocios - Mejorará'][0]['Valor']
-        if 'Clima de Negocios - Igual' in proyecciones:
-            val_igual = proyecciones['Clima de Negocios - Igual'][0]['Valor']
-        if 'Clima de Negocios - Empeorará' in proyecciones:
-            val_empeora = proyecciones['Clima de Negocios - Empeorará'][0]['Valor']
-        
-        if val_mejora is not None and val_igual is not None and val_empeora is not None:
-            st.markdown("##### Clima de Negocios (Próximos 6 Meses)")
-            fig = go.Figure(data=[go.Pie(
-                labels=['Mejorará', 'Permanecerá Igual', 'Empeorará'],
-                values=[val_mejora, val_igual, val_empeora], 
-                hole=.4,
-                marker_colors=['#43e97b', '#667eea', '#f5576c'], 
-                textinfo='label+percent',
-                textfont_size=14, 
-                hovertemplate='<b>%{label}</b><br>%{value:.1f}%<extra></extra>'
-            )])
-            fig.update_layout(height=350, showlegend=True,
-                legend=dict(orientation="h", yanchor="bottom", y=-0.1, xanchor="center", x=0.5))
-            st.plotly_chart(fig, use_container_width=True)
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.markdown(f"""<div style='background:linear-gradient(135deg,#43e97b 0%,#38f9d7 100%);
-                    padding:20px;border-radius:10px;color:white;text-align:center;'>
-                    <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>📈 Mejorará</div>
-                    <div style='font-size:36px;font-weight:bold;'>{val_mejora:.1f}%</div>
-                </div>""", unsafe_allow_html=True)
-            with col2:
-                st.markdown(f"""<div style='background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
-                    padding:20px;border-radius:10px;color:white;text-align:center;'>
-                    <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>➡️ Igual</div>
-                    <div style='font-size:36px;font-weight:bold;'>{val_igual:.1f}%</div>
-                </div>""", unsafe_allow_html=True)
-            with col3:
-                st.markdown(f"""<div style='background:linear-gradient(135deg,#fa709a 0%,#fee140 100%);
-                    padding:20px;border-radius:10px;color:white;text-align:center;'>
-                    <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>📉 Empeorará</div>
-                    <div style='font-size:36px;font-weight:bold;'>{val_empeora:.1f}%</div>
-                </div>""", unsafe_allow_html=True)
-        else:
-            st.warning("⚠️ No se encontraron datos de Clima de Negocios")
-        
-        # Economía del país - SIN NORMALIZAR
-        val_si = val_no = None
-        if 'Economía del País - Mejor' in proyecciones:
-            val_si = proyecciones['Economía del País - Mejor'][0]['Valor']
-        if 'Economía del País - Peor' in proyecciones:
-            val_no = proyecciones['Economía del País - Peor'][0]['Valor']
-        
-        if val_si is not None and val_no is not None:
-            st.markdown("##### Situación Económica vs Hace un Año")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown(f"""<div style='background:linear-gradient(135deg,#43e97b 0%,#38f9d7 100%);
-                    padding:25px;border-radius:10px;color:white;text-align:center;'>
-                    <div style='font-size:16px;opacity:0.9;margin-bottom:10px;'>✅ Mejor que Hace un Año</div>
-                    <div style='font-size:42px;font-weight:bold;'>{val_si:.1f}%</div>
-                </div>""", unsafe_allow_html=True)
-            with col2:
-                st.markdown(f"""<div style='background:linear-gradient(135deg,#fa709a 0%,#fee140 100%);
-                    padding:25px;border-radius:10px;color:white;text-align:center;'>
-                    <div style='font-size:16px;opacity:0.9;margin-bottom:10px;'>❌ Peor que Hace un Año</div>
-                    <div style='font-size:42px;font-weight:bold;'>{val_no:.1f}%</div>
-                </div>""", unsafe_allow_html=True)
-        else:
-            st.warning("⚠️ No se encontraron datos de Economía del País")
-        
-        st.caption("Fuente: Encuesta de Expectativas - Banxico")
+        except Exception as e:
+            import traceback
+            return None, None, f"Error: {str(e)}\n{traceback.format_exc()}"
     
     st.markdown("---")
-    st.info("💡 **Nota:** Estas proyecciones se actualizan automáticamente desde la Encuesta de Expectativas de Banxico. Los valores son promedios de las respuestas de expertos.")
-else:
-    st.error("❌ No se pudieron cargar las proyecciones. Revisa el mensaje de debug arriba.")
+    st.markdown("### 🔮 Proyecciones y Expectativas Futuras")
+    
+    URL_GITHUB_EXPECTATIVAS = "https://raw.githubusercontent.com/imjeiciqu32/precios-por-kg/main/micro.xlsx"
+    
+    @st.cache_data(ttl=3600)
+    def cargar_proyecciones():
+        proyecciones, fecha, msg = descargar_y_procesar_expectativas(URL_GITHUB_EXPECTATIVAS)
+        return proyecciones, fecha, msg
+    
+    with st.spinner("📥 Cargando proyecciones..."):
+        proyecciones, fecha_encuesta, debug_msg = cargar_proyecciones()
+    
+    # Mostrar debug
+    if debug_msg:
+        with st.expander("🔍 Debug Info"):
+            st.code(debug_msg)
+    
+    if fecha_encuesta:
+        meses_es = {1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',
+                    7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'}
+        mes_nombre = meses_es[fecha_encuesta.month]
+        st.caption(f"Datos de la Encuesta de Expectativas de Banxico - {mes_nombre} {fecha_encuesta.year}")
+    else:
+        st.caption("Datos de la Encuesta de Expectativas de Banxico - Actualización Mensual")
+    
+    if proyecciones:
+        tab_p1, tab_p2, tab_p3, tab_p4 = st.tabs(["📈 Inflación", "💱 Tipo de Cambio", "👥 Desempleo", "🏢 Economía"])
+        
+        with tab_p1:
+            st.markdown("#### 📊 Proyecciones de Inflación General 2026")
+            if 'Inflación General - Mensual' in proyecciones:
+                df_infl = pd.DataFrame(proyecciones['Inflación General - Mensual'])
+                df_infl['Proyeccion_Para'] = pd.to_datetime(df_infl['Proyeccion_Para'])
+                df_infl = df_infl.sort_values('Proyeccion_Para')
+                
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=df_infl['Proyeccion_Para'], y=df_infl['Valor'], name='Proyección',
+                    line=dict(color='rgb(102, 126, 234)', width=3, dash='dot'), mode='lines+markers',
+                    marker=dict(size=8), fill='tozeroy', fillcolor='rgba(102, 126, 234, 0.2)',
+                    hovertemplate='%{x|%b %Y}<br>%{y:.2f}%<extra></extra>'))
+                fig.update_layout(title="Inflación General Proyectada (Mensual 2026)", hovermode='x', height=400,
+                    yaxis_title="Inflación (%)", xaxis_title="Periodo",
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5))
+                st.plotly_chart(fig, use_container_width=True)
+            
+            # INFLACIÓN AL CIERRE - SUBMÓDULO SEPARADO
+            if 'Inflación General - Anual' in proyecciones:
+                st.markdown("---")
+                st.markdown("#### 📅 Inflación General al Cierre de Año")
+                df_anual = pd.DataFrame(proyecciones['Inflación General - Anual'])
+                df_anual = df_anual.sort_values('Proyeccion_Para')
+                
+                cols = st.columns(len(df_anual))
+                for idx, (_, row) in enumerate(df_anual.iterrows()):
+                    year = row['Proyeccion_Para'][:4]
+                    valor = row['Valor']
+                    color = "#43e97b" if valor < 3 else "#FFE082" if valor < 4 else "#f5576c"
+                    emoji = "🟢" if valor < 3 else "🟡" if valor < 4 else "🔴"
+                    with cols[idx]:
+                        st.markdown(f"""<div style='background:{color};padding:20px;border-radius:8px;text-align:center;
+                            box-shadow:0 2px 4px rgba(0,0,0,0.1);'>
+                            <div style='font-size:16px;font-weight:bold;color:#333;margin-bottom:8px;'>{emoji} Cierre {year}</div>
+                            <div style='font-size:32px;font-weight:bold;color:#1a1a1a;'>{valor:.2f}%</div>
+                        </div>""", unsafe_allow_html=True)
+            else:
+                st.warning("⚠️ No se encontraron datos de Inflación General al Cierre")
+            
+            st.markdown("---")
+            
+            if 'Inflación Subyacente - Mensual' in proyecciones:
+                st.markdown("#### 📊 Inflación Subyacente 2026")
+                df_sub = pd.DataFrame(proyecciones['Inflación Subyacente - Mensual'])
+                df_sub['Proyeccion_Para'] = pd.to_datetime(df_sub['Proyeccion_Para'])
+                df_sub = df_sub.sort_values('Proyeccion_Para')
+                
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=df_sub['Proyeccion_Para'], y=df_sub['Valor'], name='Subyacente',
+                    line=dict(color='rgb(155, 135, 245)', width=3, dash='dot'), mode='lines+markers',
+                    marker=dict(size=8), fill='tozeroy', fillcolor='rgba(155, 135, 245, 0.2)',
+                    hovertemplate='%{x|%b %Y}<br>%{y:.2f}%<extra></extra>'))
+                fig.update_layout(title="Inflación Subyacente Proyectada (Mensual 2026)", hovermode='x', height=400,
+                    yaxis_title="Inflación (%)", xaxis_title="Periodo",
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5))
+                st.plotly_chart(fig, use_container_width=True)
+            
+            st.caption("Fuente: Encuesta de Expectativas - Banxico")
+        
+        with tab_p2:
+            st.markdown("#### 💱 Proyecciones de Tipo de Cambio USD/MXN")
+            if 'Tipo de Cambio - Mensual' in proyecciones:
+                df_tc = pd.DataFrame(proyecciones['Tipo de Cambio - Mensual'])
+                df_tc['Proyeccion_Para'] = pd.to_datetime(df_tc['Proyeccion_Para'])
+                df_tc = df_tc.sort_values('Proyeccion_Para')
+                
+                fig = go.Figure()
+                fig.add_trace(go.Bar(
+                    x=df_tc['Proyeccion_Para'], 
+                    y=df_tc['Valor'], 
+                    marker_color='rgba(255, 75, 75, 0.7)',
+                    text=[f'${v:.2f}' for v in df_tc['Valor']], 
+                    textposition='outside',
+                    textfont=dict(size=11, color='#333'),
+                    hovertemplate='%{x|%b %Y}<br>$%{y:.2f} MXN<extra></extra>'
+                ))
+                fig.update_layout(
+                    title="Tipo de Cambio Proyectado (Mensual 2026)", 
+                    hovermode='x', 
+                    height=450,
+                    yaxis_title="MXN por USD", 
+                    xaxis_title="Periodo",
+                    showlegend=False
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            
+            if 'Tipo de Cambio - Anual' in proyecciones:
+                st.markdown("##### 📅 Proyección al Cierre de Año")
+                df_tc_anual = pd.DataFrame(proyecciones['Tipo de Cambio - Anual'])
+                df_tc_anual = df_tc_anual.sort_values('Proyeccion_Para')
+                cols = st.columns(len(df_tc_anual))
+                for idx, (_, row) in enumerate(df_tc_anual.iterrows()):
+                    year = row['Proyeccion_Para'][:4]
+                    valor = row['Valor']
+                    with cols[idx]:
+                        st.markdown(f"""<div style='background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);
+                            padding:20px;border-radius:10px;color:white;text-align:center;'>
+                            <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>💱 {year}</div>
+                            <div style='font-size:32px;font-weight:bold;'>${valor:.2f}</div>
+                            <div style='font-size:12px;opacity:0.8;margin-top:5px;'>MXN/USD</div>
+                        </div>""", unsafe_allow_html=True)
+            
+            # CETES
+            if 'CETE 28 - Anual' in proyecciones:
+                st.markdown("##### 💰 Tasa CETE 28 días al Cierre de Año")
+                df_cete = pd.DataFrame(proyecciones['CETE 28 - Anual'])
+                df_cete = df_cete.sort_values('Proyeccion_Para')
+                cols = st.columns(len(df_cete))
+                for idx, (_, row) in enumerate(df_cete.iterrows()):
+                    year = row['Proyeccion_Para'][:4]
+                    valor = row['Valor']
+                    with cols[idx]:
+                        st.markdown(f"""<div style='background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+                            padding:20px;border-radius:10px;color:white;text-align:center;'>
+                            <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>📊 {year}</div>
+                            <div style='font-size:32px;font-weight:bold;'>{valor:.2f}%</div>
+                            <div style='font-size:12px;opacity:0.8;margin-top:5px;'>CETE 28d</div>
+                        </div>""", unsafe_allow_html=True)
+            else:
+                st.warning("⚠️ No se encontraron datos de CETE 28 días")
+            
+            st.caption("Fuente: Encuesta de Expectativas - Banxico")
+        
+        with tab_p3:
+            st.markdown("#### 👥 Proyecciones de Tasa de Desempleo")
+            if 'Desempleo - Anual' in proyecciones:
+                df_desemp = pd.DataFrame(proyecciones['Desempleo - Anual'])
+                df_desemp = df_desemp.sort_values('Proyeccion_Para')
+                
+                fig = go.Figure()
+                colors = ['rgba(102, 126, 234, 0.8)' if v < 3 else 
+                         'rgba(155, 135, 245, 0.8)' if v < 3.5 else 
+                         'rgba(186, 104, 200, 0.8)' for v in df_desemp['Valor']]
+                
+                fig.add_trace(go.Bar(
+                    x=[row['Proyeccion_Para'][:4] for _, row in df_desemp.iterrows()],
+                    y=df_desemp['Valor'], 
+                    marker_color=colors,
+                    text=[f"{v:.2f}%" for v in df_desemp['Valor']], 
+                    textposition='outside',
+                    textfont=dict(size=12, color='#333'),
+                    hovertemplate='%{x}<br>%{y:.2f}%<extra></extra>'
+                ))
+                fig.update_layout(
+                    title="Tasa de Desocupación Proyectada", 
+                    height=400,
+                    yaxis_title="(%) de la PEA", 
+                    xaxis_title="Año", 
+                    showlegend=False
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+                st.markdown("##### 📊 Detalle por Año")
+                cols = st.columns(len(df_desemp))
+                gradients = [
+                    "linear-gradient(135deg,#667eea 0%,#764ba2 100%)",
+                    "linear-gradient(135deg,#9b87f5 0%,#7e57c2 100%)",
+                    "linear-gradient(135deg,#ba68c8 0%,#9c27b0 100%)"
+                ]
+                for idx, (_, row) in enumerate(df_desemp.iterrows()):
+                    year = row['Proyeccion_Para'][:4]
+                    valor = row['Valor']
+                    gradient = gradients[idx % len(gradients)]
+                    with cols[idx]:
+                        st.markdown(f"""<div style='background:{gradient};padding:20px;border-radius:8px;text-align:center;
+                            box-shadow:0 4px 8px rgba(0,0,0,0.15);'>
+                            <div style='font-size:14px;font-weight:bold;color:white;'>{year}</div>
+                            <div style='font-size:32px;font-weight:bold;color:white;'>{valor:.2f}%</div>
+                            <div style='font-size:11px;color:rgba(255,255,255,0.8);margin-top:5px;'>de la PEA</div>
+                        </div>""", unsafe_allow_html=True)
+            
+            st.caption("Fuente: Encuesta de Expectativas - Banxico")
+        
+        with tab_p4:
+            st.markdown("#### 🏢 Percepciones Económicas")
+            
+            # Clima de negocios - SIN NORMALIZAR
+            val_mejora = val_igual = val_empeora = None
+            if 'Clima de Negocios - Mejorará' in proyecciones:
+                val_mejora = proyecciones['Clima de Negocios - Mejorará'][0]['Valor']
+            if 'Clima de Negocios - Igual' in proyecciones:
+                val_igual = proyecciones['Clima de Negocios - Igual'][0]['Valor']
+            if 'Clima de Negocios - Empeorará' in proyecciones:
+                val_empeora = proyecciones['Clima de Negocios - Empeorará'][0]['Valor']
+            
+            if val_mejora is not None and val_igual is not None and val_empeora is not None:
+                st.markdown("##### Clima de Negocios (Próximos 6 Meses)")
+                fig = go.Figure(data=[go.Pie(
+                    labels=['Mejorará', 'Permanecerá Igual', 'Empeorará'],
+                    values=[val_mejora, val_igual, val_empeora], 
+                    hole=.4,
+                    marker_colors=['#43e97b', '#667eea', '#f5576c'], 
+                    textinfo='label+percent',
+                    textfont_size=14, 
+                    hovertemplate='<b>%{label}</b><br>%{value:.1f}%<extra></extra>'
+                )])
+                fig.update_layout(height=350, showlegend=True,
+                    legend=dict(orientation="h", yanchor="bottom", y=-0.1, xanchor="center", x=0.5))
+                st.plotly_chart(fig, use_container_width=True)
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.markdown(f"""<div style='background:linear-gradient(135deg,#43e97b 0%,#38f9d7 100%);
+                        padding:20px;border-radius:10px;color:white;text-align:center;'>
+                        <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>📈 Mejorará</div>
+                        <div style='font-size:36px;font-weight:bold;'>{val_mejora:.1f}%</div>
+                    </div>""", unsafe_allow_html=True)
+                with col2:
+                    st.markdown(f"""<div style='background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+                        padding:20px;border-radius:10px;color:white;text-align:center;'>
+                        <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>➡️ Igual</div>
+                        <div style='font-size:36px;font-weight:bold;'>{val_igual:.1f}%</div>
+                    </div>""", unsafe_allow_html=True)
+                with col3:
+                    st.markdown(f"""<div style='background:linear-gradient(135deg,#fa709a 0%,#fee140 100%);
+                        padding:20px;border-radius:10px;color:white;text-align:center;'>
+                        <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>📉 Empeorará</div>
+                        <div style='font-size:36px;font-weight:bold;'>{val_empeora:.1f}%</div>
+                    </div>""", unsafe_allow_html=True)
+            else:
+                st.warning("⚠️ No se encontraron datos de Clima de Negocios")
+            
+            # Economía del país - SIN NORMALIZAR
+            val_si = val_no = None
+            if 'Economía del País - Mejor' in proyecciones:
+                val_si = proyecciones['Economía del País - Mejor'][0]['Valor']
+            if 'Economía del País - Peor' in proyecciones:
+                val_no = proyecciones['Economía del País - Peor'][0]['Valor']
+            
+            if val_si is not None and val_no is not None:
+                st.markdown("##### Situación Económica vs Hace un Año")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"""<div style='background:linear-gradient(135deg,#43e97b 0%,#38f9d7 100%);
+                        padding:25px;border-radius:10px;color:white;text-align:center;'>
+                        <div style='font-size:16px;opacity:0.9;margin-bottom:10px;'>✅ Mejor que Hace un Año</div>
+                        <div style='font-size:42px;font-weight:bold;'>{val_si:.1f}%</div>
+                    </div>""", unsafe_allow_html=True)
+                with col2:
+                    st.markdown(f"""<div style='background:linear-gradient(135deg,#fa709a 0%,#fee140 100%);
+                        padding:25px;border-radius:10px;color:white;text-align:center;'>
+                        <div style='font-size:16px;opacity:0.9;margin-bottom:10px;'>❌ Peor que Hace un Año</div>
+                        <div style='font-size:42px;font-weight:bold;'>{val_no:.1f}%</div>
+                    </div>""", unsafe_allow_html=True)
+            else:
+                st.warning("⚠️ No se encontraron datos de Economía del País")
+            
+            st.caption("Fuente: Encuesta de Expectativas - Banxico")
+        
+        st.markdown("---")
+        st.info("💡 **Nota:** Estas proyecciones se actualizan automáticamente desde la Encuesta de Expectativas de Banxico. Los valores son promedios de las respuestas de expertos.")
+    else:
+        st.error("❌ No se pudieron cargar las proyecciones. Revisa el mensaje de debug arriba.")
 
 
 # ============================================================================
