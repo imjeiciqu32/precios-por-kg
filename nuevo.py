@@ -4837,7 +4837,7 @@ st.markdown("---")
 st.markdown("### 🔮 Proyecciones y Expectativas Futuras")
 st.caption("Datos de la Encuesta de Expectativas de Banxico - Actualización Mensual")
 
-URL_GITHUB_EXPECTATIVAS = "https://github.com/imjeiciqu32/precios-por-kg/raw/refs/heads/main/micro.xlsx"
+URL_GITHUB_EXPECTATIVAS = "https://view.officeapps.live.com/op/view.aspx?src=https%3A%2F%2Fraw.githubusercontent.com%2Fimjeiciqu32%2Fprecios-por-kg%2Frefs%2Fheads%2Fmain%2Fmicro.xlsx&wdOrigin=BROWSELINK"
 
 @st.cache_data(ttl=3600)
 def cargar_proyecciones():
