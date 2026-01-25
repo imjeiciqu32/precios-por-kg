@@ -4748,7 +4748,7 @@ if modo == "Indicadores Macro":
 
 
 # ============================================================================
-# CÓDIGO FINAL CORREGIDO - COPIAR Y PEGAR AL FINAL DE TU APARTADO MACRO
+# CÓDIGO FINAL - COPIAR Y PEGAR AL FINAL DE TU APARTADO MACRO
 # ============================================================================
 
 import pandas as pd
@@ -4801,7 +4801,7 @@ def descargar_y_procesar_expectativas(url_github):
         df_agrupado = df_filtrado.groupby('Variable')['Valor'].mean().reset_index()
         
         def categorizar(variable):
-            # EXACTO - sin .lower()
+            # EXACTO - sin .lower() para percepciones
             if variable == 'Percepción - clima de negocios - mejor':
                 return 'Clima - Mejorará'
             elif variable == 'Percepción - clima de negocios - permanecerá igual':
@@ -4832,15 +4832,26 @@ def descargar_y_procesar_expectativas(url_github):
                 return 'Otros'
         
         def extraer_periodo(variable):
+            # Para percepciones, no hay periodo
+            if variable.startswith('Percepción'):
+                return 'PERCEPCION'
+            
+            # Buscar año (2025, 2026, etc.)
             match_anio = re.search(r'(202[5-9]|20[3-9]\d)', variable)
             if match_anio:
                 anio = match_anio.group(1)
+                
+                # Buscar mes SOLO si existe
                 meses = {'enero':'01','febrero':'02','marzo':'03','abril':'04','mayo':'05','junio':'06',
                         'julio':'07','agosto':'08','septiembre':'09','octubre':'10','noviembre':'11','diciembre':'12'}
+                
                 for mes_nombre, mes_num in meses.items():
                     if mes_nombre in variable.lower():
                         return f"{anio}-{mes_num}"
+                
+                # Si NO tiene mes, solo devolver año-12 (para ordenar al final del año)
                 return f"{anio}-12"
+            
             return "N/A"
         
         df_agrupado['Categoria'] = df_agrupado['Variable'].apply(categorizar)
@@ -5142,7 +5153,6 @@ if proyecciones:
     st.info("💡 **Nota:** Estas proyecciones se actualizan automáticamente desde la Encuesta de Expectativas de Banxico. Los valores son promedios de las respuestas de expertos.")
 else:
     st.warning("⚠️ No se pudieron cargar las proyecciones.")
-
 
 
 # ============================================================================
