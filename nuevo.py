@@ -4818,15 +4818,15 @@ def descargar_y_procesar_expectativas(url_github):
                 return 'Desempleo - Anual'
             elif 'cete a 28 días al cierre' in v:
                 return 'CETE 28 - Anual'
-            elif 'clima de negocios - mejor' in v:
-                return 'Clima - Mejorará'
-            elif 'clima de negocios - permanecerá igual' in v:
-                return 'Clima - Igual'
-            elif 'clima de negocios - empeorará' in v:
-                return 'Clima - Empeorará'
-            elif 'economía del país - mejor - sí' in v: 
+            elif 'Percepción - clima de negocios - mejor' in v:
+                return 'Percepción - clima de negocios - mejorará'
+            elif 'Percepción - clima de negocios - permanecerá igual' in v:
+                return 'Percepción - clima de negocios - permanecerá igual'
+            elif 'Percepción - clima de negocios - empeorará' in v:
+                return 'Percepción - clima de negocios - empeorará'
+            elif 'Percepción - economía del país - mejor - sí' in v: 
                 return 'Economía - Mejor'
-            elif 'economía del país - mejor - no' in v: 
+            elif 'Percepción - economía del país - mejor - no' in v: 
                 return 'Economía - Peor'
             else: 
                 return 'Otros'
