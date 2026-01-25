@@ -4762,7 +4762,11 @@ def descargar_y_procesar_expectativas(url_github):
         response = requests.get(url_github, timeout=30)
         response.raise_for_status()
         
-        df = pd.read_excel(BytesIO(response.content))
+        df = pd.read_excel(BytesIO(response.content), engine='openpyxl')
+        
+        # Verificar que las columnas existan
+        if 'NombreAbsolutoLargo' not in df.columns or 'Dato' not in df.columns:
+            return None
         
         # Filtrar variables de interés
         VARIABLES_INTERES = [
@@ -4780,6 +4784,10 @@ def descargar_y_procesar_expectativas(url_github):
             mascara = mascara | df['NombreAbsolutoLargo'].str.contains(patron, case=False, na=False)
         
         df_filtrado = df[mascara].copy()
+        
+        if len(df_filtrado) == 0:
+            return None
+        
         df_filtrado = df_filtrado[['NombreAbsolutoLargo', 'Dato']].copy()
         df_filtrado.columns = ['Variable', 'Valor']
         df_filtrado['Valor'] = pd.to_numeric(df_filtrado['Valor'], errors='coerce')
@@ -4801,7 +4809,7 @@ def descargar_y_procesar_expectativas(url_github):
                 return 'Desempleo - Anual'
             elif 'clima de negocios' in v and ('mejor' in v or 'igual' in v or 'empeorará' in v): 
                 return 'Clima de Negocios'
-            elif 'economía del país' in v and ('mejor' in v): 
+            elif 'economía del país' in v and 'mejor' in v: 
                 return 'Economía del País'
             else: 
                 return 'Otros'
@@ -4831,6 +4839,7 @@ def descargar_y_procesar_expectativas(url_github):
         return proyecciones
         
     except Exception as e:
+        st.error(f"Error en procesamiento: {str(e)}")
         return None
 
 st.markdown("---")
