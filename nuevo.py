@@ -4748,7 +4748,7 @@ if modo == "Indicadores Macro":
 
 
 # ============================================================================
-# CÓDIGO FINAL - COPIAR Y PEGAR AL FINAL DE TU APARTADO MACRO
+# CÓDIGO FINAL SIMPLIFICADO - COPIAR Y PEGAR AL FINAL DE TU APARTADO MACRO
 # ============================================================================
 
 import pandas as pd
@@ -4773,24 +4773,16 @@ def descargar_y_procesar_expectativas(url_github):
             df['FechaEncuesta'] = pd.to_datetime(df['FechaEncuesta'], format='%m/%d/%Y', errors='coerce')
             fecha_encuesta = df['FechaEncuesta'].max()
         
-        # Filtrar variables EXACTAS
-        df_filtrado = df[
-            (df['NombreAbsolutoLargo'].str.contains('Inflación general para', case=False, na=False) & 
-             ~df['NombreAbsolutoLargo'].str.contains('probabilidad', case=False, na=False)) |
-            (df['NombreAbsolutoLargo'].str.contains('Inflación general al cierre de', case=False, na=False) & 
-             ~df['NombreAbsolutoLargo'].str.contains('probabilidad', case=False, na=False)) |
-            (df['NombreAbsolutoLargo'].str.contains('Inflación subyacente para', case=False, na=False) & 
-             ~df['NombreAbsolutoLargo'].str.contains('probabilidad', case=False, na=False)) |
-            df['NombreAbsolutoLargo'].str.contains('Valor del tipo de cambio promedio durante', case=False, na=False) |
-            df['NombreAbsolutoLargo'].str.contains('Valor del tipo de cambio al cierre de', case=False, na=False) |
-            (df['NombreAbsolutoLargo'].str.contains('Tasa nacional de desocupación al cierre de', case=False, na=False)) |
-            (df['NombreAbsolutoLargo'].str.contains('Nivel de la tasa de interés del cete a 28 días al cierre de', case=False, na=False)) |
-            (df['NombreAbsolutoLargo'] == 'Percepción - clima de negocios - mejor') |
-            (df['NombreAbsolutoLargo'] == 'Percepción - clima de negocios - permanecerá igual') |
-            (df['NombreAbsolutoLargo'] == 'Percepción - clima de negocios - empeorará') |
-            (df['NombreAbsolutoLargo'] == 'Percepción - economía del país - mejor - sí') |
-            (df['NombreAbsolutoLargo'] == 'Percepción - economía del país - mejor - no')
-        ].copy()
+        # Seleccionar solo las variables que necesitamos
+        df_filtrado = df[df['NombreAbsolutoLargo'].str.contains(
+            'Inflación general para|Inflación general al cierre|Inflación subyacente para|' +
+            'tipo de cambio promedio|tipo de cambio al cierre|desocupación al cierre|' +
+            'cete a 28 días al cierre|Percepción - clima de negocios|Percepción - economía del país',
+            case=False, na=False, regex=True
+        )].copy()
+        
+        # Excluir probabilidades
+        df_filtrado = df_filtrado[~df_filtrado['NombreAbsolutoLargo'].str.contains('probabilidad', case=False, na=False)]
         
         if len(df_filtrado) == 0:
             return None, None
@@ -4801,7 +4793,7 @@ def descargar_y_procesar_expectativas(url_github):
         df_agrupado = df_filtrado.groupby('Variable')['Valor'].mean().reset_index()
         
         def categorizar(variable):
-            # EXACTO - sin .lower() para percepciones
+            # Percepciones EXACTAS
             if variable == 'Percepción - clima de negocios - mejor':
                 return 'Clima - Mejorará'
             elif variable == 'Percepción - clima de negocios - permanecerá igual':
@@ -4814,34 +4806,37 @@ def descargar_y_procesar_expectativas(url_github):
                 return 'Economía - Peor'
             
             v = variable.lower()
-            if 'inflación general para' in v and 'cierre' not in v and 'probabilidad' not in v: 
+            # Inflación mensual (tiene meses como enero, febrero)
+            if 'inflación general para' in v and any(mes in v for mes in ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']):
                 return 'Inflación General - Mensual'
-            elif 'inflación general al cierre de' in v and 'probabilidad' not in v: 
+            # Inflación anual (tiene "al cierre de")
+            elif 'inflación general al cierre' in v:
                 return 'Inflación General - Anual'
-            elif 'inflación subyacente para' in v and 'probabilidad' not in v: 
+            # Inflación subyacente
+            elif 'inflación subyacente para' in v:
                 return 'Inflación Subyacente - Mensual'
-            elif 'tipo de cambio promedio durante' in v: 
+            # Tipo de cambio mensual
+            elif 'tipo de cambio promedio durante' in v:
                 return 'Tipo de Cambio - Mensual'
-            elif 'tipo de cambio al cierre de' in v: 
+            # Tipo de cambio anual
+            elif 'tipo de cambio al cierre' in v:
                 return 'Tipo de Cambio - Anual'
-            elif 'desocupación al cierre de' in v: 
+            # Desempleo
+            elif 'desocupación al cierre' in v:
                 return 'Desempleo - Anual'
-            elif 'cete a 28 días al cierre de' in v:
+            # CETE
+            elif 'cete a 28 días al cierre' in v:
                 return 'CETE 28 - Anual'
-            else: 
+            else:
                 return 'Otros'
         
         def extraer_periodo(variable):
-            # Para percepciones, no hay periodo
             if variable.startswith('Percepción'):
                 return 'PERCEPCION'
             
-            # Buscar año (2025, 2026, etc.)
             match_anio = re.search(r'(202[5-9]|20[3-9]\d)', variable)
             if match_anio:
                 anio = match_anio.group(1)
-                
-                # Buscar mes SOLO si existe
                 meses = {'enero':'01','febrero':'02','marzo':'03','abril':'04','mayo':'05','junio':'06',
                         'julio':'07','agosto':'08','septiembre':'09','octubre':'10','noviembre':'11','diciembre':'12'}
                 
@@ -4849,7 +4844,6 @@ def descargar_y_procesar_expectativas(url_github):
                     if mes_nombre in variable.lower():
                         return f"{anio}-{mes_num}"
                 
-                # Si NO tiene mes, solo devolver año-12 (para ordenar al final del año)
                 return f"{anio}-12"
             
             return "N/A"
