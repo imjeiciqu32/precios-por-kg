@@ -4929,7 +4929,6 @@ if modo == "Indicadores Macro":
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5))
                 st.plotly_chart(fig, use_container_width=True)
 
-            st.markdown("---")
 
              # INFLACIÓN AL CIERRE - SUBMÓDULO SEPARADO
             if 'Inflación General - Anual' in proyecciones:
