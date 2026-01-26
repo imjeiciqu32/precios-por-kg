@@ -4911,7 +4911,27 @@ if modo == "Indicadores Macro":
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5))
                 st.plotly_chart(fig, use_container_width=True)
             
-            # INFLACIÓN AL CIERRE - SUBMÓDULO SEPARADO
+            st.markdown("---")
+            
+            if 'Inflación Subyacente - Mensual' in proyecciones:
+                st.markdown("#### 📊 Inflación Subyacente 2026")
+                df_sub = pd.DataFrame(proyecciones['Inflación Subyacente - Mensual'])
+                df_sub['Proyeccion_Para'] = pd.to_datetime(df_sub['Proyeccion_Para'])
+                df_sub = df_sub.sort_values('Proyeccion_Para')
+                
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=df_sub['Proyeccion_Para'], y=df_sub['Valor'], name='Subyacente',
+                    line=dict(color='rgb(155, 135, 245)', width=3, dash='dot'), mode='lines+markers',
+                    marker=dict(size=8), fill='tozeroy', fillcolor='rgba(155, 135, 245, 0.2)',
+                    hovertemplate='%{x|%b %Y}<br>%{y:.2f}%<extra></extra>'))
+                fig.update_layout(title="Inflación Subyacente Proyectada (Mensual 2026)", hovermode='x', height=400,
+                    yaxis_title="Inflación (%)", xaxis_title="Periodo",
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5))
+                st.plotly_chart(fig, use_container_width=True)
+
+            st.markdown("---")
+
+             # INFLACIÓN AL CIERRE - SUBMÓDULO SEPARADO
             if 'Inflación General - Anual' in proyecciones:
                 st.markdown("---")
                 st.markdown("#### 📅 Inflación General al Cierre de Año")
@@ -4932,24 +4952,6 @@ if modo == "Indicadores Macro":
                         </div>""", unsafe_allow_html=True)
             else:
                 st.warning("⚠️ No se encontraron datos de Inflación General al Cierre")
-            
-            st.markdown("---")
-            
-            if 'Inflación Subyacente - Mensual' in proyecciones:
-                st.markdown("#### 📊 Inflación Subyacente 2026")
-                df_sub = pd.DataFrame(proyecciones['Inflación Subyacente - Mensual'])
-                df_sub['Proyeccion_Para'] = pd.to_datetime(df_sub['Proyeccion_Para'])
-                df_sub = df_sub.sort_values('Proyeccion_Para')
-                
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(x=df_sub['Proyeccion_Para'], y=df_sub['Valor'], name='Subyacente',
-                    line=dict(color='rgb(155, 135, 245)', width=3, dash='dot'), mode='lines+markers',
-                    marker=dict(size=8), fill='tozeroy', fillcolor='rgba(155, 135, 245, 0.2)',
-                    hovertemplate='%{x|%b %Y}<br>%{y:.2f}%<extra></extra>'))
-                fig.update_layout(title="Inflación Subyacente Proyectada (Mensual 2026)", hovermode='x', height=400,
-                    yaxis_title="Inflación (%)", xaxis_title="Periodo",
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5))
-                st.plotly_chart(fig, use_container_width=True)
             
             st.caption("Fuente: Encuesta de Expectativas - Banxico")
         
