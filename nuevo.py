@@ -355,6 +355,117 @@ def importar_datos_macro(token, series_lista):
     return None
     
 
+# --- SECCIÓN 2.5: GESTIÓN DE ESCENARIOS ---
+if not st.session_state.data.empty and modo in ["Price Ladder", "Price Pack"]:
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    st.markdown("""
+        <div style='background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); 
+                    padding: 1rem; 
+                    border-radius: 10px; 
+                    margin-bottom: 1rem;
+                    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);'>
+            <h3 style='color: white; margin: 0; font-weight: 600; text-align: center; font-size: 1.1rem;'>
+                📸 Gestión de Escenarios
+            </h3>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Inicializar almacenamiento de escenarios
+    if "escenarios_guardados" not in st.session_state:
+        st.session_state["escenarios_guardados"] = {}
+    
+    with st.container(border=True):
+        st.markdown("### 💾 Guardar Escenario Actual")
+        
+        col_nombre, col_btn = st.columns([3, 1])
+        
+        with col_nombre:
+            nombre_escenario = st.text_input(
+                "Nombre del escenario:",
+                placeholder="Ej: Escenario Base, Propuesta Q1, etc.",
+                label_visibility="collapsed",
+                key="input_nombre_escenario"
+            )
+        
+        with col_btn:
+            if st.button("💾", use_container_width=True, help="Guardar escenario", key="btn_guardar_escenario"):
+                if nombre_escenario and nombre_escenario.strip():
+                    # Guardar snapshot del estado actual
+                    escenario_key = f"{modo}_{nombre_escenario.strip()}"
+                    st.session_state["escenarios_guardados"][escenario_key] = {
+                        "nombre": nombre_escenario.strip(),
+                        "modo": modo,
+                        "data": st.session_state.data.copy(),
+                        "fecha": pd.Timestamp.now().strftime('%Y-%m-%d %H:%M'),
+                        "num_productos": len(st.session_state.data),
+                        "custom_colors": st.session_state["custom_colors"].copy() if "custom_colors" in st.session_state else {}
+                    }
+                    st.success(f"✅ Escenario '{nombre_escenario}' guardado!")
+                    st.rerun()
+                else:
+                    st.warning("⚠️ Por favor ingresa un nombre para el escenario")
+        
+        # Mostrar escenarios guardados del modo actual
+        escenarios_modo_actual = {k: v for k, v in st.session_state["escenarios_guardados"].items() if v["modo"] == modo}
+        
+        if escenarios_modo_actual:
+            st.markdown("---")
+            st.markdown("### 📋 Escenarios Guardados")
+            
+            for key, escenario in escenarios_modo_actual.items():
+                with st.container():
+                    col1, col2, col3 = st.columns([3, 1, 1])
+                    
+                    with col1:
+                        st.markdown(f"""
+                            <div style='padding: 0.5rem; background: #F3F4F6; border-radius: 6px; margin-bottom: 0.5rem;'>
+                                <strong style='color: #1F2937;'>📌 {escenario['nombre']}</strong><br>
+                                <span style='font-size: 0.75rem; color: #6B7280;'>
+                                    {escenario['fecha']} • {escenario['num_productos']} productos
+                                </span>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with col2:
+                        if st.button("📂", key=f"load_{key}", use_container_width=True, help="Cargar este escenario"):
+                            # Cargar el escenario
+                            st.session_state.data = escenario["data"].copy()
+                            st.session_state.data.to_csv(DB_FILE, index=False)
+                            
+                            # Restaurar colores personalizados si existen
+                            if escenario.get("custom_colors"):
+                                st.session_state["custom_colors"] = escenario["custom_colors"].copy()
+                            
+                            st.success(f"✅ Escenario '{escenario['nombre']}' cargado!")
+                            st.rerun()
+                    
+                    with col3:
+                        if st.button("🗑️", key=f"delete_{key}", use_container_width=True, help="Eliminar este escenario"):
+                            del st.session_state["escenarios_guardados"][key]
+                            st.success(f"✅ Escenario '{escenario['nombre']}' eliminado")
+                            st.rerun()
+            
+            # Opción de exportar todos los escenarios
+            st.markdown("---")
+            
+            if st.button("📥 Exportar Todos los Escenarios", use_container_width=True, type="secondary"):
+                # Crear un archivo con todos los escenarios
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    for key, escenario in escenarios_modo_actual.items():
+                        sheet_name = escenario['nombre'][:31]  # Excel limita a 31 caracteres
+                        escenario["data"].to_excel(writer, index=False, sheet_name=sheet_name)
+                
+                st.download_button(
+                    label="⬇️ Descargar Excel con Todos los Escenarios",
+                    data=output.getvalue(),
+                    file_name=f'escenarios_{modo.lower().replace(" ", "_")}_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.xlsx',
+                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    use_container_width=True
+                )
+        else:
+            st.info("💡 No hay escenarios guardados aún. Crea tu primer escenario arriba.")
 
 # ============================================================================
 # CÓDIGO DEL SIDEBAR - SIN SISTEMA DE CONFIGURACIONES GUARDADAS
