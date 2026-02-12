@@ -35,7 +35,7 @@ if "slider_angulo" not in st.session_state:
 
 # --- CSS PARA MODO PRESENTACIÓN ---
 def aplicar_modo_presentacion():
-    if st.session_state["modo_presentacion"]:
+    if "modo_presentacion" in st.session_state and st.session_state["modo_presentacion"]:
         st.markdown("""
             <style>
             [data-testid="stSidebar"] {
@@ -264,10 +264,7 @@ with st.sidebar:
             st.info("Función de glosario no definida aún.")
 
 # --- BOTÓN MODO PRESENTACIÓN (FUERA DEL SIDEBAR) ---
-if not st.session_state["modo_presentacion"]:
-    # Modo normal - el botón está en el sidebar (lo agregaremos después)
-    pass
-else:
+if "modo_presentacion" in st.session_state and st.session_state["modo_presentacion"]:
     # Modo presentación - botón flotante para salir
     col_exit = st.columns([10, 1])[1]
     with col_exit:
