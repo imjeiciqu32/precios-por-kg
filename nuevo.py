@@ -32,6 +32,25 @@ if "slider_margen_b" not in st.session_state:
     st.session_state["slider_margen_b"] = 400
 if "slider_angulo" not in st.session_state:
     st.session_state["slider_angulo"] = -90
+
+# --- CSS PARA MODO PRESENTACIÓN ---
+def aplicar_modo_presentacion():
+    if st.session_state["modo_presentacion"]:
+        st.markdown("""
+            <style>
+            [data-testid="stSidebar"] {
+                display: none;
+            }
+            .main .block-container {
+                max-width: 100%;
+                padding-left: 2rem;
+                padding-right: 2rem;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+
+# Aplicar CSS si está en modo presentación
+aplicar_modo_presentacion()
     
 TOKEN_BANXICO = "c668242067560df5be4f797a7137dd88c2a1571937fe7c82b567cceffc09b20a"
 FECHA_INICIO_FILTRO = "2020-01-01"
@@ -244,6 +263,18 @@ with st.sidebar:
         else:
             st.info("Función de glosario no definida aún.")
 
+# --- BOTÓN MODO PRESENTACIÓN (FUERA DEL SIDEBAR) ---
+if not st.session_state["modo_presentacion"]:
+    # Modo normal - el botón está en el sidebar (lo agregaremos después)
+    pass
+else:
+    # Modo presentación - botón flotante para salir
+    col_exit = st.columns([10, 1])[1]
+    with col_exit:
+        if st.button("🚪 Salir", key="exit_presentation"):
+            st.session_state["modo_presentacion"] = False
+            st.rerun()
+
 
 # --- LÓGICA DE MODOS (Configuración de variables) ---
 if modo == "Price Ladder":
@@ -353,6 +384,20 @@ def importar_datos_macro(token, series_lista):
             
         return df_final
     return None
+
+# --- FUNCIÓN PARA REGISTRAR CAMBIOS EN HISTORIAL ---
+def registrar_cambio(producto, campo, valor_anterior, valor_nuevo, modo_app):
+    if valor_anterior != valor_nuevo:
+        cambio = {
+            "timestamp": pd.Timestamp.now(),
+            "fecha": pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "producto": producto,
+            "campo": campo,
+            "anterior": valor_anterior,
+            "nuevo": valor_nuevo,
+            "modo": modo_app
+        }
+        st.session_state["historial_cambios"].append(cambio)
     
 
 # --- SECCIÓN 2.5: GESTIÓN DE ESCENARIOS ---
@@ -642,6 +687,14 @@ import io
 # Inicializar custom_colors si no existe
 if "custom_colors" not in st.session_state:
     st.session_state["custom_colors"] = {}
+
+# Inicializar comentarios y historial
+if "comentarios_productos" not in st.session_state:
+    st.session_state["comentarios_productos"] = {}
+if "historial_cambios" not in st.session_state:
+    st.session_state["historial_cambios"] = []
+if "modo_presentacion" not in st.session_state:
+    st.session_state["modo_presentacion"] = False
 
 # --- 3. GESTIÓN DE ESTADO ---
 if "data" not in st.session_state or st.session_state.get("last_modo") != modo:
