@@ -467,6 +467,169 @@ if "data" in st.session_state and not st.session_state.data.empty and modo in ["
         else:
             st.info("💡 No hay escenarios guardados aún. Crea tu primer escenario arriba.")
 
+# --- SECCIÓN 2.6: COMPARACIÓN DE ESCENARIOS ---
+if "data" in st.session_state and not st.session_state.data.empty and modo in ["Price Ladder", "Price Pack"]:
+    if len(escenarios_modo_actual) >= 1:  # Necesitamos al menos 1 escenario guardado para comparar con el actual
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        st.markdown("""
+            <div style='background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%); 
+                        padding: 1rem; 
+                        border-radius: 10px; 
+                        margin-bottom: 1rem;
+                        box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);'>
+                <h3 style='color: white; margin: 0; font-weight: 600; text-align: center; font-size: 1.1rem;'>
+                    🔄 Comparar Escenarios
+                </h3>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        with st.container(border=True):
+            st.markdown("### 📊 Comparación Lado a Lado")
+            
+            # Selector de escenario para comparar
+            escenario_comparar = st.selectbox(
+                "Comparar escenario actual con:",
+                ["-- Seleccionar --"] + [v["nombre"] for v in escenarios_modo_actual.values()],
+                key="select_comparar_escenario"
+            )
+            
+            if escenario_comparar != "-- Seleccionar --":
+                # Encontrar el escenario seleccionado
+                escenario_obj = None
+                for key, esc in escenarios_modo_actual.items():
+                    if esc["nombre"] == escenario_comparar:
+                        escenario_obj = esc
+                        break
+                
+                if escenario_obj:
+                    st.markdown("---")
+                    
+                    # Tabs para diferentes vistas de comparación
+                    tab1, tab2, tab3 = st.tabs(["📈 Resumen", "🔍 Diferencias", "📊 Tabla Completa"])
+                    
+                    with tab1:
+                        # RESUMEN EJECUTIVO
+                        col_actual, col_vs, col_guardado = st.columns([1, 0.2, 1])
+                        
+                        with col_actual:
+                            st.markdown("""
+                                <div style='background: linear-gradient(135deg, #10B981 0%, #059669 100%); 
+                                            padding: 1rem; border-radius: 8px; text-align: center;'>
+                                    <h4 style='color: white; margin: 0;'>📌 ESCENARIO ACTUAL</h4>
+                                </div>
+                            """, unsafe_allow_html=True)
+                            
+                            st.metric("Total Productos", len(st.session_state.data))
+                            if modo == "Price Ladder":
+                                st.metric("Precio Promedio", f"${st.session_state.data['Precio ($)'].mean():.2f}")
+                                st.metric("$/Kg Promedio", f"${st.session_state.data['Precio por Kg ($)'].mean():.2f}")
+                                st.metric("SOM Total", f"{st.session_state.data['SOM (%)'].sum():.1f}%")
+                            else:
+                                st.metric("Precio Promedio", f"${st.session_state.data['Precio ($)'].mean():.2f}")
+                                st.metric("$/Kg Promedio", f"${st.session_state.data['Precio por Kg ($)'].mean():.2f}")
+                        
+                        with col_vs:
+                            st.markdown("<div style='padding-top: 80px; text-align: center; font-size: 2rem;'>⚡</div>", unsafe_allow_html=True)
+                        
+                        with col_guardado:
+                            st.markdown(f"""
+                                <div style='background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); 
+                                            padding: 1rem; border-radius: 8px; text-align: center;'>
+                                    <h4 style='color: white; margin: 0;'>💾 {escenario_obj['nombre'].upper()}</h4>
+                                </div>
+                            """, unsafe_allow_html=True)
+                            
+                            st.metric("Total Productos", len(escenario_obj["data"]))
+                            if modo == "Price Ladder":
+                                st.metric("Precio Promedio", f"${escenario_obj['data']['Precio ($)'].mean():.2f}")
+                                st.metric("$/Kg Promedio", f"${escenario_obj['data']['Precio por Kg ($)'].mean():.2f}")
+                                st.metric("SOM Total", f"{escenario_obj['data']['SOM (%)'].sum():.1f}%")
+                            else:
+                                st.metric("Precio Promedio", f"${escenario_obj['data']['Precio ($)'].mean():.2f}")
+                                st.metric("$/Kg Promedio", f"${escenario_obj['data']['Precio por Kg ($)'].mean():.2f}")
+                    
+                    with tab2:
+                        # ANÁLISIS DE DIFERENCIAS
+                        st.markdown("### 🔍 Productos con Cambios")
+                        
+                        # Merge de ambos datasets
+                        df_actual = st.session_state.data.copy()
+                        df_guardado = escenario_obj["data"].copy()
+                        
+                        # Identificar productos en común
+                        productos_comunes = set(df_actual["Producto"]) & set(df_guardado["Producto"])
+                        productos_nuevos = set(df_actual["Producto"]) - set(df_guardado["Producto"])
+                        productos_eliminados = set(df_guardado["Producto"]) - set(df_actual["Producto"])
+                        
+                        # Mostrar cambios
+                        if productos_nuevos:
+                            st.success(f"✅ **{len(productos_nuevos)} Producto(s) Nuevo(s)**: {', '.join(list(productos_nuevos)[:5])}")
+                        
+                        if productos_eliminados:
+                            st.error(f"❌ **{len(productos_eliminados)} Producto(s) Eliminado(s)**: {', '.join(list(productos_eliminados)[:5])}")
+                        
+                        # Comparar productos comunes
+                        cambios = []
+                        for prod in productos_comunes:
+                            actual_row = df_actual[df_actual["Producto"] == prod].iloc[0]
+                            guardado_row = df_guardado[df_guardado["Producto"] == prod].iloc[0]
+                            
+                            precio_actual = actual_row["Precio ($)"]
+                            precio_guardado = guardado_row["Precio ($)"]
+                            
+                            if abs(precio_actual - precio_guardado) > 0.01:  # Si hay diferencia
+                                cambio = {
+                                    "Producto": prod,
+                                    "Precio Anterior": precio_guardado,
+                                    "Precio Actual": precio_actual,
+                                    "Diferencia ($)": precio_actual - precio_guardado,
+                                    "Diferencia (%)": ((precio_actual - precio_guardado) / precio_guardado * 100) if precio_guardado > 0 else 0
+                                }
+                                cambios.append(cambio)
+                        
+                        if cambios:
+                            df_cambios = pd.DataFrame(cambios)
+                            st.dataframe(
+                                df_cambios,
+                                column_config={
+                                    "Producto": st.column_config.TextColumn("Producto", width="medium"),
+                                    "Precio Anterior": st.column_config.NumberColumn("Precio Anterior", format="$%.2f"),
+                                    "Precio Actual": st.column_config.NumberColumn("Precio Actual", format="$%.2f"),
+                                    "Diferencia ($)": st.column_config.NumberColumn("Diferencia ($)", format="$%.2f"),
+                                    "Diferencia (%)": st.column_config.NumberColumn("Diferencia (%)", format="%.1f%%"),
+                                },
+                                hide_index=True,
+                                use_container_width=True
+                            )
+                        else:
+                            st.info("✅ No hay cambios de precio en productos comunes")
+                    
+                    with tab3:
+                        # TABLA COMPARATIVA COMPLETA
+                        st.markdown("### 📋 Vista Completa Lado a Lado")
+                        
+                        # Merge completo
+                        df_comp = df_actual.merge(
+                            df_guardado, 
+                            on="Producto", 
+                            how="outer", 
+                            suffixes=(" (Actual)", " (Guardado)")
+                        )
+                        
+                        st.dataframe(df_comp, use_container_width=True, hide_index=True)
+                        
+                        # Opción de descarga
+                        csv_comparacion = df_comp.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            label="📥 Descargar Comparación CSV",
+                            data=csv_comparacion,
+                            file_name=f'comparacion_{escenario_comparar}_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.csv',
+                            mime='text/csv',
+                            use_container_width=True
+                        )
+
+
 # ============================================================================
 # CÓDIGO DEL SIDEBAR - SIN SISTEMA DE CONFIGURACIONES GUARDADAS
 # ============================================================================
