@@ -863,32 +863,32 @@ with st.sidebar:
         st.subheader("🎨 Controles de Diseño")
         
         def reset_diseno():
-        st.session_state["slider_nombres"] = 14
-        st.session_state["slider_precios"] = 18
-        st.session_state["slider_pkg"] = 16
-        st.session_state["slider_som"] = 13
-        st.session_state["slider_ancho"] = 0.6
-        st.session_state["slider_alto_barras"] = 1.0
-        st.session_state["slider_opacidad"] = 1.0
-        st.session_state["slider_alto"] = 950
-        st.session_state["slider_espacio"] = 0.03
-        st.session_state["slider_margen_b"] = 400
-        st.session_state["slider_angulo"] = -90
-        st.session_state["custom_colors"] = {}
-        # Resets para grid
-        st.session_state["grid_color"] = "#DCDCDC"
-        st.session_state["grid_grosor"] = 1.0
-        st.session_state["grid_opacidad"] = 0.5
-        st.session_state["grid_estilo"] = "solid"
-        st.session_state["grid_y_visible"] = True
-        st.session_state["grid_x_visible"] = False
-        st.session_state["nticks_y"] = 10
-        st.session_state["grid_layer"] = "below traces"
-        # NUEVOS: Las 3 mejoras
-        st.session_state["slider_sep_nombres"] = 0
-        st.session_state["slider_grosor_precios"] = 700
-        st.session_state["mostrar_eje_pkg"] = False
-            
+            st.session_state["slider_nombres"] = 14
+            st.session_state["slider_precios"] = 18
+            st.session_state["slider_pkg"] = 16
+            st.session_state["slider_som"] = 13
+            st.session_state["slider_ancho"] = 0.6
+            st.session_state["slider_alto_barras"] = 1.0
+            st.session_state["slider_opacidad"] = 1.0
+            st.session_state["slider_alto"] = 950
+            st.session_state["slider_espacio"] = 0.03
+            st.session_state["slider_margen_b"] = 400
+            st.session_state["slider_angulo"] = -90
+            st.session_state["custom_colors"] = {}
+            # Resets para grid
+            st.session_state["grid_color"] = "#DCDCDC"
+            st.session_state["grid_grosor"] = 1.0
+            st.session_state["grid_opacidad"] = 0.5
+            st.session_state["grid_estilo"] = "solid"
+            st.session_state["grid_y_visible"] = True
+            st.session_state["grid_x_visible"] = False
+            st.session_state["nticks_y"] = 10
+            st.session_state["grid_layer"] = "below traces"
+            # NUEVOS: Las 3 mejoras
+            st.session_state["slider_sep_nombres"] = 0
+            st.session_state["slider_grosor_precios"] = 700
+            st.session_state["mostrar_eje_pkg"] = False
+                
             
         if st.button("Resetear Todo el Diseño"):
             reset_diseno()
