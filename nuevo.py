@@ -1757,7 +1757,8 @@ if modo in ["Price Ladder", "Price Pack"]:
         }
     )
 
-    col_btn1, col_btn2 = st.columns([1, 4])
+    # BOTONES DE ACCIÓN
+    col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 3])
 
     with col_btn1:
         if st.button("🗑️ Eliminar seleccionados", type="secondary"):
@@ -1775,39 +1776,49 @@ if modo in ["Price Ladder", "Price Pack"]:
             st.session_state.data.to_csv(DB_FILE, index=False)
             st.success("Filas eliminadas correctamente")
             st.rerun()
-
-    # Detectar cambios en la tabla y registrarlos
-    current_data_no_select = edited_df.drop(columns=["Select", "💬 Comentarios"])
     
-    # Guardar comentarios actualizados
-    for idx, row in edited_df.iterrows():
-        producto = row["Producto"]
-        comentario_nuevo = row["💬 Comentarios"]
-        comentario_anterior = st.session_state["comentarios_productos"].get(producto, "")
-        
-        if comentario_nuevo != comentario_anterior:
-            st.session_state["comentarios_productos"][producto] = comentario_nuevo
-            if comentario_nuevo:  # Solo registrar si hay un comentario nuevo
-                registrar_cambio(producto, "Comentario", comentario_anterior, comentario_nuevo, modo)
-    
-    # Detectar cambios en datos numéricos
-    if not current_data_no_select.equals(st.session_state.data):
-        # Comparar fila por fila para detectar qué cambió
-        for idx, row in current_data_no_select.iterrows():
-            producto = row["Producto"]
-            if producto in st.session_state.data["Producto"].values:
-                old_row = st.session_state.data[st.session_state.data["Producto"] == producto].iloc[0]
+    with col_btn2:
+        # BOTÓN: GUARDAR CAMBIOS
+        if st.button("💾 Guardar Cambios", type="primary"):
+            current_data_no_select = edited_df.drop(columns=["Select", "💬 Comentarios"])
+            
+            # Guardar comentarios actualizados
+            for idx, row in edited_df.iterrows():
+                producto = row["Producto"]
+                comentario_nuevo = row["💬 Comentarios"]
+                comentario_anterior = st.session_state["comentarios_productos"].get(producto, "")
                 
-                # Revisar cada campo
-                for col in ["Precio ($)", "Gramaje (g)", "SOM (%)"]:
-                    if col in row.index and col in old_row.index:
-                        if pd.notna(row[col]) and pd.notna(old_row[col]):
-                            if abs(float(row[col]) - float(old_row[col])) > 0.01:
-                                registrar_cambio(producto, col, old_row[col], row[col], modo)
-        
-        st.session_state.data = calcular_pkg(current_data_no_select, modo)
-        st.session_state.data.to_csv(DB_FILE, index=False)
-        st.rerun()
+                if comentario_nuevo != comentario_anterior:
+                    st.session_state["comentarios_productos"][producto] = comentario_nuevo
+                    if comentario_nuevo:
+                        registrar_cambio(producto, "Comentario", comentario_anterior, comentario_nuevo, modo)
+            
+            # Detectar cambios en datos numéricos
+            if not current_data_no_select.equals(st.session_state.data):
+                # Comparar fila por fila
+                for idx, row in current_data_no_select.iterrows():
+                    producto = row["Producto"]
+                    if producto in st.session_state.data["Producto"].values:
+                        old_row = st.session_state.data[st.session_state.data["Producto"] == producto].iloc[0]
+                        
+                        # Revisar cada campo
+                        for col in ["Precio ($)", "Gramaje (g)", "SOM (%)"]:
+                            if col in row.index and col in old_row.index:
+                                if pd.notna(row[col]) and pd.notna(old_row[col]):
+                                    if abs(float(row[col]) - float(old_row[col])) > 0.01:
+                                        registrar_cambio(producto, col, old_row[col], row[col], modo)
+                
+                st.session_state.data = calcular_pkg(current_data_no_select, modo)
+                st.session_state.data.to_csv(DB_FILE, index=False)
+                st.success("✅ Cambios guardados correctamente!")
+                st.rerun()
+            else:
+                st.info("No hay cambios que guardar")
+    
+    # Indicador visual de cambios pendientes
+    current_data_no_select = edited_df.drop(columns=["Select", "💬 Comentarios"])
+    if not current_data_no_select.equals(st.session_state.data):
+        st.warning("⚠️ **Hay cambios sin guardar.** Presiona el botón '💾 Guardar Cambios' para aplicarlos.")
 
 # --- 6.5 FILTROS DINÁMICOS UNIFICADOS ---
 sel_fab, sel_oca, sel_prod = [], [], []
