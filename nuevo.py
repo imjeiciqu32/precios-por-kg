@@ -1731,28 +1731,11 @@ if modo in ["Price Ladder", "Price Pack"]:
     st.markdown("### 📝 Gestión de Portafolio")
 
     # 🔍 BUSCADOR DE PRODUCTOS
-    col_search, col_clear = st.columns([4, 1])
-        
-    # Inicializar variable de búsqueda si no existe
-    if "search_value" not in st.session_state:
-        st.session_state["search_value"] = ""
-        
-    with col_search:
-        search_term = st.text_input(
-            "🔍 Buscar producto:",
-            placeholder="Escribe el nombre del producto para filtrar...",
-            value=st.session_state["search_value"],
-            key="search_productos"
-        )
-        # Actualizar el valor en session_state
-        st.session_state["search_value"] = search_term
-        
-    with col_clear:
-        st.write("")  # Espaciador para alinear
-        st.write("")  # Espaciador para alinear
-        if st.button("🗑️ Limpiar", key="clear_search", use_container_width=True):
-            st.session_state["search_value"] = ""
-            st.rerun()
+    search_term = st.text_input(
+        "🔍 Buscar producto:",
+        placeholder="Escribe el nombre del producto para filtrar...",
+        key="search_productos"
+    )
 
     # Crear copia con comentarios
     df_with_selections = st.session_state.data.copy()
@@ -1846,6 +1829,45 @@ if modo in ["Price Ladder", "Price Pack"]:
                 st.rerun()
             else:
                 st.info("No hay cambios que guardar")
+    
+    with col_btn3:
+        # BOTÓN: DUPLICAR PRODUCTO
+        with st.expander("📋 Duplicar Producto"):
+            productos_lista = st.session_state.data["Producto"].unique().tolist()
+            producto_duplicar = st.selectbox(
+                "Selecciona producto a duplicar:",
+                productos_lista,
+                key="select_duplicar"
+            )
+            
+            nuevo_nombre = st.text_input(
+                "Nombre del duplicado:",
+                value=f"{producto_duplicar} - COPIA",
+                key="input_duplicar"
+            )
+            
+            if st.button("📋 Duplicar", key="btn_duplicar", use_container_width=True, type="primary"):
+                # Obtener datos del producto original
+                producto_original = st.session_state.data[st.session_state.data["Producto"] == producto_duplicar].iloc[0]
+                
+                # Crear copia
+                nuevo_producto = producto_original.copy()
+                nuevo_producto["Producto"] = nuevo_nombre
+                
+                # Agregar a la tabla
+                st.session_state.data = pd.concat([st.session_state.data, nuevo_producto.to_frame().T], ignore_index=True)
+                st.session_state.data = calcular_pkg(st.session_state.data, modo)
+                st.session_state.data.to_csv(DB_FILE, index=False)
+                
+                # Registrar en historial
+                registrar_cambio(nuevo_nombre, "CREADO", "N/A", f"Duplicado de {producto_duplicar}", modo)
+                
+                # Copiar comentarios si existen
+                if producto_duplicar in st.session_state["comentarios_productos"]:
+                    st.session_state["comentarios_productos"][nuevo_nombre] = st.session_state["comentarios_productos"][producto_duplicar] + " [DUPLICADO]"
+                
+                st.success(f"✅ Producto '{nuevo_nombre}' creado exitosamente!")
+                st.rerun()
     
     # Indicador visual de cambios pendientes
     current_data_no_select = edited_df.drop(columns=["Select", "💬 Comentarios"])
