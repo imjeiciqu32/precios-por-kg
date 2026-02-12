@@ -32,12 +32,6 @@ if "slider_margen_b" not in st.session_state:
     st.session_state["slider_margen_b"] = 400
 if "slider_angulo" not in st.session_state:
     st.session_state["slider_angulo"] = -90
-if "slider_sep_nombres" not in st.session_state:
-    st.session_state["slider_sep_nombres"] = 0
-if "slider_grosor_precios" not in st.session_state:
-    st.session_state["slider_grosor_precios"] = 700
-if "mostrar_eje_pkg" not in st.session_state:
-    st.session_state["mostrar_eje_pkg"] = False
 
 # --- CSS PARA MODO PRESENTACIÓN ---
 def aplicar_modo_presentacion():
@@ -868,14 +862,14 @@ with st.sidebar:
             st.session_state["slider_pkg"] = 16
             st.session_state["slider_som"] = 13
             st.session_state["slider_ancho"] = 0.6
-            st.session_state["slider_alto_barras"] = 1.0
+            st.session_state["slider_alto_barras"] = 1.0  # NUEVO: Alto de barras
             st.session_state["slider_opacidad"] = 1.0
             st.session_state["slider_alto"] = 950
             st.session_state["slider_espacio"] = 0.03
             st.session_state["slider_margen_b"] = 400
             st.session_state["slider_angulo"] = -90
             st.session_state["custom_colors"] = {}
-            # Resets para grid
+            # Resets para grid (CORREGIDOS)
             st.session_state["grid_color"] = "#DCDCDC"
             st.session_state["grid_grosor"] = 1.0
             st.session_state["grid_opacidad"] = 0.5
@@ -883,12 +877,7 @@ with st.sidebar:
             st.session_state["grid_y_visible"] = True
             st.session_state["grid_x_visible"] = False
             st.session_state["nticks_y"] = 10
-            st.session_state["grid_layer"] = "below traces"
-            # NUEVOS: Las 3 mejoras
-            st.session_state["slider_sep_nombres"] = 0
-            st.session_state["slider_grosor_precios"] = 700
-            st.session_state["mostrar_eje_pkg"] = False
-                
+            st.session_state["grid_layer"] = "below traces"  # CORREGIDO
             
         if st.button("Resetear Todo el Diseño"):
             reset_diseno()
@@ -909,24 +898,11 @@ with st.sidebar:
         
         with st.expander("🔡 Tipografía y Texto"):
             t_nombres = st.slider("Tamaño Nombres", 8, 30, value=st.session_state["slider_nombres"], key="slider_nombres")
-            
-            # NUEVO: Separación vertical de nombres
-            separacion_nombres = st.slider("Separación Vertical Nombres", 0, 100, value=st.session_state.get("slider_sep_nombres", 0), key="slider_sep_nombres", help="Mueve los nombres más abajo (valores positivos) o más arriba (valores negativos)")
-            
             t_precios = st.slider("Tamaño Precios ($)", 10, 40, value=st.session_state["slider_precios"], key="slider_precios")
-            
-            # NUEVO: Grosor de texto (negritas)
-            grosor_precios = st.slider("Grosor Texto Precios", 400, 900, value=st.session_state.get("slider_grosor_precios", 700), step=100, key="slider_grosor_precios", help="400=Normal, 700=Bold, 900=Extra Bold")
-            
             t_pkg = st.slider("Tamaño $/Kg", 10, 40, value=st.session_state["slider_pkg"], key="slider_pkg")
             t_som = st.slider("Tamaño SOM (%)", 8, 25, value=st.session_state["slider_som"], key="slider_som")
             angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, value=st.session_state["slider_angulo"], key="slider_angulo")
         
-        # NUEVA SECCIÓN: Ejes y Escalas
-        with st.expander("📊 Ejes y Escalas"):
-            # NUEVO: Mostrar eje Y secundario para $/Kg
-            mostrar_eje_pkg = st.checkbox("Mostrar Eje $/Kg (Derecha)", value=st.session_state.get("mostrar_eje_pkg", False), key="checkbox_eje_pkg", help="Agrega un eje Y secundario en el lado derecho mostrando la escala de $/Kg")
-                
         # === EXPANDER PARA LÍNEAS DIVISORIAS / GRID (CORREGIDO) ===
         with st.expander("📊 Líneas Divisorias (Grid)"):
             st.markdown("#### Visibilidad del Grid")
@@ -1972,7 +1948,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         )
         st.write("")
 
-# --- 7. GRÁFICO FINAL CON TODAS LAS MEJORAS ---
+# --- 7. GRÁFICO FINAL CON CONFIGURACIÓN DE GRID ---
 if not st.session_state.data.empty:
     
     df_p = st.session_state.data.copy()
@@ -2000,18 +1976,7 @@ if not st.session_state.data.empty:
             df_p = df_p.sort_values(by=["O_Oca", "Precio ($)", "Precio por Kg ($)"]).reset_index(drop=True)
             som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-            # Crear subplot con o sin eje secundario
-            if mostrar_eje_pkg:
-                from plotly.subplots import make_subplots
-                fig = make_subplots(
-                    rows=2, cols=1, 
-                    shared_xaxes=True, 
-                    vertical_spacing=espacio_v, 
-                    row_heights=[0.15, 0.85],
-                    specs=[[{"secondary_y": False}], [{"secondary_y": True}]]
-                )
-            else:
-                fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=espacio_v, row_heights=[0.15, 0.85])
+            fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=espacio_v, row_heights=[0.15, 0.85])
 
             fig.add_trace(go.Scatter(
                 x=df_p["Producto"], y=df_p["SOM (%)"], mode="lines+markers+text", 
@@ -2021,13 +1986,14 @@ if not st.session_state.data.empty:
                 textposition="middle center", textfont=dict(size=t_som, color="black"),
             ), row=1, col=1)
 
-            # --- BARRAS DE PRECIO CON NEGRITAS AJUSTABLES ---
+            # --- TRACE 2: BARRAS DE PRECIO CON PERSONALIZACIÓN Y ALTO AJUSTABLE ---
             colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D","PROPUESTA":"#4B207E"}
 
             bar_colors = []
             label_colors_desembolso = []
 
             for _, row in df_p.iterrows():
+                # Color de la barra
                 if row["Producto"] in st.session_state["custom_colors"]:
                     bar_colors.append(st.session_state["custom_colors"][row["Producto"]]["barra"])
                     label_colors_desembolso.append(st.session_state["custom_colors"][row["Producto"]].get("texto_desembolso", "black"))
@@ -2043,33 +2009,32 @@ if not st.session_state.data.empty:
                 else:
                     labels_precios.append(f"${int(p)}")
 
-            # Crear traces de barras con grosor de texto ajustable
+            # Crear un trace por cada producto con alto ajustable
             for idx, (i, row) in enumerate(df_p.iterrows()):
                 fig.add_trace(go.Bar(
                     x=[row["Producto"]], 
-                    y=[row["Precio ($)"]],
+                    y=[row["Precio ($)"] * alto_barras],  # ⭐ APLICAR MULTIPLICADOR DE ALTO
                     marker_color=bar_colors[idx],
                     marker_opacity=opacidad_barras, 
                     width=ancho_barras,
                     text=[f"<b>{labels_precios[idx]}</b>"],
                     textposition="outside", 
-                    textfont=dict(
-                        size=t_precios, 
-                        color=label_colors_desembolso[idx],
-                        family="Arial Black, sans-serif"  # Font más gruesa
-                    ),
+                    textfont=dict(size=t_precios, color=label_colors_desembolso[idx]),
                     showlegend=False,
                     hovertemplate=f"{row['Producto']}<br>Precio: ${row['Precio ($)']}<extra></extra>"
                 ), row=2, col=1)
 
-            # Anotaciones de Precio por Kg
+            # Anotaciones de Precio por Kg dentro de las barras - CON PERSONALIZACIÓN
             for i, row in df_p.iterrows():
+                # Obtener colores personalizados o usar defaults
                 if row["Producto"] in st.session_state["custom_colors"]:
                     custom = st.session_state["custom_colors"][row["Producto"]]
                     color_texto_pkg = custom.get("texto_pkg", "white" if row["Fabricante"] == "BARCEL" else "black")
                     
+                    # Convertir el color del fondo si viene en formato hex
                     fondo_pkg_custom = custom.get("fondo_pkg", None)
                     if fondo_pkg_custom and fondo_pkg_custom.startswith("#"):
+                        # Convertir hex a rgba con opacidad
                         import matplotlib.colors as mcolors
                         try:
                             rgb = mcolors.hex2color(fondo_pkg_custom)
@@ -2086,7 +2051,7 @@ if not st.session_state.data.empty:
                     color_borde_pkg = "#444" if row["Fabricante"] != "BARCEL" else None
                 
                 fig.add_annotation(
-                    x=i, y=2.5,
+                    x=i, y=2.5 * alto_barras,  # ⭐ AJUSTAR POSICIÓN SEGÚN ALTO DE BARRAS
                     text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
                     showarrow=False, 
                     font=dict(size=t_pkg, color=color_texto_pkg),
@@ -2096,58 +2061,53 @@ if not st.session_state.data.empty:
                     row=2, col=1
                 )
 
-            # Líneas divisorias
             for i in range(len(df_p) + 1):
                 fig.add_shape(type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50, xref="x2", yref="paper", line=dict(color="#DDDDDD", width=1))
 
-            # Anotaciones de ocasiones
             for cat in df_p["Ocasión"].unique():
                 idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
                 fig.add_shape(
                     type="line", x0=idx_list[-1] + 0.5, x1=idx_list[-1] + 0.5, 
-                    y0=-0.60 - (separacion_nombres/1000), y1=1, xref="x2", yref="paper", 
+                    y0=-0.60, y1=1, xref="x2", yref="paper", 
                     line=dict(color="#CCCCCC", width=2)
                 )
                 center = (idx_list[0] + idx_list[-1]) / 2
                 fig.add_annotation(
-                    x=center, y=-0.60 - (separacion_nombres/1000), xref="x2", yref="paper", 
+                    x=center, y=-0.60, xref="x2", yref="paper", 
                     text=f"<b>{cat}</b><br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>", 
                     showarrow=False, font=dict(size=16, color="black"), align="center"
                 )
 
             fig.update_layout(
                 height=alto_grafico, width=1950, template="plotly_white", showlegend=False, 
-                margin=dict(t=50, b=margen_b + separacion_nombres, l=40, r=40 if not mostrar_eje_pkg else 80)
+                margin=dict(t=50, b=margen_b, l=40, r=40),
+                # Configuración de layer para el grid
+                xaxis_layer=st.session_state.get("grid_layer", "below traces"),
+                yaxis_layer=st.session_state.get("grid_layer", "below traces"),
             )
             
             fig.update_xaxes(
                 tickangle=angulo_nombres, 
                 tickfont=dict(size=t_nombres, color="black"),
                 showline=False,
+                showgrid=grid_x_visible,
+                gridcolor=grid_color,
+                gridwidth=grid_grosor,
+                griddash=grid_estilo,
                 row=2, col=1
             )
             
-            fig.update_yaxes(showticklabels=False, row=1, col=1)
+            fig.update_yaxes(showticklabels=False, showgrid=False, row=1, col=1)
             fig.update_yaxes(
-                showgrid=True, 
-                gridcolor="#DCDCDC", 
+                showgrid=grid_y_visible,
+                gridcolor=grid_color,
+                gridwidth=grid_grosor,
+                griddash=grid_estilo,
+                nticks=nticks_y,
                 tickprefix="$", 
-                tickfont=dict(size=14),
-                title_text="Precio Desembolso ($)" if mostrar_eje_pkg else None,
+                tickfont=dict(size=14), 
                 row=2, col=1
             )
-            
-            # EJE SECUNDARIO PARA $/KG
-            if mostrar_eje_pkg:
-                fig.update_yaxes(
-                    title_text="Precio por Kg ($)",
-                    showgrid=False,
-                    tickprefix="$",
-                    tickfont=dict(size=12, color="#666"),
-                    range=[0, df_p["Precio por Kg ($)"].max() * 1.2],
-                    secondary_y=True,
-                    row=2, col=1
-                )
             
             st.plotly_chart(fig, use_container_width=True, config={
                 'toImageButtonOptions': {
@@ -2165,14 +2125,9 @@ if not st.session_state.data.empty:
             df_p = df_p.sort_values(by=["O_Can", "Precio ($)"]).reset_index(drop=True)
             
             import plotly.graph_objects as go
-            
-            # Crear figura con o sin eje secundario
-            if mostrar_eje_pkg:
-                from plotly.subplots import make_subplots
-                fig = make_subplots(specs=[[{"secondary_y": True}]])
-            else:
-                fig = go.Figure()
+            fig = go.Figure()
 
+            # ✨ APLICAR COLORES PERSONALIZADOS Y ALTO AJUSTABLE EN PRICE PACK
             bar_colors_pp = []
             for _, row in df_p.iterrows():
                 if row["Producto"] in st.session_state["custom_colors"]:
@@ -2182,7 +2137,7 @@ if not st.session_state.data.empty:
 
             fig.add_trace(go.Bar(
                 x=df_p.index, 
-                y=df_p["Precio por Kg ($)"],
+                y=df_p["Precio por Kg ($)"] * alto_barras,  # ⭐ APLICAR MULTIPLICADOR DE ALTO
                 marker_color=bar_colors_pp,
                 marker_line=dict(color="#D1D1D1", width=1),
                 marker_opacity=opacidad_barras,
@@ -2198,12 +2153,14 @@ if not st.session_state.data.empty:
                     line=dict(color="#EEEEEE", width=1)
                 ) 
 
-            # Etiquetas con grosor ajustable
+            # Iteración para etiquetas y anotaciones - CON PERSONALIZACIÓN COMPLETA
             for i, r in df_p.iterrows():
+                # Obtener colores personalizados
                 if r["Producto"] in st.session_state["custom_colors"]:
                     custom = st.session_state["custom_colors"][r["Producto"]]
                     color_texto_pkg = custom.get("texto_pkg", "#212121")
                     
+                    # Convertir fondo_pkg de hex a rgba si es necesario
                     fondo_pkg_custom = custom.get("fondo_pkg", "rgba(255,255,255,0.9)")
                     if fondo_pkg_custom and fondo_pkg_custom.startswith("#"):
                         import matplotlib.colors as mcolors
@@ -2227,11 +2184,12 @@ if not st.session_state.data.empty:
                     color_fondo_desembolso = "#00B0F0"
                     color_borde_desembolso = "black"
                 
+                # ETIQUETAS PARA $/KG
                 val_pkg_pp = r['Precio por Kg ($)']
                 txt_pkg_pp = f"${val_pkg_pp:,.0f}"
 
                 fig.add_annotation(
-                    x=i, y=r["Precio por Kg ($)"], 
+                    x=i, y=r["Precio por Kg ($)"] * alto_barras,  # ⭐ AJUSTAR SEGÚN ALTO
                     text=f"<b>{txt_pkg_pp}</b>", 
                     yshift=15, 
                     showarrow=False, 
@@ -2241,18 +2199,15 @@ if not st.session_state.data.empty:
                     borderwidth=1
                 )
                 
+                # ETIQUETAS PARA PRECIO DESEMBOLSO
                 p_pp = r['Precio ($)']
                 txt_p_pp = f"${p_pp:.1f}" if p_pp < 10 else f"${int(p_pp)}"
 
                 fig.add_annotation(
-                    x=i, y=15, 
+                    x=i, y=15 * alto_barras,  # ⭐ AJUSTAR SEGÚN ALTO
                     text=f"<b>{txt_p_pp}</b>", 
                     showarrow=False, 
-                    font=dict(
-                        size=t_precios, 
-                        color=color_texto_desembolso,
-                        family="Arial Black, sans-serif"
-                    ),
+                    font=dict(size=t_precios, color=color_texto_desembolso),
                     bgcolor=color_fondo_desembolso, 
                     bordercolor=color_borde_desembolso, 
                     borderwidth=1.5,      
@@ -2264,11 +2219,11 @@ if not st.session_state.data.empty:
                 center = (indices[0] + indices[-1]) / 2
                 fig.add_shape(
                     type="line", x0=indices[-1]+0.5, x1=indices[-1]+0.5, 
-                    y0=-0.6 - (separacion_nombres/1000), y1=1, xref="x", yref="paper", 
+                    y0=-0.6, y1=1, xref="x", yref="paper", 
                     line=dict(color="#CCCCCC", width=1.5) 
                 )
                 fig.add_annotation(
-                    x=center, y=-0.6 - (separacion_nombres/1000), xref="x", yref="paper", 
+                    x=center, y=-0.6, xref="x", yref="paper", 
                     text=cat, 
                     showarrow=False, 
                     font=dict(size=14, color="#424242", family="Verdana")
@@ -2276,33 +2231,31 @@ if not st.session_state.data.empty:
             
             fig.update_layout(
                 height=alto_grafico,
-                margin=dict(b=margen_b + separacion_nombres, t=50, l=50, r=50 if not mostrar_eje_pkg else 100),
+                margin=dict(b=margen_b, t=50, l=50, r=50),
                 template="plotly_white",
+                # Configuración de layer para el grid
+                xaxis_layer=st.session_state.get("grid_layer", "below traces"),
+                yaxis_layer=st.session_state.get("grid_layer", "below traces"),
                 xaxis=dict(
                     tickmode='array', 
                     tickvals=list(df_p.index), 
                     ticktext=["<b>"+str(t)+"</b>" for t in df_p["Producto"]],
                     tickangle=angulo_nombres,
                     tickfont=dict(color="#000000", size=t_nombres, family="Verdana"),
-                    showgrid=False
+                    showgrid=grid_x_visible,
+                    gridcolor=grid_color,
+                    gridwidth=grid_grosor,
+                    griddash=grid_estilo,
                 ),
                 yaxis=dict(
                     tickprefix="$", 
-                    showgrid=True, 
-                    gridcolor="#F5F5F5",
-                    title_text="Precio por Kg ($)" if mostrar_eje_pkg else None
+                    showgrid=grid_y_visible,
+                    gridcolor=grid_color,
+                    gridwidth=grid_grosor,
+                    griddash=grid_estilo,
+                    nticks=nticks_y,
                 )
             )
-            
-            # EJE SECUNDARIO
-            if mostrar_eje_pkg:
-                fig.update_yaxes(
-                    title_text="Precio Desembolso ($)",
-                    showgrid=False,
-                    tickprefix="$",
-                    tickfont=dict(size=12, color="#666"),
-                    secondary_y=True
-                )
     
             st.plotly_chart(fig, use_container_width=True, config={
                 'toImageButtonOptions': {
@@ -6441,3 +6394,4 @@ else:
 # ============================================================================
 # FIN DEL CHATBOT
 # ============================================================================
+        
