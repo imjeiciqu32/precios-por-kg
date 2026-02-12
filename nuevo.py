@@ -1169,8 +1169,47 @@ with st.sidebar:
         """, unsafe_allow_html=True)
         
         with st.container(border=True):
+            # MODO PRESENTACIÓN
+            if st.button("🖥️ Modo Presentación", use_container_width=True, type="primary"):
+                st.session_state["modo_presentacion"] = True
+                st.rerun()
+            
             if st.button("🔄 Refrescar Vista", use_container_width=True):
                 st.rerun()
+            
+            # HISTORIAL DE CAMBIOS
+            with st.expander("📜 Ver Historial de Cambios"):
+                if st.session_state["historial_cambios"]:
+                    df_historial = pd.DataFrame(st.session_state["historial_cambios"])
+                    # Filtrar por modo actual
+                    df_historial_modo = df_historial[df_historial["modo"] == modo]
+                    
+                    if not df_historial_modo.empty:
+                        # Mostrar los últimos 10 cambios
+                        st.dataframe(
+                            df_historial_modo[["fecha", "producto", "campo", "anterior", "nuevo"]].tail(10),
+                            use_container_width=True,
+                            hide_index=True
+                        )
+                        
+                        # Botón para descargar historial completo
+                        csv_historial = df_historial_modo.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            label="📥 Descargar Historial Completo",
+                            data=csv_historial,
+                            file_name=f'historial_{modo.lower().replace(" ", "_")}_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.csv',
+                            mime='text/csv',
+                            use_container_width=True
+                        )
+                        
+                        # Botón para limpiar historial
+                        if st.button("🗑️ Limpiar Historial", use_container_width=True):
+                            st.session_state["historial_cambios"] = []
+                            st.rerun()
+                    else:
+                        st.info(f"No hay cambios registrados para {modo}")
+                else:
+                    st.info("No hay cambios registrados aún")
             
             with st.expander("ℹ️ Información del Sistema"):
                 st.markdown(f"""
@@ -1180,6 +1219,7 @@ with st.sidebar:
                     **Última actualización:** {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
                 """)
             
+            # Reset con confirmación mejorada
             st.markdown("<br>", unsafe_allow_html=True)
             st.markdown("""
                 <div style='background: #FEF2F2; 
@@ -1201,9 +1241,11 @@ with st.sidebar:
                 disabled=not confirmar_reset
             ):
                 if confirmar_reset:
-                    if os.path.exists(DB_FILE): 
+                    if DB_FILE and os.path.exists(DB_FILE): 
                         os.remove(DB_FILE)
                     st.session_state.data = pd.DataFrame(columns=columnas_tabla)
+                    st.session_state["historial_cambios"] = []
+                    st.session_state["comentarios_productos"] = {}
                     st.success("✅ Sistema reseteado correctamente")
                     st.rerun()
                 else:
@@ -1560,34 +1602,212 @@ if modo in ["Price Ladder", "Price Pack"]:
                     st.session_state.form_success = True
                     st.rerun()
 
-# --- 6. EDITOR DE TABLA CON FUNCIÓN DE ELIMINAR ---
+# --- 5.5 CAMBIOS MASIVOS ---
+if modo in ["Price Ladder", "Price Pack"]:
+    st.write("")
+    with st.expander("⚡ Aplicar Cambios Masivos", expanded=False):
+        st.markdown("### 🎯 Herramienta de Modificación Masiva")
+        
+        # Paso 1: Seleccionar filtro
+        st.markdown("**Paso 1: ¿A qué productos aplicar el cambio?**")
+        col_filtro1, col_filtro2 = st.columns(2)
+        
+        with col_filtro1:
+            tipo_filtro = st.radio(
+                "Filtrar por:",
+                ["Todos los productos", "Fabricante", "Ocasión/Canal", "Producto específico"],
+                key="tipo_filtro_masivo"
+            )
+        
+        with col_filtro2:
+            productos_afectados = []
+            
+            if tipo_filtro == "Fabricante" and "Fabricante" in st.session_state.data.columns:
+                fab_seleccionado = st.selectbox("Selecciona fabricante:", st.session_state.data["Fabricante"].unique())
+                productos_afectados = st.session_state.data[st.session_state.data["Fabricante"] == fab_seleccionado]["Producto"].tolist()
+            
+            elif tipo_filtro == "Ocasión/Canal":
+                if modo == "Price Ladder":
+                    oca_seleccionada = st.selectbox("Selecciona ocasión:", st.session_state.data["Ocasión"].unique())
+                    productos_afectados = st.session_state.data[st.session_state.data["Ocasión"] == oca_seleccionada]["Producto"].tolist()
+                else:
+                    canal_seleccionado = st.selectbox("Selecciona canal:", st.session_state.data["Canal"].unique())
+                    productos_afectados = st.session_state.data[st.session_state.data["Canal"] == canal_seleccionado]["Producto"].tolist()
+            
+            elif tipo_filtro == "Producto específico":
+                prod_seleccionado = st.selectbox("Selecciona producto:", st.session_state.data["Producto"].unique())
+                productos_afectados = [prod_seleccionado]
+            
+            else:  # Todos
+                productos_afectados = st.session_state.data["Producto"].tolist()
+        
+        if productos_afectados:
+            st.info(f"📦 Se aplicará a **{len(productos_afectados)}** producto(s)")
+        
+        # Paso 2: Tipo de cambio
+        st.markdown("---")
+        st.markdown("**Paso 2: ¿Qué cambio aplicar?**")
+        
+        tipo_cambio = st.selectbox(
+            "Tipo de modificación:",
+            ["Ajustar precio (%)", "Ajustar precio ($)", "Cambiar gramaje", "Ajustar $/Kg objetivo"],
+            key="tipo_cambio_masivo"
+        )
+        
+        col_valor1, col_valor2 = st.columns(2)
+        
+        with col_valor1:
+            if tipo_cambio == "Ajustar precio (%)":
+                porcentaje = st.number_input("% de cambio (ej: 5 para +5%, -10 para -10%):", value=0.0, step=0.5, key="input_porcentaje")
+            elif tipo_cambio == "Ajustar precio ($)":
+                cantidad = st.number_input("Cantidad a sumar/restar ($):", value=0.0, step=0.5, key="input_cantidad")
+            elif tipo_cambio == "Cambiar gramaje":
+                nuevo_gramaje = st.number_input("Nuevo gramaje (g):", min_value=1.0, value=50.0, step=1.0, key="input_gramaje")
+            else:  # $/Kg objetivo
+                pkg_objetivo = st.number_input("$/Kg objetivo:", min_value=0.0, value=100.0, step=1.0, key="input_pkg")
+        
+        # Vista previa
+        st.markdown("---")
+        st.markdown("**Vista Previa de Cambios:**")
+        
+        if st.button("🔍 Generar Vista Previa", use_container_width=True):
+            df_preview = st.session_state.data[st.session_state.data["Producto"].isin(productos_afectados)].copy()
+            
+            if tipo_cambio == "Ajustar precio (%)":
+                df_preview["Precio Nuevo ($)"] = df_preview["Precio ($)"] * (1 + porcentaje/100)
+                df_preview["Diferencia ($)"] = df_preview["Precio Nuevo ($)"] - df_preview["Precio ($)"]
+            elif tipo_cambio == "Ajustar precio ($)":
+                df_preview["Precio Nuevo ($)"] = df_preview["Precio ($)"] + cantidad
+                df_preview["Diferencia ($)"] = cantidad
+            elif tipo_cambio == "Cambiar gramaje":
+                df_preview["Gramaje Nuevo (g)"] = nuevo_gramaje
+                df_preview["Diferencia (g)"] = nuevo_gramaje - df_preview["Gramaje (g)"]
+            else:  # $/Kg objetivo
+                df_preview["Gramaje Nuevo (g)"] = (df_preview["Precio ($)"] / pkg_objetivo) * 1000
+                df_preview["Diferencia (g)"] = df_preview["Gramaje Nuevo (g)"] - df_preview["Gramaje (g)"]
+            
+            st.dataframe(df_preview, use_container_width=True, hide_index=True)
+        
+        # Aplicar cambios
+        st.markdown("---")
+        
+        col_aplicar, col_cancelar = st.columns(2)
+        
+        with col_aplicar:
+            if st.button("✅ APLICAR CAMBIOS", type="primary", use_container_width=True):
+                for prod in productos_afectados:
+                    mask = st.session_state.data["Producto"] == prod
+                    
+                    if tipo_cambio == "Ajustar precio (%)":
+                        valor_anterior = st.session_state.data.loc[mask, "Precio ($)"].values[0]
+                        valor_nuevo = valor_anterior * (1 + porcentaje/100)
+                        st.session_state.data.loc[mask, "Precio ($)"] = valor_nuevo
+                        registrar_cambio(prod, "Precio ($)", valor_anterior, valor_nuevo, modo)
+                    
+                    elif tipo_cambio == "Ajustar precio ($)":
+                        valor_anterior = st.session_state.data.loc[mask, "Precio ($)"].values[0]
+                        valor_nuevo = valor_anterior + cantidad
+                        st.session_state.data.loc[mask, "Precio ($)"] = valor_nuevo
+                        registrar_cambio(prod, "Precio ($)", valor_anterior, valor_nuevo, modo)
+                    
+                    elif tipo_cambio == "Cambiar gramaje":
+                        valor_anterior = st.session_state.data.loc[mask, "Gramaje (g)"].values[0]
+                        st.session_state.data.loc[mask, "Gramaje (g)"] = nuevo_gramaje
+                        registrar_cambio(prod, "Gramaje (g)", valor_anterior, nuevo_gramaje, modo)
+                    
+                    else:  # $/Kg objetivo
+                        precio_actual = st.session_state.data.loc[mask, "Precio ($)"].values[0]
+                        gramaje_anterior = st.session_state.data.loc[mask, "Gramaje (g)"].values[0]
+                        gramaje_nuevo = (precio_actual / pkg_objetivo) * 1000
+                        st.session_state.data.loc[mask, "Gramaje (g)"] = gramaje_nuevo
+                        registrar_cambio(prod, "Gramaje (g)", gramaje_anterior, gramaje_nuevo, modo)
+                
+                # Recalcular $/Kg
+                st.session_state.data = calcular_pkg(st.session_state.data, modo)
+                st.session_state.data.to_csv(DB_FILE, index=False)
+                
+                st.success(f"✅ Cambios aplicados a {len(productos_afectados)} producto(s)!")
+                st.rerun()
+
+# --- 6. EDITOR DE TABLA CON COMENTARIOS Y TRACKING ---
 if modo in ["Price Ladder", "Price Pack"]:
     st.markdown("### 📝 Gestión de Portafolio")
 
+    # Crear copia con comentarios
     df_with_selections = st.session_state.data.copy()
     if "Select" not in df_with_selections.columns:
         df_with_selections.insert(0, "Select", False)
+    
+    # Agregar columna de comentarios
+    df_with_selections["💬 Comentarios"] = df_with_selections["Producto"].apply(
+        lambda x: st.session_state["comentarios_productos"].get(x, "")
+    )
 
+    # El editor de datos con comentarios
     edited_df = st.data_editor(
         df_with_selections, 
         num_rows="dynamic",
         use_container_width=True,
         key="portfolio_editor",
-        hide_index=True
+        hide_index=True,
+        column_config={
+            "💬 Comentarios": st.column_config.TextColumn(
+                "💬 Comentarios",
+                help="Agrega notas o comentarios sobre este producto",
+                max_chars=200,
+                width="medium"
+            )
+        }
     )
 
     col_btn1, col_btn2 = st.columns([1, 4])
 
     with col_btn1:
         if st.button("🗑️ Eliminar seleccionados", type="secondary"):
-            df_final = edited_df[edited_df["Select"] == False].drop(columns=["Select"])
+            df_final = edited_df[edited_df["Select"] == False].drop(columns=["Select", "💬 Comentarios"])
+            
+            # Registrar eliminaciones en historial
+            productos_eliminados = edited_df[edited_df["Select"] == True]["Producto"].tolist()
+            for prod in productos_eliminados:
+                registrar_cambio(prod, "ELIMINADO", "Existente", "Eliminado", modo)
+                # Eliminar comentario asociado
+                if prod in st.session_state["comentarios_productos"]:
+                    del st.session_state["comentarios_productos"][prod]
+            
             st.session_state.data = calcular_pkg(df_final, modo)
             st.session_state.data.to_csv(DB_FILE, index=False)
             st.success("Filas eliminadas correctamente")
             st.rerun()
 
-    current_data_no_select = edited_df.drop(columns=["Select"])
+    # Detectar cambios en la tabla y registrarlos
+    current_data_no_select = edited_df.drop(columns=["Select", "💬 Comentarios"])
+    
+    # Guardar comentarios actualizados
+    for idx, row in edited_df.iterrows():
+        producto = row["Producto"]
+        comentario_nuevo = row["💬 Comentarios"]
+        comentario_anterior = st.session_state["comentarios_productos"].get(producto, "")
+        
+        if comentario_nuevo != comentario_anterior:
+            st.session_state["comentarios_productos"][producto] = comentario_nuevo
+            if comentario_nuevo:  # Solo registrar si hay un comentario nuevo
+                registrar_cambio(producto, "Comentario", comentario_anterior, comentario_nuevo, modo)
+    
+    # Detectar cambios en datos numéricos
     if not current_data_no_select.equals(st.session_state.data):
+        # Comparar fila por fila para detectar qué cambió
+        for idx, row in current_data_no_select.iterrows():
+            producto = row["Producto"]
+            if producto in st.session_state.data["Producto"].values:
+                old_row = st.session_state.data[st.session_state.data["Producto"] == producto].iloc[0]
+                
+                # Revisar cada campo
+                for col in ["Precio ($)", "Gramaje (g)", "SOM (%)"]:
+                    if col in row.index and col in old_row.index:
+                        if pd.notna(row[col]) and pd.notna(old_row[col]):
+                            if abs(float(row[col]) - float(old_row[col])) > 0.01:
+                                registrar_cambio(producto, col, old_row[col], row[col], modo)
+        
         st.session_state.data = calcular_pkg(current_data_no_select, modo)
         st.session_state.data.to_csv(DB_FILE, index=False)
         st.rerun()
