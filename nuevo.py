@@ -356,7 +356,7 @@ def importar_datos_macro(token, series_lista):
     
 
 # --- SECCIÓN 2.5: GESTIÓN DE ESCENARIOS ---
-if not st.session_state.data.empty and modo in ["Price Ladder", "Price Pack"]:
+if "data" in st.session_state and not st.session_state.data.empty and modo in ["Price Ladder", "Price Pack"]:
     st.markdown("<br>", unsafe_allow_html=True)
     
     st.markdown("""
