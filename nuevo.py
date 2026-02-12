@@ -550,88 +550,169 @@ if "data" in st.session_state and not st.session_state.data.empty and modo in ["
                             if escenario.get("custom_colors"):
                                 st.session_state["custom_colors"] = escenario["custom_colors"].copy()
                             
-                            st.success(f"✅ Escenario '{escenario['nombre']}' cargado!")
                             guardar_escenarios_a_disco()  # Guardar estado actual
+                            st.success(f"✅ Escenario '{escenario['nombre']}' cargado!")
                             st.rerun()
                     
                     with col3:
                         if st.button("🗑️", key=f"delete_{key}", use_container_width=True, help="Eliminar este escenario"):
                             del st.session_state["escenarios_guardados"][key]
-                            st.success(f"✅ Escenario '{escenario['nombre']}' eliminado")
                             guardar_escenarios_a_disco()
+                            st.success(f"✅ Escenario '{escenario['nombre']}' eliminado")
                             st.rerun()
 
             # Controles de backup
-            if st.session_state["escenarios_guardados"]:
-                st.markdown("---")
-                st.markdown("### 💾 Respaldo y Recuperación")
+            st.markdown("---")
+            st.markdown("### 💾 Respaldo y Recuperación")
+            
+            col_backup1, col_backup2 = st.columns(2)
+            
+            with col_backup1:
+                if st.button("📦 Crear Backup", use_container_width=True, help="Guarda una copia de seguridad con fecha"):
+                    if crear_backup_escenarios():
+                        st.success("✅ Backup creado!")
+                    else:
+                        st.error("❌ Error al crear backup")
+            
+            with col_backup2:
+                # Exportar escenarios como JSON descargable
+                escenarios_export = {}
+                for key, esc in st.session_state["escenarios_guardados"].items():
+                    escenarios_export[key] = {
+                        "nombre": esc["nombre"],
+                        "modo": esc["modo"],
+                        "data": esc["data"].to_dict('records'),
+                        "fecha": esc["fecha"],
+                        "num_productos": esc["num_productos"],
+                        "custom_colors": esc.get("custom_colors", {})
+                    }
                 
-                col_backup1, col_backup2 = st.columns(2)
-                
-                with col_backup1:
-                    if st.button("📦 Crear Backup", use_container_width=True, help="Guarda una copia de seguridad con fecha"):
-                        if crear_backup_escenarios():
-                            st.success("✅ Backup creado!")
-                        else:
-                            st.error("❌ Error al crear backup")
-                
-                with col_backup2:
-                    # Exportar escenarios como JSON descargable
-                    escenarios_export = {}
-                    for key, esc in st.session_state["escenarios_guardados"].items():
-                        escenarios_export[key] = {
-                            "nombre": esc["nombre"],
-                            "modo": esc["modo"],
-                            "data": esc["data"].to_dict('records'),
-                            "fecha": esc["fecha"],
-                            "num_productos": esc["num_productos"],
-                            "custom_colors": esc.get("custom_colors", {})
+                json_str = json.dumps(escenarios_export, ensure_ascii=False, indent=2)
+                st.download_button(
+                    label="📥 Descargar JSON",
+                    data=json_str,
+                    file_name=f"escenarios_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                    mime="application/json",
+                    use_container_width=True
+                )
+            
+            # 🆕 VER Y RESTAURAR BACKUPS
+            with st.expander("🗂️ Ver Backups Guardados"):
+                if os.path.exists("backups_escenarios"):
+                    archivos_backup = sorted(
+                        [f for f in os.listdir("backups_escenarios") if f.endswith('.json')],
+                        reverse=True  # Más recientes primero
+                    )
+                    
+                    if archivos_backup:
+                        st.markdown(f"**{len(archivos_backup)} backup(s) disponible(s):**")
+                        
+                        for archivo in archivos_backup:
+                            # Extraer fecha del nombre del archivo
+                            try:
+                                fecha_str = archivo.replace("escenarios_", "").replace(".json", "")
+                                fecha_obj = datetime.strptime(fecha_str, '%Y%m%d_%H%M%S')
+                                fecha_legible = fecha_obj.strftime('%d/%m/%Y %H:%M:%S')
+                            except:
+                                fecha_legible = archivo
+                            
+                            col_info, col_restaurar, col_descargar = st.columns([3, 1, 1])
+                            
+                            with col_info:
+                                st.caption(f"📅 {fecha_legible}")
+                            
+                            with col_restaurar:
+                                if st.button("♻️", key=f"restore_{archivo}", help="Restaurar este backup"):
+                                    try:
+                                        # Leer el backup
+                                        with open(f"backups_escenarios/{archivo}", "r", encoding="utf-8") as f:
+                                            escenarios_backup = json.load(f)
+                                        
+                                        # Reconstruir escenarios
+                                        escenarios_restaurados = {}
+                                        for key, escenario in escenarios_backup.items():
+                                            escenarios_restaurados[key] = {
+                                                "nombre": escenario["nombre"],
+                                                "modo": escenario["modo"],
+                                                "data": pd.DataFrame(escenario["data"]),
+                                                "fecha": escenario["fecha"],
+                                                "num_productos": escenario["num_productos"],
+                                                "custom_colors": escenario.get("custom_colors", {})
+                                            }
+                                        
+                                        # Reemplazar escenarios actuales
+                                        st.session_state["escenarios_guardados"] = escenarios_restaurados
+                                        guardar_escenarios_a_disco()
+                                        
+                                        st.success(f"✅ Backup restaurado: {len(escenarios_restaurados)} escenarios")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"❌ Error restaurando: {e}")
+                            
+                            with col_descargar:
+                                # Descargar backup específico
+                                with open(f"backups_escenarios/{archivo}", "r", encoding="utf-8") as f:
+                                    backup_content = f.read()
+                                
+                                st.download_button(
+                                    label="⬇️",
+                                    data=backup_content,
+                                    file_name=archivo,
+                                    mime="application/json",
+                                    key=f"download_{archivo}",
+                                    help="Descargar este backup"
+                                )
+                        
+                        # Opción de eliminar backups antiguos
+                        st.markdown("---")
+                        if st.button("🗑️ Eliminar TODOS los backups", type="secondary", use_container_width=True):
+                            try:
+                                import shutil
+                                shutil.rmtree("backups_escenarios")
+                                st.success("✅ Todos los backups eliminados")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Error: {e}")
+                    else:
+                        st.info("No hay backups guardados aún")
+                else:
+                    st.info("No hay backups guardados aún. Presiona 'Crear Backup' para guardar uno.")
+            
+            # Importar escenarios desde archivo
+            st.markdown("---")
+            st.markdown("**📂 Importar Escenarios:**")
+            uploaded_json = st.file_uploader(
+                "Subir archivo JSON de escenarios",
+                type=['json'],
+                key="upload_escenarios",
+                help="Importar escenarios desde un archivo JSON descargado previamente"
+            )
+            
+            if uploaded_json:
+                try:
+                    escenarios_importados = json.load(uploaded_json)
+                    
+                    # Reconstruir con DataFrames
+                    for key, escenario in escenarios_importados.items():
+                        st.session_state["escenarios_guardados"][key] = {
+                            "nombre": escenario["nombre"],
+                            "modo": escenario["modo"],
+                            "data": pd.DataFrame(escenario["data"]),
+                            "fecha": escenario["fecha"],
+                            "num_productos": escenario["num_productos"],
+                            "custom_colors": escenario.get("custom_colors", {})
                         }
                     
-                    json_str = json.dumps(escenarios_export, ensure_ascii=False, indent=2)
-                    st.download_button(
-                        label="📥 Descargar JSON",
-                        data=json_str,
-                        file_name=f"escenarios_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                        mime="application/json",
-                        use_container_width=True
-                    )
-                
-                # Importar escenarios
-                st.markdown("**Importar Escenarios:**")
-                uploaded_json = st.file_uploader(
-                    "Subir archivo JSON de escenarios",
-                    type=['json'],
-                    key="upload_escenarios"
-                )
-                
-                if uploaded_json:
-                    try:
-                        escenarios_importados = json.load(uploaded_json)
-                        
-                        # Reconstruir con DataFrames
-                        for key, escenario in escenarios_importados.items():
-                            st.session_state["escenarios_guardados"][key] = {
-                                "nombre": escenario["nombre"],
-                                "modo": escenario["modo"],
-                                "data": pd.DataFrame(escenario["data"]),
-                                "fecha": escenario["fecha"],
-                                "num_productos": escenario["num_productos"],
-                                "custom_colors": escenario.get("custom_colors", {})
-                            }
-                        
-                        guardar_escenarios_a_disco()
-                        st.success(f"✅ {len(escenarios_importados)} escenarios importados!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"❌ Error importando: {e}")
-
+                    guardar_escenarios_a_disco()
+                    st.success(f"✅ {len(escenarios_importados)} escenarios importados!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Error importando: {e}")
             
-            
-            # Opción de exportar todos los escenarios
+            # Opción de exportar todos los escenarios como Excel
             st.markdown("---")
             
-            if st.button("📥 Exportar Todos los Escenarios", use_container_width=True, type="secondary"):
+            if st.button("📥 Exportar Todos los Escenarios (Excel)", use_container_width=True, type="secondary"):
                 # Crear un archivo con todos los escenarios
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
