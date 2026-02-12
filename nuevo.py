@@ -1730,8 +1730,33 @@ if modo in ["Price Ladder", "Price Pack"]:
 if modo in ["Price Ladder", "Price Pack"]:
     st.markdown("### 📝 Gestión de Portafolio")
 
+    # 🔍 BUSCADOR DE PRODUCTOS
+    col_search, col_clear = st.columns([4, 1])
+    
+    with col_search:
+        search_term = st.text_input(
+            "🔍 Buscar producto:",
+            placeholder="Escribe el nombre del producto para filtrar...",
+            key="search_productos"
+        )
+    
+    with col_clear:
+        st.write("")  # Espaciador para alinear
+        st.write("")  # Espaciador para alinear
+        if st.button("🗑️ Limpiar", key="clear_search", use_container_width=True):
+            st.session_state["search_productos"] = ""
+            st.rerun()
+
     # Crear copia con comentarios
     df_with_selections = st.session_state.data.copy()
+    
+    # APLICAR FILTRO DE BÚSQUEDA
+    if search_term:
+        df_with_selections = df_with_selections[
+            df_with_selections["Producto"].str.contains(search_term, case=False, na=False)
+        ]
+        st.info(f"🔍 Mostrando **{len(df_with_selections)}** productos que coinciden con '{search_term}'")
+    
     if "Select" not in df_with_selections.columns:
         df_with_selections.insert(0, "Select", False)
     
@@ -1819,7 +1844,7 @@ if modo in ["Price Ladder", "Price Pack"]:
     current_data_no_select = edited_df.drop(columns=["Select", "💬 Comentarios"])
     if not current_data_no_select.equals(st.session_state.data):
         st.warning("⚠️ **Hay cambios sin guardar.** Presiona el botón '💾 Guardar Cambios' para aplicarlos.")
-
+        
 # --- 6.5 FILTROS DINÁMICOS UNIFICADOS ---
 sel_fab, sel_oca, sel_prod = [], [], []
 sel_canal_pp, sel_prod_pp = [], []
