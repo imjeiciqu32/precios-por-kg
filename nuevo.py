@@ -124,7 +124,7 @@ aplicar_modo_presentacion()
     
 TOKEN_BANXICO = "c668242067560df5be4f797a7137dd88c2a1571937fe7c82b567cceffc09b20a"
 FECHA_INICIO_FILTRO = "2020-01-01"
-FECHA_FIN_FILTRO = "2025-12-31"
+FECHA_FIN_FILTRO = "2026-12-31"
 
 SERIES_A_CONSULTAR = [
     # =====================================================================
