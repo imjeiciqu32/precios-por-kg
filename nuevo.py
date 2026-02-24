@@ -87,7 +87,7 @@ if "slider_nombres" not in st.session_state:
 if "slider_precios" not in st.session_state:
     st.session_state["slider_precios"] = 18
 if "slider_pkg" not in st.session_state:
-    st.session_state["slider_pkg"] = 18
+    st.session_state["slider_pkg"] = 15
 if "slider_som" not in st.session_state:
     st.session_state["slider_som"] = 15
 if "slider_ancho" not in st.session_state:
