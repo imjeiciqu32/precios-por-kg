@@ -646,7 +646,7 @@ PLANTILLAS = {
         {"Producto": "SURTIDO DE SABRITAS SABRINEGOCIO 43P (SAMS)", "Fabricante": "SABRITAS", "Ocasión": "B2B", "Precio ($)": 479.77, "Gramaje (g)": 1788, "SOM (%)": 0.0},
         {"Producto": "DORITOS NACHO 25P - 54G (SAMS)", "Fabricante": "SABRITAS", "Ocasión": "B2B", "Precio ($)": 475.69, "Gramaje (g)": 1350, "SOM (%)": 0.0},
         {"Producto": "SURTIDO DE SABRITAS 30P (COSTCO) ", "Fabricante": "SABRITAS", "Ocasión": "B2B", "Precio ($)": 419.0, "Gramaje (g)": 1314, "SOM (%)": 0.0},
-        {"Producto": "MIX BARCEL 27P  (SAMS)", "Fabricante": "SABRITAS", "Ocasión": "B2B", "Precio ($)": 295.0, "Gramaje (g)": 1362, "SOM (%)": 0.0},
+        {"Producto": "MIX BARCEL 27P  (SAMS)", "Fabricante": "BARCEL", "Ocasión": "B2B", "Precio ($)": 295.0, "Gramaje (g)": 1362, "SOM (%)": 0.0},
 
     ],
    
