@@ -295,17 +295,6 @@ PLANTILLAS = {
    ],
    # 15. PLANTILLA PARA AS - CHICHARRÓN
    "AS - CHICHARRÓN": [
-       # INDIVIDUAL
-       {"Producto": "Encanto Chicharron De Cerdo 40g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 17.0, "Gramaje (g)": 40, "SOM (%)": 4.0},
-       {"Producto": "Leo Chicharron De Cerdo 35g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 17.0, "Gramaje (g)": 35, "SOM (%)": 9.0},
-       {"Producto": "Bokados Chicharron De Cerdo 30g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 17.0, "Gramaje (g)": 30, "SOM (%)": 7.2},
-       {"Producto": "Barcel Chicharron De Cerdo 30g", "Fabricante": "BARCEL", "Ocasión": "INDIVIDUAL", "Precio ($)": 18.0, "Gramaje (g)": 30, "SOM (%)": 10.3},
-       {"Producto": "Sabritas Chicharron De Cerdo 30g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 30, "SOM (%)": 35.4},
-       {"Producto": "Leo Chicharron De Cerdo 60g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 25.0, "Gramaje (g)": 60, "SOM (%)": 1.0},
-       {"Producto": "Bokados Chicharron De Cerdo 55g", "Fabricante": "OTROS", "Ocasión": "INDIVIDUAL", "Precio ($)": 25.0, "Gramaje (g)": 55, "SOM (%)": 3.1},
-       
-       # HAMBRE
-       {"Producto": "Barcel Chicharron De Cerdo 70g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 35.0, "Gramaje (g)": 70, "SOM (%)": 4.5},
        {"Producto": "Otras Marcas 70g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 25.0, "Gramaje (g)": 70, "SOM (%)": 11.4},
        {"Producto": "Bokados Chicharron De Cerdo 67g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 35.0, "Gramaje (g)": 67, "SOM (%)": 3.4},
        {"Producto": "Sabritas Chicharron De Cerdo 70g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 37.0, "Gramaje (g)": 70, "SOM (%)": 4.7},
