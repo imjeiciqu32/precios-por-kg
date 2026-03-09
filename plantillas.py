@@ -638,7 +638,36 @@ PLANTILLAS = {
         {"Producto": "MIX BARCEL 27P  (SAMS)", "Fabricante": "BARCEL", "Ocasión": "B2B", "Precio ($)": 295.0, "Gramaje (g)": 1362, "SOM (%)": 0.0},
 
     ],
+
    
-   
+   "CLUBES - PAPA": [
+        # REUNIÓN
+        {"Producto": "SABRITAS 255G (SAMS)",                 "Fabricante": "SABRITAS",      "Ocasión": "REUNIÓN",        "Precio ($)": 64.0,   "Gramaje (g)": 255, "SOM (%)": 0.0},
+        {"Producto": "RUFFLES 280G (SAMS)",                  "Fabricante": "SABRITAS",      "Ocasión": "REUNIÓN",        "Precio ($)": 64.0,   "Gramaje (g)": 280, "SOM (%)": 0.0},
+
+        # TRANSFORMADOR
+        {"Producto": "MEMBER'S MARK PAPAS 500G (SAMS)",             "Fabricante": "MEMBER'S MARK", "Ocasión": "TRANSFORMADOR",  "Precio ($)": 111.5,  "Gramaje (g)": 500, "SOM (%)": 0.0},
+        {"Producto": "CHIPS JALAPEÑO Y FUEGO 500G (SAMS)","Fabricante": "SABRITAS",     "Ocasión": "TRANSFORMADOR",  "Precio ($)": 125.0,  "Gramaje (g)": 500, "SOM (%)": 0.0},
+        {"Producto": "CHIPS SAL 500G (CITY)",           "Fabricante": "SABRITAS",      "Ocasión": "TRANSFORMADOR",  "Precio ($)": 138.0,  "Gramaje (g)": 500, "SOM (%)": 0.0},
+        {"Producto": "CHIPS JALAPEÑO 656G (SAMS)",                  "Fabricante": "SABRITAS",      "Ocasión": "TRANSFORMADOR",  "Precio ($)": 155.0,  "Gramaje (g)": 656, "SOM (%)": 0.0},
+        {"Producto": "RUFFLES QUESO 395G (COSTCO)",          "Fabricante": "SABRITAS",      "Ocasión": "TRANSFORMADOR",  "Precio ($)": 159.0,  "Gramaje (g)": 395, "SOM (%)": 0.0},
+        {"Producto": "RECETA CRUJIENTE 490G (COSTCO)",          "Fabricante": "SABRITAS",      "Ocasión": "TRANSFORMADOR",  "Precio ($)": 179.0,  "Gramaje (g)": 490, "SOM (%)": 0.0},
+        {"Producto": "CHIPS SAL 800G",                       "Fabricante": "SABRITAS",      "Ocasión": "TRANSFORMADOR",  "Precio ($)": 195.0,  "Gramaje (g)": 800, "SOM (%)": 0.0},
+        {"Producto": "PAPAS FRITAS LAS NORIAS 810G (SAMS)",         "Fabricante": "LAS NORIAS",    "Ocasión": "TRANSFORMADOR",  "Precio ($)": 204.0,  "Gramaje (g)": 810, "SOM (%)": 0.0},
+        {"Producto": "CHIPS 4 PACK (4*170G) 680G (COSTCO)",           "Fabricante": "SABRITAS",      "Ocasión": "TRANSFORMADOR",  "Precio ($)": 206.0,  "Gramaje (g)": 680, "SOM (%)": 0.0},
+   ],
+
+   "CLUBES - MAIZ": [
+        # REUNIÓN
+        {"Producto": "RANCHERITOS 350G",          "Fabricante": "SABRITAS", "Ocasión": "REUNIÓN",        "Precio ($)": 64.0,  "Gramaje (g)": 350, "SOM (%)": 0.0},
+        {"Producto": "DORITOS (SAMS) 340G",       "Fabricante": "SABRITAS", "Ocasión": "REUNIÓN",        "Precio ($)": 64.0,  "Gramaje (g)": 340, "SOM (%)": 0.0},
+        {"Producto": "TOSTITOS 335G",             "Fabricante": "SABRITAS", "Ocasión": "REUNIÓN",        "Precio ($)": 67.0,  "Gramaje (g)": 335, "SOM (%)": 0.0},
+
+        # TRANSFORMADOR
+        {"Producto": "TAKIS FUEGO 500G",           "Fabricante": "BARCEL",   "Ocasión": "TRANSFORMADOR",  "Precio ($)": 110.0, "Gramaje (g)": 500, "SOM (%)": 0.0},
+        {"Producto": "TAKIS FUEGO 700G",           "Fabricante": "BARCEL",   "Ocasión": "TRANSFORMADOR",  "Precio ($)": 130.0, "Gramaje (g)": 700, "SOM (%)": 0.0},
+        {"Producto": "DORITOS 850G",               "Fabricante": "SABRITAS", "Ocasión": "TRANSFORMADOR",  "Precio ($)": 159.0, "Gramaje (g)": 850, "SOM (%)": 0.0},
+    ]
+ 
 
 }
