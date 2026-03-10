@@ -647,14 +647,14 @@ PLANTILLAS = {
 
         # TRANSFORMADOR
         {"Producto": "MEMBER'S MARK PAPAS 500G (SAMS)",             "Fabricante": "MEMBER'S MARK", "Ocasión": "TRANSFORMADOR",  "Precio ($)": 111.5,  "Gramaje (g)": 500, "SOM (%)": 0.0},
-        {"Producto": "CHIPS JALAPEÑO Y FUEGO 500G (SAMS)","Fabricante": "SABRITAS",     "Ocasión": "TRANSFORMADOR",  "Precio ($)": 125.0,  "Gramaje (g)": 500, "SOM (%)": 0.0},
-        {"Producto": "CHIPS SAL 500G (CITY)",           "Fabricante": "SABRITAS",      "Ocasión": "TRANSFORMADOR",  "Precio ($)": 138.0,  "Gramaje (g)": 500, "SOM (%)": 0.0},
-        {"Producto": "CHIPS JALAPEÑO 656G (SAMS)",                  "Fabricante": "SABRITAS",      "Ocasión": "TRANSFORMADOR",  "Precio ($)": 155.0,  "Gramaje (g)": 656, "SOM (%)": 0.0},
+        {"Producto": "CHIPS JALAPEÑO Y FUEGO 500G (SAMS)","Fabricante": "BARCEL",     "Ocasión": "TRANSFORMADOR",  "Precio ($)": 125.0,  "Gramaje (g)": 500, "SOM (%)": 0.0},
+        {"Producto": "CHIPS SAL 500G (CITY)",           "Fabricante": "BARCEL",      "Ocasión": "TRANSFORMADOR",  "Precio ($)": 138.0,  "Gramaje (g)": 500, "SOM (%)": 0.0},
+        {"Producto": "CHIPS JALAPEÑO 656G (SAMS)",                  "Fabricante": "BARCEL",      "Ocasión": "TRANSFORMADOR",  "Precio ($)": 155.0,  "Gramaje (g)": 656, "SOM (%)": 0.0},
         {"Producto": "RUFFLES QUESO 395G (COSTCO)",          "Fabricante": "SABRITAS",      "Ocasión": "TRANSFORMADOR",  "Precio ($)": 159.0,  "Gramaje (g)": 395, "SOM (%)": 0.0},
         {"Producto": "RECETA CRUJIENTE 490G (COSTCO)",          "Fabricante": "SABRITAS",      "Ocasión": "TRANSFORMADOR",  "Precio ($)": 179.0,  "Gramaje (g)": 490, "SOM (%)": 0.0},
-        {"Producto": "CHIPS SAL 800G",                       "Fabricante": "SABRITAS",      "Ocasión": "TRANSFORMADOR",  "Precio ($)": 195.0,  "Gramaje (g)": 800, "SOM (%)": 0.0},
+        {"Producto": "CHIPS SAL 800G",                       "Fabricante": "BARCEL",      "Ocasión": "TRANSFORMADOR",  "Precio ($)": 195.0,  "Gramaje (g)": 800, "SOM (%)": 0.0},
         {"Producto": "PAPAS FRITAS LAS NORIAS 810G (SAMS)",         "Fabricante": "LAS NORIAS",    "Ocasión": "TRANSFORMADOR",  "Precio ($)": 204.0,  "Gramaje (g)": 810, "SOM (%)": 0.0},
-        {"Producto": "CHIPS 4 PACK (4*170G) 680G (COSTCO)",           "Fabricante": "SABRITAS",      "Ocasión": "TRANSFORMADOR",  "Precio ($)": 206.0,  "Gramaje (g)": 680, "SOM (%)": 0.0},
+        {"Producto": "CHIPS 4 PACK (4*170G) 680G (COSTCO)",           "Fabricante": "BARCEL",      "Ocasión": "TRANSFORMADOR",  "Precio ($)": 206.0,  "Gramaje (g)": 680, "SOM (%)": 0.0},
    ],
 
    "CLUBES - MAIZ": [
