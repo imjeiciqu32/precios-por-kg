@@ -67,7 +67,7 @@ PLANTILLAS = {
     {"Producto": "Doritos Mix 90g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 22.0, "Gramaje (g)": 90, "SOM (%)": 1.1},
     {"Producto": "Cheetos Mix 90g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 22.0, "Gramaje (g)": 90, "SOM (%)": 1.2},   
     {"Producto": "Paketaxo 81g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 22.0, "Gramaje (g)": 81, "SOM (%)": 30.4},
-    {"Producto": "Paketaxo Dark 88g", "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 22.0, "Gramaje (g)": 88, "SOM (%)": 5.2},  
+    {"Producto": "Paketaxo Dark 88g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 22.0, "Gramaje (g)": 88, "SOM (%)": 5.2},  
     {"Producto": "Ruffles Mix 70g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 22.0, "Gramaje (g)": 70, "SOM (%)": 1.7},
     {"Producto": "Paketaxo Mezcladito 110g", "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR", "Precio ($)": 25.0, "Gramaje (g)": 110, "SOM (%)": 0.0},
     {"Producto": "Big Mix 185g", "Fabricante": "BARCEL", "Ocasión": "FAMILIAR", "Precio ($)": 40.0, "Gramaje (g)": 185, "SOM (%)": 0.4},
