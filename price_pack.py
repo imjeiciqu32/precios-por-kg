@@ -75,7 +75,7 @@ PLANTILLAS_PP = {
     "BIG MIX": [
         # --- DETALLE (DT) ---
         {"Canal": "DETALLE", "Familia": "Big Mix", "Producto": "Big Mix 38g", "Precio ($)": 10.0, "Gramaje (g)": 38},
-        {"Canal": "DETALLE", "Familia": "Big Mix", "Producto": "Big Mix 80g", "Precio ($)": 20.0, "Gramaje (g)": 80},
+        {"Canal": "DETALLE", "Familia": "Big Mix", "Producto": "Big Mix 80g", "Precio ($)": 22.0, "Gramaje (g)": 80},
         {"Canal": "DETALLE", "Familia": "Big Mix", "Producto": "Big Mix 185g", "Precio ($)": 40.0, "Gramaje (g)": 185},
         
         # --- AUTOSERVICIO (AS) ---
