@@ -62,7 +62,7 @@ PLANTILLAS = {
     {"Producto": "Encanto 80g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 15.0, "Gramaje (g)": 80, "SOM (%)": 1.6},
     {"Producto": "Los Coyotes 75g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 15.0, "Gramaje (g)": 75, "SOM (%)": 0.4},
     {"Producto": "Mix Bokados 85g", "Fabricante": "OTROS", "Ocasión": "HAMBRE", "Precio ($)": 17.0, "Gramaje (g)": 85, "SOM (%)": 3.0},
-    {"Producto": "Big Mix 80g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 20.0, "Gramaje (g)": 80, "SOM (%)": 24.3}, 
+    {"Producto": "Big Mix 80g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 22.0, "Gramaje (g)": 80, "SOM (%)": 24.3}, 
     {"Producto": "Takis Duoz 70g", "Fabricante": "BARCEL", "Ocasión": "HAMBRE", "Precio ($)": 20.0, "Gramaje (g)": 70, "SOM (%)": 0.0},
     {"Producto": "Doritos Mix 90g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 22.0, "Gramaje (g)": 90, "SOM (%)": 1.1},
     {"Producto": "Cheetos Mix 90g", "Fabricante": "SABRITAS", "Ocasión": "HAMBRE", "Precio ($)": 22.0, "Gramaje (g)": 90, "SOM (%)": 1.2},   
