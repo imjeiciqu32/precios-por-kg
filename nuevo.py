@@ -122,7 +122,7 @@ def aplicar_modo_presentacion():
 # Aplicar CSS si está en modo presentación
 aplicar_modo_presentacion()
     
-TOKEN_BANXICO = "c668242067560df5be4f797a7137dd88c2a1571937fe7c82b567cceffc09b20a"
+TOKEN_BANXICO = "e3980208bf01ec653aba9aee3c2d6f70f6ae8b066d2545e379b9e0ef92e9de25"
 FECHA_INICIO_FILTRO = "2020-01-01"
 FECHA_FIN_FILTRO = "2027-12-31"
 
