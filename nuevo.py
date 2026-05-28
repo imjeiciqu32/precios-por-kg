@@ -420,37 +420,63 @@ def procesar_datos_piramide(df):
     df_py["Tier"] = df_py["Idx_P"].apply(definir_tier)
     return df_py
 
-# --- FUNCIÓN DE CONSULTA CON CACHÉ ---
+# --- FUNCIÓN DE CONSULTA OPTIMIZADA ---
 @st.cache_data(ttl=86400)
 def importar_datos_macro(token, series_lista):
     headers = {"Accept": "application/json", "Bmx-Token": token}
-    lista_dfs = []
+    
+    # 1. Crear un diccionario para mapear ID de serie a su nombre final
+    mapeo_nombres = {id_serie: nombre for id_serie, nombre in series_lista}
+    
+    # 2. Unir todos los IDs separados por comas
+    ids_concatenados = ",".join(mapeo_nombres.keys())
+    
+    # URL para consultar todas las series juntas
+    url = f"https://www.banxico.org.mx/SieAPIRest/service/v1/series/{ids_concatenados}/datos"
+    
+    try:
+        # Una sola petición para todo
+        response = requests.get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+        
+        series_data = response.json()['bmx']['series']
+        lista_dfs = []
+        
+        # 3. Procesar los datos devueltos por Banxico
+        for s in series_data:
+            id_serie = s['idSerie']
+            nombre_columna = mapeo_nombres.get(id_serie, id_serie)
+            
+            # Verificar si la serie trae datos
+            if 'datos' in s:
+                df_temp = pd.DataFrame(s['datos'])
+                df_temp['fecha'] = pd.to_datetime(df_temp['fecha'], dayfirst=True)
+                df_temp['dato'] = pd.to_numeric(df_temp['dato'].str.replace(',', ''), errors='coerce')
+                
+                df_temp = df_temp.rename(columns={'fecha': 'Fecha', 'dato': nombre_columna})
+                df_temp = df_temp.set_index('Fecha').resample('M').last()
+                lista_dfs.append(df_temp)
+                
+        if lista_dfs:
+            # Combinar todas las series en un solo DataFrame
+            df_final = pd.concat(lista_dfs, axis=1).sort_index()
+            
+            # Filtrar por las fechas que necesitas
+            df_final = df_final.loc[FECHA_INICIO_FILTRO:FECHA_FIN_FILTRO]
+            
+            # Forward fill a las expectativas si existen
+            cols_exp = [c for c in df_final.columns if c.startswith("Exp_")]
+            if cols_exp:
+                df_final[cols_exp] = df_final[cols_exp].ffill()
+                
+            return df_final
 
-    for id_serie, nombre_columna in series_lista:
-        url = f"https://www.banxico.org.mx/SieAPIRest/service/v1/series/{id_serie}/datos"
-        try:
-            response = requests.get(url, headers=headers, timeout=10)
-            response.raise_for_status()
-            observaciones = response.json()['bmx']['series'][0]['datos']
-            
-            df_temp = pd.DataFrame(observaciones)
-            df_temp['fecha'] = pd.to_datetime(df_temp['fecha'], dayfirst=True)
-            df_temp['dato'] = pd.to_numeric(df_temp['dato'].str.replace(',', ''), errors='coerce')
-            
-            df_temp = df_temp.rename(columns={'fecha': 'Fecha', 'dato': nombre_columna})
-            df_temp = df_temp.set_index('Fecha').resample('M').last()
-            lista_dfs.append(df_temp)
-        except:
-            continue
-
-    if lista_dfs:
-        df_final = pd.concat(lista_dfs, axis=1).sort_index()
-        cols_exp = [c for c in df_final.columns if c.startswith("Exp_")]
-        if cols_exp:
-            df_final[cols_exp] = df_final[cols_exp].ffill()
-            
-        return df_final
+    except Exception as e:
+        # Esto te ayudará a ver en los logs de Streamlit si hay otro problema (ej. Token inválido)
+        st.error(f"Error crítico al conectar con la API de Banxico: {e}")
+        
     return None
+
 
 # --- FUNCIÓN PARA REGISTRAR CAMBIOS EN HISTORIAL ---
 def registrar_cambio(producto, campo, valor_anterior, valor_nuevo, modo_app):
