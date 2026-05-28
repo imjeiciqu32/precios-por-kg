@@ -454,7 +454,7 @@ def importar_datos_macro(token, series_lista):
                     df_temp['dato'] = pd.to_numeric(df_temp['dato'].str.replace(',', ''), errors='coerce')
                     
                     df_temp = df_temp.rename(columns={'fecha': 'Fecha', 'dato': nombre_columna})
-                    df_temp = df_temp.set_index('Fecha').resample('M').last()
+                    df_temp = df_temp.set_index('Fecha').resample('ME').last()
                     lista_dfs.append(df_temp)
                     
         except Exception as e:
