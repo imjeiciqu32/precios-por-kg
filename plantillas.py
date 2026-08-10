@@ -1,7 +1,6 @@
 PLANTILLAS = {
     "DT - MAÍZ": [
         {"Producto": "Mini Takis 35g",          "Fabricante": "BARCEL",   "Ocasión": "BITES",      "Precio ($)": 10.0, "Gramaje (g)": 35,  "SOM (%)": 0.7},
-        {"Producto": "Doritos 41g",             "Fabricante": "SABRITAS", "Ocasión": "BITES",      "Precio ($)": 15.0, "Gramaje (g)": 41,  "SOM (%)": 0.3},
         {"Producto": "Churrumais 70g",          "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 17.0, "Gramaje (g)": 70,  "SOM (%)": 3.6},
         {"Producto": "Tostachos 75g",           "Fabricante": "BARCEL",   "Ocasión": "INDIVIDUAL", "Precio ($)": 18.0, "Gramaje (g)": 75,  "SOM (%)": 0.6},
         {"Producto": "Runners 72g",             "Fabricante": "BARCEL",   "Ocasión": "INDIVIDUAL", "Precio ($)": 18.0, "Gramaje (g)": 72,  "SOM (%)": 4.4},
@@ -26,11 +25,9 @@ PLANTILLAS = {
     ],
 
     "DT - PAPA": [
-        {"Producto": "Papa Barcel 28g",           "Fabricante": "BARCEL",   "Ocasión": "BITES",      "Precio ($)": 10.0, "Gramaje (g)": 28,  "SOM (%)": 0.3},
-        {"Producto": "Papatinas 31g",             "Fabricante": "BARCEL",   "Ocasión": "BITES",      "Precio ($)": 16.0, "Gramaje (g)": 31,  "SOM (%)": 1.1},
+        {"Producto": "Papa Barcel 28g",           "Fabricante": "BARCEL",   "Ocasión": "BITES",   "Precio ($)": 10.0, "Gramaje (g)": 28,  "SOM (%)": 0.3},
+        {"Producto": "Papatinas 31g",             "Fabricante": "BARCEL",   "Ocasión": "INDIVIDUAL",  "Precio ($)": 16.0, "Gramaje (g)": 31,  "SOM (%)": 1.1},
         {"Producto": "Chips 42g",                 "Fabricante": "BARCEL",   "Ocasión": "INDIVIDUAL", "Precio ($)": 15.0, "Gramaje (g)": 42,  "SOM (%)": 0.3},
-        {"Producto": "Ruffles Retro 34g",         "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 15.0, "Gramaje (g)": 34,  "SOM (%)": 0.0},
-        {"Producto": "Sabritas Retro 30g",        "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 15.0, "Gramaje (g)": 30,  "SOM (%)": 0.0},
         {"Producto": "Wapas 52g",                 "Fabricante": "BARCEL",   "Ocasión": "INDIVIDUAL", "Precio ($)": 16.0, "Gramaje (g)": 52,  "SOM (%)": 0.4},
         {"Producto": "Papa Barcel 45g",           "Fabricante": "BARCEL",   "Ocasión": "INDIVIDUAL", "Precio ($)": 16.0, "Gramaje (g)": 45,  "SOM (%)": 1.3},
         {"Producto": "Receta Crujiente 57g",      "Fabricante": "SABRITAS", "Ocasión": "INDIVIDUAL", "Precio ($)": 20.0, "Gramaje (g)": 57,  "SOM (%)": 5.7},
@@ -44,8 +41,7 @@ PLANTILLAS = {
         {"Producto": "Ruffles Queso 88g",         "Fabricante": "SABRITAS", "Ocasión": "HAMBRE",     "Precio ($)": 25.0, "Gramaje (g)": 88,  "SOM (%)": 4.1},
         {"Producto": "Receta Crujiente FH 81g",   "Fabricante": "SABRITAS", "Ocasión": "HAMBRE",     "Precio ($)": 25.0, "Gramaje (g)": 81,  "SOM (%)": 2.7},
         {"Producto": "Sabritas 74g",              "Fabricante": "SABRITAS", "Ocasión": "HAMBRE",     "Precio ($)": 25.0, "Gramaje (g)": 74,  "SOM (%)": 2.1},
-        {"Producto": "Papas Sol 100g",            "Fabricante": "OTROS",    "Ocasión": "COMPARTIR",  "Precio ($)": 20.0, "Gramaje (g)": 100, "SOM (%)": 4.0},
-        {"Producto": "Barcel La Feria 100g",      "Fabricante": "BARCEL",   "Ocasión": "COMPARTIR",  "Precio ($)": 20.0, "Gramaje (g)": 100, "SOM (%)": 0.0},
+        {"Producto": "Papas Sol 100g",            "Fabricante": "OTROS",    "Ocasión": "HAMBRE",  "Precio ($)": 20.0, "Gramaje (g)": 100, "SOM (%)": 4.0},
         {"Producto": "Ruffles Queso 145g",        "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR",  "Precio ($)": 42.0, "Gramaje (g)": 145, "SOM (%)": 0.6},
         {"Producto": "Sabritas 105g",             "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR",  "Precio ($)": 42.0, "Gramaje (g)": 105, "SOM (%)": 0.5},
         {"Producto": "Receta Crujiente 100g",     "Fabricante": "SABRITAS", "Ocasión": "COMPARTIR",  "Precio ($)": 42.0, "Gramaje (g)": 100, "SOM (%)": 0.1},
