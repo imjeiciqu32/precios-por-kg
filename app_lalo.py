@@ -1333,7 +1333,7 @@ with st.sidebar:
                 st.session_state["grid_grosor"] = 1.30
                 st.session_state["nticks_y"] = 16
                 st.session_state["grid_x_visible"] = False
-            elif nombre_preset == "Presentación Cliente":
+            elif nombre_preset == "Pantalla completa":
                 st.session_state["slider_nombres"] = 18
                 st.session_state["slider_precios"] = 22
                 st.session_state["slider_pkg"] = 18
@@ -1346,23 +1346,12 @@ with st.sidebar:
                 st.session_state["nticks_y"] = 12
                 st.session_state["grid_x_visible"] = False
                 st.session_state["modo_presentacion"] = True
-            elif nombre_preset == "Debug (revisión interna)":
-                st.session_state["slider_nombres"] = 12
-                st.session_state["slider_precios"] = 14
-                st.session_state["slider_ancho"] = 0.7
-                st.session_state["slider_alto"] = 900
-                st.session_state["slider_margen_b"] = 420
-                st.session_state["grid_color"] = "#333333"
-                st.session_state["grid_grosor"] = 1.0
-                st.session_state["nticks_y"] = 24
-                st.session_state["grid_x_visible"] = True
-                st.session_state["modo_presentacion"] = False
 
         col_preset1, col_preset2 = st.columns([3, 1])
         with col_preset1:
             preset_elegido = st.selectbox(
                 "Preset de estilo",
-                ["-- Manual (como está) --", "Ejecutivo", "Presentación Cliente", "Debug (revisión interna)"],
+                ["-- Manual (como está) --", "Ejecutivo", "Pantalla completa"],
                 key="preset_estilo_select",
                 help="Configura de un jalón varios controles (fuentes, grid, tamaño). Puedes seguir ajustando manualmente después."
             )
@@ -2509,7 +2498,7 @@ if not st.session_state.data.empty:
 
             # Bandas alternadas: gris suave / lavanda suave, con su texto a juego (más saturado para contraste)
             bandas_tier = [
-                {"fondo": "#E6E6E6", "texto": "#555555"},   # gris suave
+                {"fondo": "#F2F2F2", "texto": "#666666"},   # gris clarito
                 {"fondo": "#F1EAF9", "texto": "#6A3E9B"},   # lavanda suave
             ]
 
