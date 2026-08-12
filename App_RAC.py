@@ -488,13 +488,20 @@ try:
             }}
             .logo-container {{
                 position: fixed;
-                top: 10px;
-                right: 20px;
+                top: 55px;
+                right: 30px;
                 z-index: 999999;
+                background-color: rgba(255,255,255,0.92);
+                padding: 6px 14px;
+                border-radius: 10px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            }}
+            .logo-container img {{
+                display: block;
             }}
         </style>
         <div class="logo-container">
-            <img src="data:image/png;base64,{bin_str}" width="100">
+            <img src="data:image/png;base64,{bin_str}" width="190">
         </div>
         """,
         unsafe_allow_html=True
