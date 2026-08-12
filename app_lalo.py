@@ -19,7 +19,7 @@
 #   7. BARRA LATERAL (SIDEBAR)
 #        7.1 Navegación y selección de modo
 #        7.2 Botón de modo presentación
-#        7.3 Lógica de modos (Price Ladder / Price Pack / Price and Volume / Macro)
+#        7.3 Lógica de modos (Price Ladder / Price Pack / Macro)
 #        7.4 Gestión de escenarios
 #        7.5 Comparación de escenarios
 #        7.6 Gestión de estado (carga inicial de datos según el modo)
@@ -235,13 +235,6 @@ def calcular_pkg(df, modo_actual):
         if "Fabricante" not in df.columns: 
             df["Fabricante"] = "OTROS"
             
-    elif modo_actual == "Price and Volume":
-        # Para este modo, solo aseguramos que las columnas de valor y volumen sean numéricas
-        cols_pv = ["Precio ($)", "Venta Volumen (Pzas)","Venta Valor ($)"]
-        for col in cols_pv:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-                
     return df
 
 def procesar_datos_piramide(df):
@@ -516,12 +509,6 @@ try:
     from price_pack import PLANTILLAS_PP
 except ImportError:
     PLANTILLAS_PP = {}
-
-try:
-    from data_price_vol import PLANTILLA_PV
-except ImportError:
-    PLANTILLA_PV = {}
-    
     
 # --- CARGA DE ARQUITECTURA DESDE TU ARCHIVO EN GITHUB/LOCAL ---
 try:
@@ -629,7 +616,7 @@ with st.sidebar:
     # Agregamos el nuevo modo a la lista de radio
     modo = st.radio(
         "Seleccionar Herramienta:", 
-        ["Price Ladder", "Price Pack", "Price and Volume", "Indicadores Macro"], 
+        ["Price Ladder", "Price Pack", "Indicadores Macro"], 
         label_visibility="collapsed"
     )
     
@@ -665,13 +652,6 @@ elif modo == "Price Pack":
     opciones_agru = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "DETALLE", "AUTOSERVICIOS", "CONVENIENCIA"]
     fuente_plantillas = PLANTILLAS_PP if 'PLANTILLAS_PP' in globals() else {}
     columnas_tabla = ["Producto", "Familia", "Canal", "Precio ($)", "Gramaje (g)"]
-
-elif modo == "Price and Volume":
-    DB_FILE = "historico_ventas_semanales.csv"
-    label_agru = "Semana"
-    opciones_agru = list(range(1, 53)) 
-    fuente_plantillas = PLANTILLA_PV if 'PLANTILLA_PV' in globals() else {}
-    columnas_tabla = ["Semana", "Producto", "Fabricante", "Precio ($)", "Venta Volumen (Pzas)","Venta Valor ($)"]
 
 else: # MODO: Indicadores Macro
     DB_FILE = None
@@ -1187,10 +1167,7 @@ with st.sidebar:
                 with st.spinner("⏳ Procesando datos..."):
                     df_nuevo = pd.DataFrame(fuente_plantillas[nombre_plantilla])
                     
-                    if modo == "Price and Volume":
-                        st.session_state.data = df_nuevo
-                    else:
-                        st.session_state.data = calcular_pkg(df_nuevo, modo)
+                    st.session_state.data = calcular_pkg(df_nuevo, modo)
                     
                     st.session_state.data.to_csv(DB_FILE, index=False)
                     st.success("✅ ¡Datos cargados exitosamente!")
@@ -2453,17 +2430,13 @@ if not st.session_state.data.empty:
             )
 
             def _color_heatmap_verde(valor, minimo, maximo):
-                """Interpola entre verde muy claro (menor SOM) y verde oscuro (mayor SOM). Devuelve (hex, intensidad 0-1)."""
+                """Un solo verde consistente; solo la OPACIDAD varía con el SOM (nunca satura, se mantiene discreto)."""
                 if maximo - minimo < 1e-9:
                     t = 0.5
                 else:
                     t = (valor - minimo) / (maximo - minimo)
-                c_claro = (232, 245, 233)   # #E8F5E9
-                c_oscuro = (27, 94, 32)     # #1B5E20
-                r = int(c_claro[0] + (c_oscuro[0] - c_claro[0]) * t)
-                g = int(c_claro[1] + (c_oscuro[1] - c_claro[1]) * t)
-                b = int(c_claro[2] + (c_oscuro[2] - c_claro[2]) * t)
-                return f"#{r:02X}{g:02X}{b:02X}", t
+                alpha = 0.07 + 0.28 * t  # entre 7% y 35% de opacidad como máximo
+                return f"rgba(56, 142, 60, {alpha:.2f})", t
 
             min_som_tier = resumen_tiers["som_total"].min()
             max_som_tier = resumen_tiers["som_total"].max()
@@ -2475,9 +2448,9 @@ if not st.session_state.data.empty:
                 precio_txt_tier = f"${p_val:.1f}" if p_val < 10 else f"${int(p_val)}"
 
                 color_fondo_tier, intensidad = _color_heatmap_verde(fila_tier["som_total"], min_som_tier, max_som_tier)
-                # Texto blanco sobre verdes oscuros, gris oscuro sobre verdes claros, para mantener contraste
-                color_texto_tier = "#FFFFFF" if intensidad > 0.55 else "#2E2E2E"
-                color_pct_tier = "#E8F5E9" if intensidad > 0.55 else "#1B5E20"
+                # El fondo nunca pasa de un verde pálido, así que el texto se queda fijo (sin necesidad de blanco)
+                color_texto_tier = "#333333"
+                color_pct_tier = "#2E7D32"
 
                 # Fondo tipo heatmap para cada escalón de precio
                 fig.add_shape(
@@ -2494,7 +2467,7 @@ if not st.session_state.data.empty:
                     fig.add_shape(
                         type="line", x0=idx_fin + 0.5, x1=idx_fin + 0.5,
                         y0=0, y1=1, xref="x2", yref="y2 domain",
-                        line=dict(color="rgba(255,255,255,0.55)", width=1)
+                        line=dict(color="rgba(0,0,0,0.12)", width=1)
                     )
 
                 fig.add_annotation(
@@ -2733,7 +2706,7 @@ if not st.session_state.data.empty:
 # --- 8. COMPARATIVAS INDEX (UNIFICADO: LADDER + ARQUITECTURA PPT) ---
 
 # Agregamos la condición para que esta sección solo se ejecute en los modos que usan Index
-if modo != "Price and Volume" and not st.session_state.data.empty:
+if not st.session_state.data.empty:
     st.divider()
     df_comp = st.session_state.data.copy()
     
@@ -3292,7 +3265,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
 # --- 12. ANALISTA MAESTRO INTEGRAL: LADDER ULTRA 2.6 + ARQUITECTURA PRO ---
 # Ajuste: No mostrar en el modo de Volume para evitar KeyErrors
-if modo != "Price and Volume" and not st.session_state.data.empty:
+if not st.session_state.data.empty:
     st.divider()
     
     # 1. PREPARACIÓN DE DATOS (Común para ambos modos)
@@ -3513,7 +3486,7 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
 
 # --- 12. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO ---
 # Ajuste: No mostrar en el modo de Volumen para evitar errores de compilación de hallazgos
-if modo != "Price and Volume" and not st.session_state.data.empty:
+if not st.session_state.data.empty:
     st.divider()
     
     # Título dinámico según el modo
@@ -4341,631 +4314,6 @@ if modo == "Price Ladder":
                     - Los ajustes se mantienen al agregar SKUs
                     """)
 
-if modo == "Price and Volume":
-    if st.session_state.data.empty:
-        st.info("ℹ️ Por favor, selecciona una plantilla en la barra lateral y presiona 'Cargar Datos'.")
-    else:
-        st.success(f"✅ Datos cargados: {len(st.session_state.data)} registros encontrados.")
-        # Opcional: mostrar una vista previa pequeña
-        with st.expander("Ver vista previa de datos"):
-            st.dataframe(st.session_state.data.head())
-            
-# --- 15. ANÁLISIS DE ELASTICIDAD: PRICE & VOLUME (VERSIÓN PRO CON FEATURES AVANZADAS) ---
-if modo == "Price and Volume" and not st.session_state.data.empty:
-    st.divider()
-    st.markdown("""
-        <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                    padding: 2rem; border-radius: 15px; margin-bottom: 2rem;'>
-            <h2 style='color: white; margin: 0; font-weight: 700;'>
-                📈 Curvas Precio Volumen
-            </h2>
-            <p style='color: rgba(255,255,255,0.9); margin-top: 0.5rem; margin-bottom: 0;'>
-                Visualiza la evolución de precios, valor y volumen con detección automática de anomalías y patrones estacionales
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
-
-    df_pv = st.session_state.data.copy()
-    columnas_necesarias = ["Producto", "Semana", "Venta Valor ($)", "Venta Volumen (Pzas)", "Precio ($)"]
-    
-    if all(col in df_pv.columns for col in columnas_necesarias):
-        # --- TOOLTIPS INFORMATIVOS ---
-        def tooltip_info(texto, explicacion):
-            return f"""
-                <span style='position: relative; display: inline-block; cursor: help;'>
-                    {texto} 
-                    <span style='
-                        position: absolute;
-                        bottom: 100%;
-                        left: 50%;
-                        transform: translateX(-50%);
-                        background: #1F2937;
-                        color: white;
-                        padding: 0.75rem;
-                        border-radius: 8px;
-                        font-size: 0.85rem;
-                        width: 250px;
-                        opacity: 0;
-                        pointer-events: none;
-                        transition: opacity 0.3s;
-                        z-index: 1000;
-                        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-                    ' class='tooltip-text'>
-                        {explicacion}
-                    </span>
-                </span>
-            """
-        
-        st.markdown("""
-            <style>
-            span:hover .tooltip-text {
-                opacity: 1 !important;
-            }
-            .stSelectbox label, .stSlider label {
-                font-weight: 600;
-                color: #2D3748;
-                font-size: 0.95rem;
-            }
-            </style>
-        """, unsafe_allow_html=True)
-        
-        # --- FILTROS CON DISEÑO MEJORADO ---
-        c_f1, c_f2, c_f3 = st.columns([2, 3, 2])
-        with c_f1:
-            lista_prods = sorted(df_pv["Producto"].unique())
-            prod_sel = st.selectbox("🏷️ Seleccionar Producto:", lista_prods)
-        with c_f2:
-            min_sem, max_sem = int(df_pv["Semana"].min()), int(df_pv["Semana"].max())
-            rango_sem = st.slider("📅 Rango de Semanas para Análisis:", min_sem, max_sem, (min_sem, max_sem))
-        with c_f3:
-            mostrar_outliers = st.checkbox("🔍 Detectar Outliers", value=True, help="Marca semanas con comportamiento atípico en precio o volumen")
-
-        mask = (df_pv["Producto"] == prod_sel) & (df_pv["Semana"].between(rango_sem[0], rango_sem[1]))
-        df_filtrado = df_pv[mask].sort_values("Semana").copy()
-
-        if not df_filtrado.empty:
-            import plotly.graph_objects as go
-            from plotly.subplots import make_subplots
-            import numpy as np
-
-            # --- DETECCIÓN DE OUTLIERS (Z-SCORE) ---
-            def detectar_outliers(serie, umbral=2):
-                media = serie.mean()
-                std = serie.std()
-                z_scores = np.abs((serie - media) / std) if std > 0 else np.zeros(len(serie))
-                return z_scores > umbral
-            
-            df_filtrado['outlier_precio'] = detectar_outliers(df_filtrado['Precio ($)'])
-            df_filtrado['outlier_volumen'] = detectar_outliers(df_filtrado['Venta Volumen (Pzas)'])
-            df_filtrado['es_outlier'] = df_filtrado['outlier_precio'] | df_filtrado['outlier_volumen']
-            
-            num_outliers = df_filtrado['es_outlier'].sum()
-
-            # --- ANÁLISIS DE ESTACIONALIDAD ---
-            if len(df_filtrado) >= 4:
-                df_filtrado['semana_ciclo'] = df_filtrado['Semana'] % 4  # Ciclo de 4 semanas
-                estacionalidad = df_filtrado.groupby('semana_ciclo').agg({
-                    'Venta Volumen (Pzas)': 'mean',
-                    'Precio ($)': 'mean'
-                })
-                coef_variacion_vol = (estacionalidad['Venta Volumen (Pzas)'].std() / 
-                                     estacionalidad['Venta Volumen (Pzas)'].mean()) * 100 if estacionalidad['Venta Volumen (Pzas)'].mean() > 0 else 0
-                hay_estacionalidad = coef_variacion_vol > 15  # Más de 15% de variación indica estacionalidad
-            else:
-                hay_estacionalidad = False
-                coef_variacion_vol = 0
-
-            # --- GRÁFICO PRINCIPAL: VOLUMEN Y VALOR CON OUTLIERS ---
-            m_lat = 80 
-            margen_alineado = dict(l=m_lat, r=m_lat, t=40, b=40)
-
-            fig_perf = make_subplots(specs=[[{"secondary_y": True}]])
-            
-            # Área de valor con gradiente
-            fig_perf.add_trace(go.Scatter(
-                x=df_filtrado["Semana"], 
-                y=df_filtrado["Venta Valor ($)"],
-                name="Venta Valor ($)", 
-                fill='tozeroy', 
-                mode='lines',
-                line=dict(color='#10B981', width=3, shape='spline'),
-                fillcolor='rgba(16, 185, 129, 0.15)',
-                hovertemplate='<b>Semana %{x}</b><br>Valor: $%{y:,.0f}<extra></extra>'
-            ), secondary_y=True)
-            
-            # CORRECCIÓN: Barras de volumen - mostrar TODOS los datos
-            if mostrar_outliers:
-                # Si está activado, separar normales y outliers
-                df_normal = df_filtrado[~df_filtrado['es_outlier']]
-                df_outlier = df_filtrado[df_filtrado['es_outlier']]
-                
-                # Barras normales
-                if not df_normal.empty:
-                    fig_perf.add_trace(go.Bar(
-                        x=df_normal["Semana"], 
-                        y=df_normal["Venta Volumen (Pzas)"],
-                        name="Volumen (Pzas)", 
-                        marker=dict(
-                            color='#002366',
-                            line=dict(color='#001a4d', width=1.5)
-                        ),
-                        hovertemplate='<b>Semana %{x}</b><br>Volumen: %{y:,} pzas<extra></extra>'
-                    ), secondary_y=False)
-                
-                # Barras de outliers con estilo diferente
-                if not df_outlier.empty:
-                    fig_perf.add_trace(go.Bar(
-                        x=df_outlier["Semana"], 
-                        y=df_outlier["Venta Volumen (Pzas)"],
-                        name="⚠️ Outliers", 
-                        marker=dict(
-                            color='#DC2626',
-                            line=dict(color='#991B1B', width=2),
-                            pattern=dict(shape="/", bgcolor="white", fgcolor="#DC2626", size=8, solidity=0.3)
-                        ),
-                        hovertemplate='<b>⚠️ Semana %{x} (Anomalía)</b><br>Volumen: %{y:,} pzas<extra></extra>'
-                    ), secondary_y=False)
-            else:
-                # Si NO está activado, mostrar TODO como normal
-                fig_perf.add_trace(go.Bar(
-                    x=df_filtrado["Semana"], 
-                    y=df_filtrado["Venta Volumen (Pzas)"],
-                    name="Volumen (Pzas)", 
-                    marker=dict(
-                        color='#002366',
-                        line=dict(color='#001a4d', width=1.5)
-                    ),
-                    hovertemplate='<b>Semana %{x}</b><br>Volumen: %{y:,} pzas<extra></extra>'
-                ), secondary_y=False)
-
-            fig_perf.update_layout(
-                height=480, 
-                template="plotly_white", 
-                margin=margen_alineado,
-                legend=dict(
-                    orientation="h", 
-                    yanchor="bottom", 
-                    y=1.02, 
-                    xanchor="center", 
-                    x=0.5,
-                    font=dict(size=12, family="Arial, sans-serif"),
-                    bgcolor="rgba(255,255,255,0.9)",
-                    bordercolor="#E2E8F0",
-                    borderwidth=1
-                ),
-                barmode='overlay',
-                plot_bgcolor='rgba(248, 250, 252, 0.5)',
-                font=dict(family="Arial, sans-serif", size=12, color="#2D3748"),
-                hovermode='x unified'
-            )
-            fig_perf.update_xaxes(
-                title_text="Semana",
-                showgrid=True,
-                gridwidth=1,
-                gridcolor='rgba(226, 232, 240, 0.5)',
-                title_font=dict(size=13, color="#4A5568")
-            )
-            fig_perf.update_yaxes(
-                title_text="Volumen (Pzas)", 
-                secondary_y=False,
-                showgrid=True,
-                gridwidth=1,
-                gridcolor='rgba(226, 232, 240, 0.5)',
-                title_font=dict(size=13, color="#2563EB")
-            )
-            fig_perf.update_yaxes(
-                title_text="Venta Valor ($)", 
-                secondary_y=True,
-                showgrid=False,
-                title_font=dict(size=13, color="#10B981")
-            )
-
-            # --- GRÁFICO DE PRECIO CON DISEÑO PREMIUM Y OUTLIERS ---
-            fig_price = make_subplots(specs=[[{"secondary_y": True}]])
-            
-            # Precios normales
-            df_price_normal = df_filtrado[~df_filtrado['outlier_precio']]
-            if not df_price_normal.empty:
-                fig_price.add_trace(go.Scatter(
-                    x=df_price_normal["Semana"], 
-                    y=df_price_normal["Precio ($)"],
-                    name="Precio Unitario ($)", 
-                    line=dict(color='#DC2626', width=4, shape='spline'),
-                    mode='lines+markers+text',
-                    text=df_price_normal["Precio ($)"].apply(lambda x: f"${x:.1f}"),
-                    textposition="top center",
-                    textfont=dict(size=11, color='#DC2626', family="Arial Black, sans-serif"),
-                    marker=dict(
-                        size=14, 
-                        symbol='circle', 
-                        color='#DC2626',
-                        line=dict(width=3, color='white')
-                    ),
-                    hovertemplate='<b>Semana %{x}</b><br>Precio: $%{y:.2f}<extra></extra>'
-                ), secondary_y=False)
-            
-            # Precios outliers
-            df_price_outlier = df_filtrado[df_filtrado['outlier_precio']]
-            if mostrar_outliers and not df_price_outlier.empty:
-                fig_price.add_trace(go.Scatter(
-                    x=df_price_outlier["Semana"], 
-                    y=df_price_outlier["Precio ($)"],
-                    name="⚠️ Precio Atípico", 
-                    mode='markers+text',
-                    text=df_price_outlier["Precio ($)"].apply(lambda x: f"${x:.1f}"),
-                    textposition="top center",
-                    textfont=dict(size=11, color='#F59E0B', family="Arial Black, sans-serif"),
-                    marker=dict(
-                        size=18, 
-                        symbol='star', 
-                        color='#F59E0B',
-                        line=dict(width=3, color='white')
-                    ),
-                    hovertemplate='<b>⚠️ Semana %{x} (Precio Atípico)</b><br>Precio: $%{y:.2f}<extra></extra>'
-                ), secondary_y=False)
-
-            fig_price.update_layout(
-                height=300, 
-                paper_bgcolor='rgba(0,0,0,0)', 
-                plot_bgcolor='rgba(0,0,0,0)',
-                margin=margen_alineado, 
-                xaxis=dict(visible=False), 
-                showlegend=False,
-                font=dict(family="Arial, sans-serif")
-            )
-            fig_price.update_yaxes(
-                title_text="Precio ($)", 
-                color="#DC2626", 
-                secondary_y=False,
-                range=[df_filtrado["Precio ($)"].min()*0.85, df_filtrado["Precio ($)"].max()*1.65],
-                showgrid=False,
-                title_font=dict(size=13)
-            )
-            fig_price.update_yaxes(
-                title_text="", 
-                secondary_y=True, 
-                showticklabels=False
-            )
-
-            st.markdown("""
-                <style>
-                .price-overlay { 
-                    margin-top: -340px; 
-                    position: relative; 
-                    z-index: 99; 
-                    pointer-events: none; 
-                } 
-                .price-overlay .js-plotly-plot .plotly .main-svg { 
-                    background: transparent !important; 
-                }
-                </style>
-            """, unsafe_allow_html=True)
-            
-            st.plotly_chart(fig_perf, use_container_width=True)
-            st.markdown('<div class="price-overlay">', unsafe_allow_html=True)
-            st.plotly_chart(fig_price, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-            # --- ALERTAS DE OUTLIERS Y ESTACIONALIDAD ---
-            if num_outliers > 0 or hay_estacionalidad:
-                st.markdown("<br>", unsafe_allow_html=True)
-                col_alert1, col_alert2 = st.columns(2)
-                
-                with col_alert1:
-                    if num_outliers > 0:
-                        semanas_outlier = df_filtrado[df_filtrado['es_outlier']]['Semana'].tolist()
-                        st.markdown(f"""
-                            <div style='background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%); 
-                                        padding: 1.2rem; border-radius: 10px; border-left: 4px solid #F59E0B;'>
-                                <p style='margin: 0; color: #92400E;'>
-                                    <strong>🔍 {num_outliers} Anomalía(s) Detectada(s)</strong><br>
-                                    <span style='font-size: 0.9rem;'>Semanas con comportamiento atípico: {', '.join(map(str, semanas_outlier))}</span>
-                                </p>
-                            </div>
-                        """, unsafe_allow_html=True)
-                
-                with col_alert2:
-                    if hay_estacionalidad:
-                        st.markdown(f"""
-                            <div style='background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); 
-                                        padding: 1.2rem; border-radius: 10px; border-left: 4px solid #3B82F6;'>
-                                <p style='margin: 0; color: #1E40AF;'>
-                                    <strong>📊 Patrón Estacional Detectado</strong><br>
-                                    <span style='font-size: 0.9rem;'>Coeficiente de variación: {coef_variacion_vol:.1f}% - El volumen sigue un patrón cíclico</span>
-                                </p>
-                            </div>
-                        """, unsafe_allow_html=True)
-
-            # --- CALCULADORA DE ELASTICIDAD CON DISEÑO MEJORADO ---
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            st.markdown(f"""
-                <div style='background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); 
-                            padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;'>
-                    <h3 style='color: white; margin: 0; font-weight: 700; font-size: 1.4rem;'>
-                        🧮 Calculadora de Elasticidad por Ventana de Tiempo
-                    </h3>
-                    <p style='color: rgba(255,255,255,0.95); margin-top: 0.5rem; margin-bottom: 0; font-size: 0.95rem;'>
-                        Compara períodos y mide el impacto de cambios de precio en el volumen
-                    </p>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # ELIMINADO: Toggle de modo comparativo (ya no se usa)
-            
-            with st.expander("⚙️ Configurar Análisis de Impacto", expanded=True):
-                # CORRECCIÓN: Layout mejorado para los selectores
-                st.markdown("""
-                    <style>
-                    div[data-testid="stNumberInput"] > div > div > input {
-                        font-size: 1rem;
-                        padding: 0.5rem;
-                    }
-                    div[data-testid="stSelectbox"] > div > div > div {
-                        font-size: 1rem;
-                    }
-                    </style>
-                """, unsafe_allow_html=True)
-                
-                c1, c2 = st.columns([1, 1])
-                with c1:
-                    st.markdown("**📍 Semana del Cambio (Corte)**")
-                    st.caption("Semana donde ocurrió el cambio de precio o estrategia que quieres analizar")
-                    sem_corte = st.selectbox(
-                        "Selecciona la semana:", 
-                        df_filtrado["Semana"].unique(), 
-                        index=len(df_filtrado)//2,
-                        label_visibility="collapsed"
-                    )
-                with c2:
-                    st.markdown("**📊 Semanas a Promediar (Ventana)**")
-                    st.caption("Número de semanas antes y después del corte para calcular promedios")
-                    ventana = st.number_input(
-                        "Ventana:", 
-                        min_value=1, 
-                        max_value=8, 
-                        value=3,
-                        label_visibility="collapsed"
-                    )
-                
-                df_antes = df_filtrado[df_filtrado["Semana"] < sem_corte].tail(ventana)
-                df_despues = df_filtrado[df_filtrado["Semana"] >= sem_corte].head(ventana)
-
-                if len(df_antes) > 0 and len(df_despues) > 0:
-                    # Cálculos
-                    p_antes = df_antes["Precio ($)"].mean()
-                    p_despues = df_despues["Precio ($)"].mean()
-                    v_antes = df_antes["Venta Volumen (Pzas)"].mean()
-                    v_despues = df_despues["Venta Volumen (Pzas)"].mean()
-                    val_antes = df_antes["Venta Valor ($)"].mean()
-                    val_despues = df_despues["Venta Valor ($)"].mean()
-
-                    var_p = (p_despues / p_antes) - 1
-                    var_v = (v_despues / v_antes) - 1
-                    var_val = (val_despues / val_antes) - 1
-                    elasticidad = var_v / var_p if var_p != 0 else 0
-
-                    st.markdown(f"""
-                        <div style='background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); 
-                                    padding: 1rem; border-radius: 10px; border-left: 4px solid #3B82F6; margin-top: 1rem;'>
-                            <p style='margin: 0; color: #1E40AF; font-size: 0.95rem;'>
-                                📊 <strong>Período de Comparación:</strong> Promedio de {len(df_antes)} semanas antes vs {len(df_despues)} semanas después
-                            </p>
-                        </div>
-                    """, unsafe_allow_html=True)
-
-                    # --- TARJETAS DE MÉTRICAS CON DISEÑO PREMIUM ---
-                    st.markdown("""
-                        <style>
-                        .metric-card {
-                            background: white;
-                            padding: 1.5rem;
-                            border-radius: 12px;
-                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
-                            border-left: 4px solid;
-                            transition: transform 0.2s, box-shadow 0.2s;
-                        }
-                        .metric-card:hover {
-                            transform: translateY(-2px);
-                            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.1);
-                        }
-                        .metric-label {
-                            font-size: 0.85rem;
-                            color: #64748B;
-                            font-weight: 600;
-                            margin-bottom: 0.5rem;
-                            text-transform: uppercase;
-                            letter-spacing: 0.5px;
-                        }
-                        .metric-value {
-                            font-size: 2rem;
-                            font-weight: 700;
-                            margin: 0;
-                            line-height: 1;
-                        }
-                        .metric-delta {
-                            font-size: 0.9rem;
-                            margin-top: 0.5rem;
-                            font-weight: 500;
-                        }
-                        </style>
-                    """, unsafe_allow_html=True)
-
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    st.markdown("### 📊 Cambios Detectados")
-                    res1, res2, res3, res4 = st.columns(4)
-                    
-                    # Tarjeta 1: Precio
-                    delta_color_p = "#10B981" if var_p > 0 else "#EF4444"
-                    arrow_p = "↑" if var_p > 0 else "↓"
-                    with res1:
-                        st.markdown(f"""
-                            <div class="metric-card" style="border-left-color: {delta_color_p};">
-                                <div class="metric-label">💰 Δ Precio Promedio</div>
-                                <div class="metric-value" style="color: {delta_color_p};">
-                                    {var_p:.1%}
-                                </div>
-                                <div class="metric-delta" style="color: {delta_color_p};">
-                                    {arrow_p} ${p_antes:.2f} → ${p_despues:.2f}
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    
-                    # Tarjeta 2: Volumen
-                    delta_color_v = "#10B981" if var_v > 0 else "#EF4444"
-                    arrow_v = "↑" if var_v > 0 else "↓"
-                    with res2:
-                        st.markdown(f"""
-                            <div class="metric-card" style="border-left-color: {delta_color_v};">
-                                <div class="metric-label">📦 Δ Volumen Promedio</div>
-                                <div class="metric-value" style="color: {delta_color_v};">
-                                    {var_v:.1%}
-                                </div>
-                                <div class="metric-delta" style="color: {delta_color_v};">
-                                    {arrow_v} {v_antes:,.0f} → {v_despues:,.0f} pzas
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    
-                    # Tarjeta 3: Valor
-                    delta_color_val = "#10B981" if var_val > 0 else "#EF4444"
-                    arrow_val = "↑" if var_val > 0 else "↓"
-                    with res3:
-                        st.markdown(f"""
-                            <div class="metric-card" style="border-left-color: {delta_color_val};">
-                                <div class="metric-label">💵 Δ Valor Promedio</div>
-                                <div class="metric-value" style="color: {delta_color_val};">
-                                    {var_val:.1%}
-                                </div>
-                                <div class="metric-delta" style="color: {delta_color_val};">
-                                    {arrow_val} ${val_antes:,.0f} → ${val_despues:,.0f}
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    
-                    # Tarjeta 4: Elasticidad
-                    if abs(elasticidad) > 1:
-                        elastic_color = "#DC2626"
-                        elastic_icon = "⚠️"
-                        elastic_label = "ELÁSTICO"
-                    else:
-                        elastic_color = "#059669"
-                        elastic_icon = "✅"
-                        elastic_label = "INELÁSTICO"
-                    
-                    with res4:
-                        st.markdown(f"""
-                            <div class="metric-card" style="border-left-color: {elastic_color};">
-                                <div class="metric-label">{elastic_icon} Elasticidad</div>
-                                <div class="metric-value" style="color: {elastic_color};">
-                                    {elasticidad:.2f}
-                                </div>
-                                <div class="metric-delta" style="color: {elastic_color};">
-                                    {elastic_label}
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    
-                    # Mensaje interpretativo
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    if abs(elasticidad) > 1:
-                        st.markdown(f"""
-                            <div style='background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%); 
-                                        padding: 1.2rem; border-radius: 10px; border-left: 4px solid #DC2626;'>
-                                <p style='margin: 0; color: #991B1B;'>
-                                    <strong>⚠️ Producto Elástico (|E| = {abs(elasticidad):.2f} > 1):</strong><br>
-                                    El volumen es muy sensible a cambios de precio. Una variación del 1% en precio genera 
-                                    un cambio del {abs(elasticidad):.2f}% en volumen. Se recomienda precaución con incrementos de precio.
-                                </p>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"""
-                            <div style='background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); 
-                                        padding: 1.2rem; border-radius: 10px; border-left: 4px solid #059669;'>
-                                <p style='margin: 0; color: #064E3B;'>
-                                    <strong>✅ Producto Inelástico (|E| = {abs(elasticidad):.2f} < 1):</strong><br>
-                                    El volumen es poco sensible a cambios de precio. Una variación del 1% en precio genera 
-                                    solo un {abs(elasticidad):.2f}% de cambio en volumen. Hay margen para ajustes de precio.
-                                </p>
-                            </div>
-                        """, unsafe_allow_html=True)
-                else:
-                    st.error("❌ No hay suficientes semanas antes o después de la seleccionada para calcular promedios.")
-
-            # --- MÉTRICAS GENERALES DEL PERÍODO ---
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("""
-                <div style='background: linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%); 
-                            padding: 1rem; border-radius: 10px; margin-bottom: 1rem;'>
-                    <h4 style='color: #334155; margin: 0; font-weight: 600;'>
-                        📊 Resumen del Período Completo
-                    </h4>
-                </div>
-            """, unsafe_allow_html=True)
-
-            m1, m2, m3, m4 = st.columns(4)
-            
-            with m1:
-                st.markdown(f"""
-                    <div class="metric-card" style="border-left-color: #3B82F6;">
-                        <div class="metric-label">📦 Volumen Total</div>
-                        <div class="metric-value" style="color: #1E40AF;">
-                            {df_filtrado['Venta Volumen (Pzas)'].sum():,.0f}
-                        </div>
-                        <div class="metric-delta" style="color: #64748B;">
-                            Piezas vendidas
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-            
-            with m2:
-                st.markdown(f"""
-                    <div class="metric-card" style="border-left-color: #10B981;">
-                        <div class="metric-label">💵 Venta Total</div>
-                        <div class="metric-value" style="color: #065F46;">
-                            ${df_filtrado['Venta Valor ($)'].sum():,.0f}
-                        </div>
-                        <div class="metric-delta" style="color: #64748B;">
-                            Ingresos generados
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-            
-            with m3:
-                st.markdown(f"""
-                    <div class="metric-card" style="border-left-color: #F59E0B;">
-                        <div class="metric-label">💰 Precio Promedio</div>
-                        <div class="metric-value" style="color: #B45309;">
-                            ${df_filtrado['Precio ($)'].mean():.2f}
-                        </div>
-                        <div class="metric-delta" style="color: #64748B;">
-                            Precio unitario
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-            
-            if len(df_filtrado) > 1:
-                corr = df_filtrado["Precio ($)"].corr(df_filtrado["Venta Volumen (Pzas)"])
-                corr_color = "#DC2626" if corr < -0.3 else "#F59E0B" if corr < 0.3 else "#10B981"
-                corr_label = "Negativa" if corr < -0.3 else "Neutral" if corr < 0.3 else "Positiva"
-                
-                with m4:
-                    st.markdown(f"""
-                        <div class="metric-card" style="border-left-color: {corr_color};">
-                            <div class="metric-label">📈 Correlación P/V</div>
-                            <div class="metric-value" style="color: {corr_color};">
-                                {corr:.2f}
-                            </div>
-                            <div class="metric-delta" style="color: {corr_color};">
-                                {corr_label}
-                            </div>
-                        </div>
-                    """, unsafe_allow_html=True)
-        else:
-            st.warning("⚠️ No hay datos disponibles para los filtros seleccionados.")
-    else:
-        st.error("❌ Error: Faltan columnas necesarias en el dataset.")
 
 # --- APARTADO DE VISUALIZACIÓN: INDICADORES MACRO ---
 if modo == "Indicadores Macro":
