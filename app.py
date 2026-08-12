@@ -572,7 +572,7 @@ if "comentarios_productos" not in st.session_state:
 if "historial_cambios" not in st.session_state:
     st.session_state["historial_cambios"] = []
 if "modo_presentacion" not in st.session_state:
-    st.session_state["modo_presentacion"] = False
+    st.session_state["modo_presentacion"] = True
 
 # ============================================================================
 # SISTEMA DE GUARDAR/CARGAR CONFIGURACIONES
@@ -1447,6 +1447,25 @@ with st.sidebar:
     
         # ✨ SELECTOR DE COLORES PERSONALIZADOS
         with st.expander("🎨 Colores Personalizados (Opcional)"):
+            st.markdown("**Contorno de las barras (aplica a todas):**")
+            col_contorno1, col_contorno2 = st.columns(2)
+            with col_contorno1:
+                color_contorno_barras = st.color_picker(
+                    "Color del contorno",
+                    value=st.session_state.get("color_contorno_barras", "#000000"),
+                    key="color_contorno_barras",
+                    help="Color del borde/contorno de todas las barras del gráfico"
+                )
+            with col_contorno2:
+                grosor_contorno_barras = st.slider(
+                    "Grosor del contorno",
+                    0.0, 5.0,
+                    value=st.session_state.get("grosor_contorno_barras", 1.0),
+                    step=0.25,
+                    key="grosor_contorno_barras",
+                    help="Grosor del borde de las barras (0 = sin contorno)"
+                )
+            st.markdown("---")
             st.markdown("**Selecciona un producto para cambiar su color:**")
             
             if "Producto" in st.session_state.data.columns:
@@ -2338,6 +2357,10 @@ if not st.session_state.data.empty:
                     y=[row["Precio ($)"] * alto_barras],  # ⭐ APLICAR MULTIPLICADOR DE ALTO
                     marker_color=bar_colors[idx],
                     marker_opacity=opacidad_barras, 
+                    marker_line=dict(
+                        color=st.session_state.get("color_contorno_barras", "#000000"),
+                        width=st.session_state.get("grosor_contorno_barras", 1.0)
+                    ),
                     width=ancho_barras,
                     text=[f"<b>{labels_precios[idx]}</b>"],
                     textposition="outside", 
@@ -2398,6 +2421,36 @@ if not st.session_state.data.empty:
                     x=center, y=-0.60, xref="x2", yref="paper", 
                     text=f"<b>{cat}</b><br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>", 
                     showarrow=False, font=dict(size=16, color="black"), align="center"
+                )
+
+            # --- PESO POR ESCALÓN DE PRECIO (TIER): suma de SOM de los productos que comparten el mismo precio ---
+            df_p["_grupo_precio"] = (df_p["Precio ($)"] != df_p["Precio ($)"].shift()).cumsum()
+            resumen_tiers = df_p.groupby("_grupo_precio").agg(
+                precio=("Precio ($)", "first"),
+                som_total=("SOM (%)", "sum"),
+            )
+            resumen_tiers["idx_ini"] = df_p.groupby("_grupo_precio").apply(lambda g: g.index[0])
+            resumen_tiers["idx_fin"] = df_p.groupby("_grupo_precio").apply(lambda g: g.index[-1])
+
+            y_tier = -0.85  # fila debajo del resumen por Ocasión (-0.60)
+
+            for _, fila_tier in resumen_tiers.iterrows():
+                idx_ini, idx_fin = fila_tier["idx_ini"], fila_tier["idx_fin"]
+                center_tier = (idx_ini + idx_fin) / 2
+                p_val = fila_tier["precio"]
+                precio_txt_tier = f"${p_val:.1f}" if p_val < 10 else f"${int(p_val)}"
+
+                # Línea corta divisoria entre escalones de precio (solo en la franja de esta fila)
+                fig.add_shape(
+                    type="line", x0=idx_fin + 0.5, x1=idx_fin + 0.5,
+                    y0=y_tier - 0.10, y1=-0.62, xref="x2", yref="paper",
+                    line=dict(color="#EEEEEE", width=1)
+                )
+
+                fig.add_annotation(
+                    x=center_tier, y=y_tier, xref="x2", yref="paper",
+                    text=f"<b>{precio_txt_tier}</b><br><span style='font-size:13px;'>{fila_tier['som_total']:.1f}%</span>",
+                    showarrow=False, font=dict(size=12, color="#555555"), align="center"
                 )
 
             fig.update_layout(
@@ -2461,7 +2514,10 @@ if not st.session_state.data.empty:
                 x=df_p.index, 
                 y=df_p["Precio por Kg ($)"] * alto_barras,  # ⭐ APLICAR MULTIPLICADOR DE ALTO
                 marker_color=bar_colors_pp,
-                marker_line=dict(color="#D1D1D1", width=1),
+                marker_line=dict(
+                    color=st.session_state.get("color_contorno_barras", "#000000"),
+                    width=st.session_state.get("grosor_contorno_barras", 1.0)
+                ),
                 marker_opacity=opacidad_barras,
                 width=ancho_barras,
                 showlegend=False
