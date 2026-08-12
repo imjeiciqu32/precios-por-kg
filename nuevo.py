@@ -1,16 +1,64 @@
+# ============================================================================
+# PRICE LADDER & ARCHITECTURE EXPERT PRO
+# ----------------------------------------------------------------------------
+# ÍNDICE DEL ARCHIVO (usa Ctrl+F con estos títulos para saltar de sección):
+#
+#   0. IMPORTS
+#   1. CONFIGURACIÓN DE PÁGINA (st.set_page_config)
+#   2. FUNCIONES AUXILIARES
+#        2.1 Persistencia de escenarios (guardar/cargar/backup)
+#        2.2 Modo presentación (CSS)
+#        2.3 Logo (carga de imagen en base64)
+#        2.4 Glosario técnico
+#        2.5 Funciones core (cálculo de PKG, pirámide, datos macro, historial)
+#        2.6 Configuraciones guardadas (guardar/cargar/exportar/importar/eliminar/duplicar)
+#   3. CONSTANTES Y CONFIGURACIÓN GLOBAL (Banxico, series macro)
+#   4. CARGA DE PLANTILLAS Y ARQUITECTURA (archivos externos del repo)
+#   5. INICIALIZACIÓN DE SESSION STATE (sliders, colores, comentarios, etc.)
+#   6. EJECUCIÓN: modo presentación + logo
+#   7. BARRA LATERAL (SIDEBAR)
+#        7.1 Navegación y selección de modo
+#        7.2 Botón de modo presentación
+#        7.3 Lógica de modos (Price Ladder / Price Pack / Macro)
+#        7.4 Gestión de escenarios
+#        7.5 Comparación de escenarios
+#        7.6 Gestión de estado (carga inicial de datos según el modo)
+#        7.7 Barra lateral principal (carga/edición de datos)
+#        7.8 Panel de control en sidebar (configuraciones guardadas)
+#   8. PANEL PRINCIPAL (todo el contenido central de la app: formularios,
+#      editor de tabla, gráficos, comparativas Index, pirámide, mapa de valor,
+#      analista maestro Ultra 2.6, resumen ejecutivo, simulador estratégico,
+#      elasticidad Price & Volume, indicadores macro)
+#
+#   Nota: el chatbot de IA que existía al final del archivo fue eliminado.
+# ============================================================================
+
+# ============================================================================
+# 0. IMPORTS
+# ============================================================================
 import streamlit as st
 import pandas as pd
-import base64  # <--- ESTA ES LA LÍNEA QUE FALTA
+import base64
 import plotly.graph_objects as go
 import requests
 from plotly.subplots import make_subplots
 import os
 import io
-
 import json
-import os
 from datetime import datetime
+from PIL import Image, ImageDraw, ImageFont
 
+# ============================================================================
+# 1. CONFIGURACIÓN DE PÁGINA (debe ser el PRIMER comando de Streamlit)
+# ============================================================================
+    
+st.set_page_config(page_title="Price Ladder & Architecture Expert Pro", layout="wide")
+
+# ============================================================================
+# 2. FUNCIONES AUXILIARES
+# ============================================================================
+
+# --- 2.1 Persistencia de escenarios ---
 # --- FUNCIONES DE PERSISTENCIA DE ESCENARIOS ---
 def guardar_escenarios_a_disco():
     """Guarda escenarios en archivo JSON"""
@@ -77,32 +125,6 @@ def crear_backup_escenarios():
         print(f"Error creando backup: {e}")
         return False
 
-# ============================================
-# INICIALIZACIÓN DE SLIDERS Y ESTADOS (DEBE ESTAR AQUÍ AL INICIO)
-# ============================================
-if 'form_success' not in st.session_state:
-    st.session_state.form_success = False
-if "slider_nombres" not in st.session_state:
-    st.session_state["slider_nombres"] = 16
-if "slider_precios" not in st.session_state:
-    st.session_state["slider_precios"] = 18
-if "slider_pkg" not in st.session_state:
-    st.session_state["slider_pkg"] = 15
-if "slider_som" not in st.session_state:
-    st.session_state["slider_som"] = 15
-if "slider_ancho" not in st.session_state:
-    st.session_state["slider_ancho"] = 0.8
-if "slider_opacidad" not in st.session_state:
-    st.session_state["slider_opacidad"] = 1.0
-if "slider_alto" not in st.session_state:
-    st.session_state["slider_alto"] = 950
-if "slider_espacio" not in st.session_state:
-    st.session_state["slider_espacio"] = 0.03
-if "slider_margen_b" not in st.session_state:
-    st.session_state["slider_margen_b"] = 400
-if "slider_angulo" not in st.session_state:
-    st.session_state["slider_angulo"] = -90
-
 # --- CSS PARA MODO PRESENTACIÓN ---
 def aplicar_modo_presentacion():
     if "modo_presentacion" in st.session_state and st.session_state["modo_presentacion"]:
@@ -119,134 +141,11 @@ def aplicar_modo_presentacion():
             </style>
         """, unsafe_allow_html=True)
 
-# Aplicar CSS si está en modo presentación
-aplicar_modo_presentacion()
-    
-TOKEN_BANXICO = "08d1b98b48cd9bb05d95b88e3fd37886ec747aa5e563b562b7bef9de21cde974"
-FECHA_INICIO_FILTRO = "2020-01-01"
-FECHA_FIN_FILTRO = "2027-12-31"
-
-SERIES_A_CONSULTAR = [
-    # =====================================================================
-    # 1. INPC / INPP Y MACRO (Originales)
-    # =====================================================================
-    ("SP30577", "INPC_Inflacion_Mensual"), ("SP30579", "INPC_Inflacion_Acumulada"),
-    ("SP30578", "INPC_Inflacion_Anual"), ("SP1", "INPC_Nivel_Historico"),
-    ("SP6", "INPP_Mercancias_Servicios_ExPetroleo"), ("SP5", "INPP_Mercancias_Servicios_ConPetroleo"),
-    
-    # Mercado Cambiario y Monetario
-    ("SF17890", "TipoCambio_Cotizacion_Minima"), ("SF17891", "TipoCambio_Cotizacion_Maxima"),
-    ("SF331450", "TIIE_Fondeo_1Dia"),
-    
-    # Mercado Laboral
-    ("SL11298", "Salario_Minimo_General"), ("SL1", "Tasa_Desocupacion_Nacional"),
-
-    # Expectativas de la Encuesta de Especialistas (Medias y Extremos)
-    ("SR14222", "Exp_Inflacion_Media"), ("SR14226", "Exp_Inflacion_Minima"),
-    ("SR14227", "Exp_Inflacion_Maxima"), ("SR14790", "Exp_TipoCambio_Media"),
-    ("SR14794", "Exp_TipoCambio_Minima"), ("SR14795", "Exp_TipoCambio_Maxima"),
-
-    ("SR14658", "Exp_TasaFondeo_Media"), ("SR14662", "Exp_TasaFondeo_Minima"),
-    ("SR14663", "Exp_TasaFondeo_Maxima"), ("SR14902", "Exp_TasaDesocupacion_Media"),
-    ("SR14906", "Exp_TasaDesocupacion_Minima"), ("SR14907", "Exp_TasaDesocupacion_Maxima"),
-
-    # =====================================================================
-    # 2. NUEVAS SERIES AGREGADAS (Clima de Negocios, Billetes y Monedas)
-    # =====================================================================
-
-    # Encuesta de Expectativas de Clima de Negocios
-    ("SR15028", "Exp_ClimaNegocios_Mejorara"),     # Clima de negocios próximos 6 meses: Mejorará
-    ("SR15029", "Exp_ClimaNegocios_Igual"),        # Clima de negocios próximos 6 meses: Permanecerá igual
-    ("SR15030", "Exp_ClimaNegocios_Empeorara"),    # Clima de negocios próximos 6 meses: Empeorará
-    ("SR16207", "Exp_ClimaNegocios_NumRespuestas"), # Número de respuestas
-    
-    # Encuesta de Expectativas de Situación Económica Actual
-    ("SR15031", "Exp_EconActual_Mejor"),           # Economía mejor que hace un año: Sí
-    ("SR15032", "Exp_EconActual_Peor"),            # Economía mejor que hace un año: No
-    ("SR16208", "Exp_EconActual_NumRespuestas"),  # Número de respuestas
-
-    # Billetes en Circulación (Totales, Millones de Pesos)
-    ("SM1472", "Billete_20_Circulacion"),
-    ("SM1478", "Billete_50_Circulacion"),
-    ("SM1479", "Billete_100_Circulacion"),
-    ("SM1480", "Billete_200_Circulacion"),
-    ("SM1481", "Billete_500_Circulacion"),
-    ("SM1482", "Billete_1000_Circulacion"),
-
-    # Monedas en Circulación (Totales, Millones de Pesos)
-    ("SM9", "Moneda_05C_Circulacion"),
-    ("SM10", "Moneda_10C_Circulacion"),
-    ("SM11", "Moneda_20C_Circulacion"),
-    ("SM12", "Moneda_50C_Circulacion"),
-    ("SM13", "Moneda_1_Circulacion"),
-    ("SM14", "Moneda_2_Circulacion"),
-    ("SM15", "Moneda_5_Circulacion"),
-    ("SM16", "Moneda_10_Circulacion"),
-    ("SM17", "Moneda_20_Circulacion")
-]
-
-# --- 1. CONFIGURACIÓN Y CARGA DE PLANTILLAS ---
-try:
-    from plantillas import PLANTILLAS 
-except ImportError:
-    PLANTILLAS = {}
-
-try:
-    from price_pack import PLANTILLAS_PP
-except ImportError:
-    PLANTILLAS_PP = {}
-
-try:
-    from data_price_vol import PLANTILLA_PV
-except ImportError:
-    PLANTILLA_PV = {}
-    
-    
-# --- CARGA DE ARQUITECTURA DESDE TU ARCHIVO EN GITHUB/LOCAL ---
-try:
-    # Suponiendo que tu archivo se llama arquitectura_empaque.py
-    from arquitectura_empaque import render_arquitectura_empaque
-    # Creamos un DataFrame independiente para NO tocar el df_p de las escaleras
-    df_arq = pd.DataFrame(render_arquitectura_empaque)
-except ImportError:
-    st.error("No se pudo encontrar el archivo 'arquitectura_empaque.py' en el repositorio.")
-    df_arq = pd.DataFrame() # DataFrame vacío para evitar que el código truene
-
-    
-st.set_page_config(page_title="Price Ladder & Architecture Expert Pro", layout="wide")
-
 # 2. AQUÍ PEGAS LA FUNCIÓN Y EL BLOQUE DEL LOGO
 def get_base64_of_bin_file(bin_file):
     with open(bin_file, 'rb') as f:
         data = f.read()
     return base64.b64encode(data).decode()
-
-try:
-    # Asegúrate de que 'logo_barcel.png' esté en tu carpeta del repositorio
-    bin_str = get_base64_of_bin_file('logo_barcel.png')
-    st.markdown(
-        f"""
-        <style>
-            [data-testid="stHeader"] {{
-                background-color: rgba(0,0,0,0);
-            }}
-            .logo-container {{
-                position: fixed;
-                top: 10px;
-                right: 20px;
-                z-index: 999999;
-            }}
-        </style>
-        <div class="logo-container">
-            <img src="data:image/png;base64,{bin_str}" width="100">
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-except FileNotFoundError:
-    pass # Si no encuentra el logo, la app sigue corriendo normal
-
-
 
 
 @st.dialog("📖 Glosario de Metodologías Estratégicas")
@@ -315,63 +214,7 @@ def mostrar_glosario():
     
     if st.button("✅ Entendido", use_container_width=True):
         st.rerun()
-        
-# --- 1. NAVEGACIÓN Y CONFIGURACIÓN ---
-with st.sidebar:
-    st.header("🚀 Modo de Visualización")
-    # Agregamos el nuevo modo a la lista de radio
-    modo = st.radio(
-        "Seleccionar Herramienta:", 
-        ["Price Ladder", "Price Pack", "Price and Volume", "Indicadores Macro"], 
-        label_visibility="collapsed"
-    )
-    
-    # Botón limpio para el Glosario
-    if st.button("❓ Ver Glosario Técnico", use_container_width=True):
-        if 'mostrar_glosario' in globals():
-            mostrar_glosario()
-        else:
-            st.info("Función de glosario no definida aún.")
 
-# --- BOTÓN MODO PRESENTACIÓN (FUERA DEL SIDEBAR) ---
-if "modo_presentacion" in st.session_state and st.session_state["modo_presentacion"]:
-    # Modo presentación - botón flotante para salir
-    col_exit = st.columns([10, 1])[1]
-    with col_exit:
-        if st.button("🚪 Salir", key="exit_presentation"):
-            st.session_state["modo_presentacion"] = False
-            st.rerun()
-
-
-# --- LÓGICA DE MODOS (Configuración de variables) ---
-if modo == "Price Ladder":
-    DB_FILE = "historico_productos.csv"
-    label_agru = "Ocasión"
-    opciones_agru = ["BITES", "INDIVIDUAL", "HAMBRE", "COMPARTIR", "FAMILIAR", "REUNIÓN", "FIESTA", "TRANSFORMADOR"]
-    fuente_plantillas = PLANTILLAS if 'PLANTILLAS' in globals() else {}
-    columnas_tabla = ["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)", "SOM (%)"]
-
-elif modo == "Price Pack":
-    DB_FILE = "historico_price_pack.csv"
-    label_agru = "Canal"
-    opciones_agru = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "DETALLE", "AUTOSERVICIOS", "CONVENIENCIA"]
-    fuente_plantillas = PLANTILLAS_PP if 'PLANTILLAS_PP' in globals() else {}
-    columnas_tabla = ["Producto", "Familia", "Canal", "Precio ($)", "Gramaje (g)"]
-
-elif modo == "Price and Volume":
-    DB_FILE = "historico_ventas_semanales.csv"
-    label_agru = "Semana"
-    opciones_agru = list(range(1, 53)) 
-    fuente_plantillas = PLANTILLA_PV if 'PLANTILLA_PV' in globals() else {}
-    columnas_tabla = ["Semana", "Producto", "Fabricante", "Precio ($)", "Venta Volumen (Pzas)","Venta Valor ($)"]
-
-else: # MODO: Indicadores Macro
-    DB_FILE = None
-    label_agru = None
-    opciones_agru = []
-    fuente_plantillas = {}
-    columnas_tabla = []
-        
 # --- 2. FUNCIONES CORE (Mantenidas intactas) ---
 def calcular_pkg(df, modo_actual):
     if df.empty: 
@@ -392,13 +235,6 @@ def calcular_pkg(df, modo_actual):
         if "Fabricante" not in df.columns: 
             df["Fabricante"] = "OTROS"
             
-    elif modo_actual == "Price and Volume":
-        # Para este modo, solo aseguramos que las columnas de valor y volumen sean numéricas
-        cols_pv = ["Precio ($)", "Venta Volumen (Pzas)","Venta Valor ($)"]
-        for col in cols_pv:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-                
     return df
 
 def procesar_datos_piramide(df):
@@ -493,6 +329,371 @@ def registrar_cambio(producto, campo, valor_anterior, valor_nuevo, modo_app):
         }
         st.session_state["historial_cambios"].append(cambio)
     
+
+# --- 2.5.1 Utilidades compartidas entre Price Ladder y Price Pack ---
+# NOTA: solo se comparte lo que es genuinamente idéntico (utilidades de color/formato).
+# La metodología de cada modo (qué colores default usar, cómo se arma cada gráfico) se queda
+# separada a propósito, porque Price Ladder y Price Pack tienen lógicas de negocio distintas.
+
+def estilo_contorno_barras():
+    """Devuelve el dict de marker_line (color + grosor del contorno) desde los controles
+    de 'Colores Personalizados'. Usado igual en Price Ladder y Price Pack."""
+    return dict(
+        color=st.session_state.get("color_contorno_barras", "#000000"),
+        width=st.session_state.get("grosor_contorno_barras", 1.0)
+    )
+
+
+def hex_a_rgba(color, opacidad, color_default=None):
+    """Convierte un color hex (#RRGGBB) a rgba(...) con la opacidad indicada.
+    Si 'color' ya viene en otro formato (rgba, nombre de color, o vacío), lo respeta o
+    cae al 'color_default'. Utilidad de formato pura, sin lógica de negocio."""
+    if color and str(color).startswith("#"):
+        import matplotlib.colors as mcolors
+        try:
+            rgb = mcolors.hex2color(color)
+            return f"rgba({int(rgb[0]*255)}, {int(rgb[1]*255)}, {int(rgb[2]*255)}, {opacidad})"
+        except Exception:
+            return color
+    return color if color else color_default
+
+# --- FUNCIÓN PARA GUARDAR CONFIGURACIÓN ---
+def guardar_configuracion(nombre):
+    """Guarda la configuración actual completa"""
+    config = {
+        "nombre": nombre,
+        "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "diseno": {
+            "slider_nombres": st.session_state.get("slider_nombres", 14),
+            "slider_precios": st.session_state.get("slider_precios", 18),
+            "slider_pkg": st.session_state.get("slider_pkg", 16),
+            "slider_som": st.session_state.get("slider_som", 13),
+            "slider_ancho": st.session_state.get("slider_ancho", 0.6),
+            "slider_alto_barras": st.session_state.get("slider_alto_barras", 1.0),
+            "slider_opacidad": st.session_state.get("slider_opacidad", 1.0),
+            "slider_alto": st.session_state.get("slider_alto", 950),
+            "slider_espacio": st.session_state.get("slider_espacio", 0.03),
+            "slider_margen_b": st.session_state.get("slider_margen_b", 440),
+            "slider_angulo": st.session_state.get("slider_angulo", -90)
+        },
+        "grid": {
+            "grid_color": st.session_state.get("grid_color", "#707070"),
+            "grid_grosor": st.session_state.get("grid_grosor", 1.30),
+            "grid_opacidad": st.session_state.get("grid_opacidad", 0.5),
+            "grid_estilo": st.session_state.get("grid_estilo", "solid"),
+            "grid_y_visible": st.session_state.get("grid_y_visible", True),
+            "grid_x_visible": st.session_state.get("grid_x_visible", False),
+            "nticks_y": st.session_state.get("nticks_y", 16),
+            "grid_layer": st.session_state.get("grid_layer", "below traces")
+        },
+        "colores_personalizados": st.session_state.get("custom_colors", {})
+    }
+    st.session_state["configs_guardadas"][nombre] = config
+    return config
+
+# --- FUNCIÓN PARA CARGAR CONFIGURACIÓN ---
+def cargar_configuracion(nombre):
+    """Carga una configuración guardada"""
+    if nombre not in st.session_state["configs_guardadas"]:
+        return False
+    
+    config = st.session_state["configs_guardadas"][nombre]
+    
+    # Aplicar diseño
+    if "diseno" in config:
+        for key, value in config["diseno"].items():
+            st.session_state[key] = value
+    
+    # Aplicar grid
+    if "grid" in config:
+        for key, value in config["grid"].items():
+            st.session_state[key] = value
+    
+    # Aplicar colores personalizados
+    if "colores_personalizados" in config:
+        st.session_state["custom_colors"] = config["colores_personalizados"]
+    
+    return True
+
+# --- FUNCIÓN PARA EXPORTAR CONFIGURACIÓN ---
+def exportar_configuracion(nombre):
+    """Exporta configuración como archivo JSON"""
+    if nombre not in st.session_state["configs_guardadas"]:
+        return None
+    config = st.session_state["configs_guardadas"][nombre]
+    json_str = json.dumps(config, indent=2, ensure_ascii=False)
+    return json_str
+
+# --- FUNCIÓN PARA IMPORTAR CONFIGURACIÓN ---
+def importar_configuracion(json_str):
+    """Importa configuración desde JSON"""
+    try:
+        config = json.loads(json_str)
+        nombre = config.get("nombre", f"Importada_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+        st.session_state["configs_guardadas"][nombre] = config
+        return nombre
+    except:
+        return None
+
+# --- FUNCIÓN PARA ELIMINAR CONFIGURACIÓN ---
+def eliminar_configuracion(nombre):
+    """Elimina una configuración guardada"""
+    if nombre in st.session_state["configs_guardadas"]:
+        del st.session_state["configs_guardadas"][nombre]
+        return True
+    return False
+
+# --- FUNCIÓN PARA DUPLICAR CONFIGURACIÓN ---
+def duplicar_configuracion(nombre_original, nombre_nuevo):
+    """Crea una copia de una configuración"""
+    if nombre_original not in st.session_state["configs_guardadas"]:
+        return False
+    config_original = st.session_state["configs_guardadas"][nombre_original].copy()
+    config_original["nombre"] = nombre_nuevo
+    config_original["fecha"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    st.session_state["configs_guardadas"][nombre_nuevo] = config_original
+    return True
+
+
+# ============================================================================
+# 3. CONSTANTES Y CONFIGURACIÓN GLOBAL
+# ============================================================================
+    
+TOKEN_BANXICO = "08d1b98b48cd9bb05d95b88e3fd37886ec747aa5e563b562b7bef9de21cde974"
+FECHA_INICIO_FILTRO = "2020-01-01"
+FECHA_FIN_FILTRO = "2027-12-31"
+
+SERIES_A_CONSULTAR = [
+    # =====================================================================
+    # 1. INPC / INPP Y MACRO (Originales)
+    # =====================================================================
+    ("SP30577", "INPC_Inflacion_Mensual"), ("SP30579", "INPC_Inflacion_Acumulada"),
+    ("SP30578", "INPC_Inflacion_Anual"), ("SP1", "INPC_Nivel_Historico"),
+    ("SP6", "INPP_Mercancias_Servicios_ExPetroleo"), ("SP5", "INPP_Mercancias_Servicios_ConPetroleo"),
+    
+    # Mercado Cambiario y Monetario
+    ("SF17890", "TipoCambio_Cotizacion_Minima"), ("SF17891", "TipoCambio_Cotizacion_Maxima"),
+    ("SF331450", "TIIE_Fondeo_1Dia"),
+    
+    # Mercado Laboral
+    ("SL11298", "Salario_Minimo_General"), ("SL1", "Tasa_Desocupacion_Nacional"),
+
+    # Expectativas de la Encuesta de Especialistas (Medias y Extremos)
+    ("SR14222", "Exp_Inflacion_Media"), ("SR14226", "Exp_Inflacion_Minima"),
+    ("SR14227", "Exp_Inflacion_Maxima"), ("SR14790", "Exp_TipoCambio_Media"),
+    ("SR14794", "Exp_TipoCambio_Minima"), ("SR14795", "Exp_TipoCambio_Maxima"),
+
+    ("SR14658", "Exp_TasaFondeo_Media"), ("SR14662", "Exp_TasaFondeo_Minima"),
+    ("SR14663", "Exp_TasaFondeo_Maxima"), ("SR14902", "Exp_TasaDesocupacion_Media"),
+    ("SR14906", "Exp_TasaDesocupacion_Minima"), ("SR14907", "Exp_TasaDesocupacion_Maxima"),
+
+    # =====================================================================
+    # 2. NUEVAS SERIES AGREGADAS (Clima de Negocios, Billetes y Monedas)
+    # =====================================================================
+
+    # Encuesta de Expectativas de Clima de Negocios
+    ("SR15028", "Exp_ClimaNegocios_Mejorara"),     # Clima de negocios próximos 6 meses: Mejorará
+    ("SR15029", "Exp_ClimaNegocios_Igual"),        # Clima de negocios próximos 6 meses: Permanecerá igual
+    ("SR15030", "Exp_ClimaNegocios_Empeorara"),    # Clima de negocios próximos 6 meses: Empeorará
+    ("SR16207", "Exp_ClimaNegocios_NumRespuestas"), # Número de respuestas
+    
+    # Encuesta de Expectativas de Situación Económica Actual
+    ("SR15031", "Exp_EconActual_Mejor"),           # Economía mejor que hace un año: Sí
+    ("SR15032", "Exp_EconActual_Peor"),            # Economía mejor que hace un año: No
+    ("SR16208", "Exp_EconActual_NumRespuestas"),  # Número de respuestas
+
+    # Billetes en Circulación (Totales, Millones de Pesos)
+    ("SM1472", "Billete_20_Circulacion"),
+    ("SM1478", "Billete_50_Circulacion"),
+    ("SM1479", "Billete_100_Circulacion"),
+    ("SM1480", "Billete_200_Circulacion"),
+    ("SM1481", "Billete_500_Circulacion"),
+    ("SM1482", "Billete_1000_Circulacion"),
+
+    # Monedas en Circulación (Totales, Millones de Pesos)
+    ("SM9", "Moneda_05C_Circulacion"),
+    ("SM10", "Moneda_10C_Circulacion"),
+    ("SM11", "Moneda_20C_Circulacion"),
+    ("SM12", "Moneda_50C_Circulacion"),
+    ("SM13", "Moneda_1_Circulacion"),
+    ("SM14", "Moneda_2_Circulacion"),
+    ("SM15", "Moneda_5_Circulacion"),
+    ("SM16", "Moneda_10_Circulacion"),
+    ("SM17", "Moneda_20_Circulacion")
+]
+
+# ============================================================================
+# 4. CARGA DE PLANTILLAS Y ARQUITECTURA
+# ============================================================================
+
+# --- 1. CONFIGURACIÓN Y CARGA DE PLANTILLAS ---
+try:
+    from plantillas import PLANTILLAS 
+except ImportError:
+    PLANTILLAS = {}
+
+try:
+    from price_pack import PLANTILLAS_PP
+except ImportError:
+    PLANTILLAS_PP = {}
+    
+# --- CARGA DE ARQUITECTURA DESDE TU ARCHIVO EN GITHUB/LOCAL ---
+try:
+    # Suponiendo que tu archivo se llama arquitectura_empaque.py
+    from arquitectura_empaque import render_arquitectura_empaque
+    # Creamos un DataFrame independiente para NO tocar el df_p de las escaleras
+    df_arq = pd.DataFrame(render_arquitectura_empaque)
+except ImportError:
+    st.error("No se pudo encontrar el archivo 'arquitectura_empaque.py' en el repositorio.")
+    df_arq = pd.DataFrame() # DataFrame vacío para evitar que el código truene
+
+# ============================================================================
+# 5. INICIALIZACIÓN DE SESSION STATE
+# ============================================================================
+# ============================================
+# INICIALIZACIÓN DE SLIDERS Y ESTADOS (DEBE ESTAR AQUÍ AL INICIO)
+# ============================================
+if 'form_success' not in st.session_state:
+    st.session_state.form_success = False
+if "slider_nombres" not in st.session_state:
+    st.session_state["slider_nombres"] = 16
+if "slider_precios" not in st.session_state:
+    st.session_state["slider_precios"] = 18
+if "slider_pkg" not in st.session_state:
+    st.session_state["slider_pkg"] = 15
+if "slider_som" not in st.session_state:
+    st.session_state["slider_som"] = 15
+if "slider_ancho" not in st.session_state:
+    st.session_state["slider_ancho"] = 0.8
+if "slider_opacidad" not in st.session_state:
+    st.session_state["slider_opacidad"] = 1.0
+if "slider_alto" not in st.session_state:
+    st.session_state["slider_alto"] = 950
+if "slider_espacio" not in st.session_state:
+    st.session_state["slider_espacio"] = 0.03
+if "slider_margen_b" not in st.session_state:
+    st.session_state["slider_margen_b"] = 440
+if "slider_angulo" not in st.session_state:
+    st.session_state["slider_angulo"] = -90
+
+# Inicializar custom_colors si no existe
+if "custom_colors" not in st.session_state:
+    st.session_state["custom_colors"] = {}
+
+# Inicializar comentarios y historial
+if "comentarios_productos" not in st.session_state:
+    st.session_state["comentarios_productos"] = {}
+if "historial_cambios" not in st.session_state:
+    st.session_state["historial_cambios"] = []
+if "modo_presentacion" not in st.session_state:
+    st.session_state["modo_presentacion"] = True
+
+# ============================================================================
+# SISTEMA DE GUARDAR/CARGAR CONFIGURACIONES
+# Copiar y pegar este código completo al inicio de tu app (después de imports)
+# ============================================================================
+
+# --- INICIALIZACIÓN DE SESSION STATE ---
+if "configs_guardadas" not in st.session_state:
+    st.session_state["configs_guardadas"] = {}
+
+
+# ============================================================================
+# 6. EJECUCIÓN: MODO PRESENTACIÓN Y LOGO
+# ============================================================================
+# Aplicar CSS si está en modo presentación
+aplicar_modo_presentacion()
+
+try:
+    # Asegúrate de que 'logo_barcel.png' esté en tu carpeta del repositorio
+    bin_str = get_base64_of_bin_file('logo_barcel.png')
+    st.markdown(
+        f"""
+        <style>
+            [data-testid="stHeader"] {{
+                background-color: rgba(0,0,0,0);
+            }}
+            .logo-container {{
+                position: fixed;
+                top: 10px;
+                right: 20px;
+                z-index: 999999;
+            }}
+        </style>
+        <div class="logo-container">
+            <img src="data:image/png;base64,{bin_str}" width="100">
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+except FileNotFoundError:
+    pass # Si no encuentra el logo, la app sigue corriendo normal
+
+
+
+
+
+# ============================================================================
+# 7. BARRA LATERAL (SIDEBAR)
+# ============================================================================
+        
+# --- 1. NAVEGACIÓN Y CONFIGURACIÓN ---
+with st.sidebar:
+    st.header("🚀 Modo de Visualización")
+    # Agregamos el nuevo modo a la lista de radio
+    modo = st.radio(
+        "Seleccionar Herramienta:", 
+        ["Price Ladder", "Price Pack", "Indicadores Macro"], 
+        label_visibility="collapsed"
+    )
+    
+    # Botón limpio para el Glosario
+    if st.button("❓ Ver Glosario Técnico", use_container_width=True):
+        if 'mostrar_glosario' in globals():
+            mostrar_glosario()
+        else:
+            st.info("Función de glosario no definida aún.")
+
+# --- BOTÓN MODO PRESENTACIÓN (FUERA DEL SIDEBAR) ---
+if "modo_presentacion" in st.session_state and st.session_state["modo_presentacion"]:
+    # Modo presentación - botón flotante para salir
+    col_exit = st.columns([10, 1])[1]
+    with col_exit:
+        if st.button("🚪 Salir", key="exit_presentation"):
+            st.session_state["modo_presentacion"] = False
+            st.rerun()
+
+    # Aviso de bienvenida, solo la primera vez por sesión: el sidebar (controles, carga de
+    # datos, personalización) está oculto porque "Modo Presentación" arranca activado por default.
+    if not st.session_state.get("aviso_modo_presentacion_mostrado", False):
+        st.info("👋 Estás en **Modo Presentación** (el gráfico se ve a todo lo ancho). Si necesitas cargar datos o personalizar, presiona **🚪 Salir** arriba a la derecha para ver los controles.")
+        st.session_state["aviso_modo_presentacion_mostrado"] = True
+
+
+
+# --- LÓGICA DE MODOS (Configuración de variables) ---
+if modo == "Price Ladder":
+    DB_FILE = "historico_productos.csv"
+    label_agru = "Ocasión"
+    opciones_agru = ["BITES", "INDIVIDUAL", "HAMBRE", "COMPARTIR", "FAMILIAR", "REUNIÓN", "FIESTA", "TRANSFORMADOR"]
+    fuente_plantillas = PLANTILLAS if 'PLANTILLAS' in globals() else {}
+    columnas_tabla = ["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)", "SOM (%)"]
+
+elif modo == "Price Pack":
+    DB_FILE = "historico_price_pack.csv"
+    label_agru = "Canal"
+    opciones_agru = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "DETALLE", "AUTOSERVICIOS", "CONVENIENCIA"]
+    fuente_plantillas = PLANTILLAS_PP if 'PLANTILLAS_PP' in globals() else {}
+    columnas_tabla = ["Producto", "Familia", "Canal", "Precio ($)", "Gramaje (g)"]
+
+else: # MODO: Indicadores Macro
+    DB_FILE = None
+    label_agru = None
+    opciones_agru = []
+    fuente_plantillas = {}
+    columnas_tabla = []
+        
+
 
 # --- SECCIÓN 2.5: GESTIÓN DE ESCENARIOS ---
 if "data" in st.session_state and not st.session_state.data.empty and modo in ["Price Ladder", "Price Pack"]:
@@ -757,6 +958,7 @@ if "data" in st.session_state and not st.session_state.data.empty and modo in ["
         else:
             st.info("💡 No hay escenarios guardados aún. Crea tu primer escenario arriba.")
 
+
 # --- SECCIÓN 2.6: COMPARACIÓN DE ESCENARIOS ---
 if "data" in st.session_state and not st.session_state.data.empty and modo in ["Price Ladder", "Price Pack"]:
     if len(escenarios_modo_actual) >= 1:  # Necesitamos al menos 1 escenario guardado para comparar con el actual
@@ -920,6 +1122,7 @@ if "data" in st.session_state and not st.session_state.data.empty and modo in ["
                         )
 
 
+
 # ============================================================================
 # CÓDIGO DEL SIDEBAR - SIN SISTEMA DE CONFIGURACIONES GUARDADAS
 # ============================================================================
@@ -928,18 +1131,6 @@ if "data" in st.session_state and not st.session_state.data.empty and modo in ["
 # ============================================================================
 
 
-import io
-# Inicializar custom_colors si no existe
-if "custom_colors" not in st.session_state:
-    st.session_state["custom_colors"] = {}
-
-# Inicializar comentarios y historial
-if "comentarios_productos" not in st.session_state:
-    st.session_state["comentarios_productos"] = {}
-if "historial_cambios" not in st.session_state:
-    st.session_state["historial_cambios"] = []
-if "modo_presentacion" not in st.session_state:
-    st.session_state["modo_presentacion"] = False
 
 # --- 3. GESTIÓN DE ESTADO ---
 if "data" not in st.session_state or st.session_state.get("last_modo") != modo:
@@ -1009,10 +1200,7 @@ with st.sidebar:
                 with st.spinner("⏳ Procesando datos..."):
                     df_nuevo = pd.DataFrame(fuente_plantillas[nombre_plantilla])
                     
-                    if modo == "Price and Volume":
-                        st.session_state.data = df_nuevo
-                    else:
-                        st.session_state.data = calcular_pkg(df_nuevo, modo)
+                    st.session_state.data = calcular_pkg(df_nuevo, modo)
                     
                     st.session_state.data.to_csv(DB_FILE, index=False)
                     st.success("✅ ¡Datos cargados exitosamente!")
@@ -1114,24 +1302,69 @@ with st.sidebar:
             st.session_state["slider_opacidad"] = 1.0
             st.session_state["slider_alto"] = 950
             st.session_state["slider_espacio"] = 0.03
-            st.session_state["slider_margen_b"] = 400
+            st.session_state["slider_margen_b"] = 440
             st.session_state["slider_angulo"] = -90
             st.session_state["custom_colors"] = {}
             # Resets para grid (CORREGIDOS)
-            st.session_state["grid_color"] = "#DCDCDC"
-            st.session_state["grid_grosor"] = 1.0
+            st.session_state["grid_color"] = "#707070"
+            st.session_state["grid_grosor"] = 1.30
             st.session_state["grid_opacidad"] = 0.5
             st.session_state["grid_estilo"] = "solid"
             st.session_state["grid_y_visible"] = True
             st.session_state["grid_x_visible"] = False
-            st.session_state["nticks_y"] = 10
+            st.session_state["nticks_y"] = 16
             st.session_state["grid_layer"] = "below traces"  # CORREGIDO
             
         if st.button("Resetear Todo el Diseño"):
             reset_diseno()
             st.rerun()
-            
-        with st.expander("📏 Dimensiones y Espaciado"):
+
+        # --- PRESETS DE ESTILO: configura varios controles de un jalón ---
+        def aplicar_preset_estilo(nombre_preset):
+            if nombre_preset == "Ejecutivo":
+                st.session_state["slider_nombres"] = 16
+                st.session_state["slider_precios"] = 18
+                st.session_state["slider_pkg"] = 15
+                st.session_state["slider_som"] = 15
+                st.session_state["slider_ancho"] = 0.8
+                st.session_state["slider_alto"] = 950
+                st.session_state["slider_margen_b"] = 440
+                st.session_state["grid_color"] = "#707070"
+                st.session_state["grid_grosor"] = 1.30
+                st.session_state["nticks_y"] = 16
+                st.session_state["grid_x_visible"] = False
+            elif nombre_preset == "Pantalla completa":
+                st.session_state["slider_nombres"] = 18
+                st.session_state["slider_precios"] = 22
+                st.session_state["slider_pkg"] = 18
+                st.session_state["slider_som"] = 16
+                st.session_state["slider_ancho"] = 0.85
+                st.session_state["slider_alto"] = 1050
+                st.session_state["slider_margen_b"] = 480
+                st.session_state["grid_color"] = "#4A4A4A"
+                st.session_state["grid_grosor"] = 1.5
+                st.session_state["nticks_y"] = 12
+                st.session_state["grid_x_visible"] = False
+                st.session_state["modo_presentacion"] = True
+
+        col_preset1, col_preset2 = st.columns([3, 1])
+        with col_preset1:
+            preset_elegido = st.selectbox(
+                "Preset de estilo",
+                ["-- Manual (como está) --", "Ejecutivo", "Pantalla completa"],
+                key="preset_estilo_select",
+                help="Configura de un jalón varios controles (fuentes, grid, tamaño). Puedes seguir ajustando manualmente después."
+            )
+        with col_preset2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Aplicar", key="btn_aplicar_preset", use_container_width=True):
+                if preset_elegido != "-- Manual (como está) --":
+                    aplicar_preset_estilo(preset_elegido)
+                    st.rerun()
+
+        tab_dim, tab_tipo, tab_grid, tab_colores = st.tabs(["📏 Dimensiones", "🔡 Tipografía", "📊 Grid", "🎨 Colores"])
+
+        with tab_dim:
             alto_grafico = st.slider("Alto del Gráfico", 400, 1500, value=st.session_state["slider_alto"], key="slider_alto")
             espacio_v = st.slider("Espacio entre Gráficos", 0.0, 0.2, value=st.session_state["slider_espacio"], key="slider_espacio")
             margen_b = st.slider("Margen Inferior (Nombres)", 50, 600, value=st.session_state["slider_margen_b"], key="slider_margen_b")
@@ -1144,7 +1377,7 @@ with st.sidebar:
             
             opacidad_barras = st.slider("Opacidad Barras", 0.1, 1.0, value=st.session_state["slider_opacidad"], key="slider_opacidad")
         
-        with st.expander("🔡 Tipografía y Texto"):
+        with tab_tipo:
             t_nombres = st.slider("Tamaño Nombres", 8, 30, value=st.session_state["slider_nombres"], key="slider_nombres")
             t_precios = st.slider("Tamaño Precios ($)", 10, 40, value=st.session_state["slider_precios"], key="slider_precios")
             t_pkg = st.slider("Tamaño $/Kg", 10, 40, value=st.session_state["slider_pkg"], key="slider_pkg")
@@ -1152,7 +1385,7 @@ with st.sidebar:
             angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, value=st.session_state["slider_angulo"], key="slider_angulo")
         
         # === EXPANDER PARA LÍNEAS DIVISORIAS / GRID (CORREGIDO) ===
-        with st.expander("📊 Líneas Divisorias (Grid)"):
+        with tab_grid:
             st.markdown("#### Visibilidad del Grid")
             col_vis1, col_vis2 = st.columns(2)
             with col_vis1:
@@ -1176,7 +1409,7 @@ with st.sidebar:
             with col_style1:
                 grid_color = st.color_picker(
                     "Color de Líneas",
-                    value=st.session_state.get("grid_color", "#DCDCDC"),
+                    value=st.session_state.get("grid_color", "#707070"),
                     key="grid_color",
                     help="Color de las líneas divisorias"
                 )
@@ -1185,7 +1418,7 @@ with st.sidebar:
                 grid_grosor = st.slider(
                     "Grosor de Líneas",
                     0.1, 5.0, 
-                    value=st.session_state.get("grid_grosor", 1.0),
+                    value=st.session_state.get("grid_grosor", 1.30),
                     step=0.1,
                     key="grid_grosor",
                     help="Grosor de las líneas en puntos"
@@ -1233,7 +1466,7 @@ with st.sidebar:
                 nticks_y = st.slider(
                     "Número de líneas horizontales",
                     3, 30,
-                    value=st.session_state.get("nticks_y", 10),
+                    value=st.session_state.get("nticks_y", 16),
                     key="nticks_y",
                     help="Cantidad de divisiones en el eje Y"
                 )
@@ -1268,7 +1501,26 @@ with st.sidebar:
                 """, unsafe_allow_html=True)
     
         # ✨ SELECTOR DE COLORES PERSONALIZADOS
-        with st.expander("🎨 Colores Personalizados (Opcional)"):
+        with tab_colores:
+            st.markdown("**Contorno de las barras (aplica a todas):**")
+            col_contorno1, col_contorno2 = st.columns(2)
+            with col_contorno1:
+                color_contorno_barras = st.color_picker(
+                    "Color del contorno",
+                    value=st.session_state.get("color_contorno_barras", "#000000"),
+                    key="color_contorno_barras",
+                    help="Color del borde/contorno de todas las barras del gráfico"
+                )
+            with col_contorno2:
+                grosor_contorno_barras = st.slider(
+                    "Grosor del contorno",
+                    0.0, 5.0,
+                    value=st.session_state.get("grosor_contorno_barras", 1.0),
+                    step=0.25,
+                    key="grosor_contorno_barras",
+                    help="Grosor del borde de las barras (0 = sin contorno)"
+                )
+            st.markdown("---")
             st.markdown("**Selecciona un producto para cambiar su color:**")
             
             if "Producto" in st.session_state.data.columns:
@@ -1497,114 +1749,6 @@ with st.sidebar:
                     st.warning("⚠️ Debes confirmar la acción marcando la casilla")
 
 
-# ============================================================================
-# SISTEMA DE GUARDAR/CARGAR CONFIGURACIONES
-# Copiar y pegar este código completo al inicio de tu app (después de imports)
-# ============================================================================
-
-import json
-from datetime import datetime
-
-# --- INICIALIZACIÓN DE SESSION STATE ---
-if "configs_guardadas" not in st.session_state:
-    st.session_state["configs_guardadas"] = {}
-
-# --- FUNCIÓN PARA GUARDAR CONFIGURACIÓN ---
-def guardar_configuracion(nombre):
-    """Guarda la configuración actual completa"""
-    config = {
-        "nombre": nombre,
-        "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "diseno": {
-            "slider_nombres": st.session_state.get("slider_nombres", 14),
-            "slider_precios": st.session_state.get("slider_precios", 18),
-            "slider_pkg": st.session_state.get("slider_pkg", 16),
-            "slider_som": st.session_state.get("slider_som", 13),
-            "slider_ancho": st.session_state.get("slider_ancho", 0.6),
-            "slider_alto_barras": st.session_state.get("slider_alto_barras", 1.0),
-            "slider_opacidad": st.session_state.get("slider_opacidad", 1.0),
-            "slider_alto": st.session_state.get("slider_alto", 950),
-            "slider_espacio": st.session_state.get("slider_espacio", 0.03),
-            "slider_margen_b": st.session_state.get("slider_margen_b", 400),
-            "slider_angulo": st.session_state.get("slider_angulo", -90)
-        },
-        "grid": {
-            "grid_color": st.session_state.get("grid_color", "#DCDCDC"),
-            "grid_grosor": st.session_state.get("grid_grosor", 1.0),
-            "grid_opacidad": st.session_state.get("grid_opacidad", 0.5),
-            "grid_estilo": st.session_state.get("grid_estilo", "solid"),
-            "grid_y_visible": st.session_state.get("grid_y_visible", True),
-            "grid_x_visible": st.session_state.get("grid_x_visible", False),
-            "nticks_y": st.session_state.get("nticks_y", 10),
-            "grid_layer": st.session_state.get("grid_layer", "below traces")
-        },
-        "colores_personalizados": st.session_state.get("custom_colors", {})
-    }
-    st.session_state["configs_guardadas"][nombre] = config
-    return config
-
-# --- FUNCIÓN PARA CARGAR CONFIGURACIÓN ---
-def cargar_configuracion(nombre):
-    """Carga una configuración guardada"""
-    if nombre not in st.session_state["configs_guardadas"]:
-        return False
-    
-    config = st.session_state["configs_guardadas"][nombre]
-    
-    # Aplicar diseño
-    if "diseno" in config:
-        for key, value in config["diseno"].items():
-            st.session_state[key] = value
-    
-    # Aplicar grid
-    if "grid" in config:
-        for key, value in config["grid"].items():
-            st.session_state[key] = value
-    
-    # Aplicar colores personalizados
-    if "colores_personalizados" in config:
-        st.session_state["custom_colors"] = config["colores_personalizados"]
-    
-    return True
-
-# --- FUNCIÓN PARA EXPORTAR CONFIGURACIÓN ---
-def exportar_configuracion(nombre):
-    """Exporta configuración como archivo JSON"""
-    if nombre not in st.session_state["configs_guardadas"]:
-        return None
-    config = st.session_state["configs_guardadas"][nombre]
-    json_str = json.dumps(config, indent=2, ensure_ascii=False)
-    return json_str
-
-# --- FUNCIÓN PARA IMPORTAR CONFIGURACIÓN ---
-def importar_configuracion(json_str):
-    """Importa configuración desde JSON"""
-    try:
-        config = json.loads(json_str)
-        nombre = config.get("nombre", f"Importada_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
-        st.session_state["configs_guardadas"][nombre] = config
-        return nombre
-    except:
-        return None
-
-# --- FUNCIÓN PARA ELIMINAR CONFIGURACIÓN ---
-def eliminar_configuracion(nombre):
-    """Elimina una configuración guardada"""
-    if nombre in st.session_state["configs_guardadas"]:
-        del st.session_state["configs_guardadas"][nombre]
-        return True
-    return False
-
-# --- FUNCIÓN PARA DUPLICAR CONFIGURACIÓN ---
-def duplicar_configuracion(nombre_original, nombre_nuevo):
-    """Crea una copia de una configuración"""
-    if nombre_original not in st.session_state["configs_guardadas"]:
-        return False
-    config_original = st.session_state["configs_guardadas"][nombre_original].copy()
-    config_original["nombre"] = nombre_nuevo
-    config_original["fecha"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    st.session_state["configs_guardadas"][nombre_nuevo] = config_original
-    return True
 
 # ============================================================================
 # PANEL DE CONTROL EN SIDEBAR
@@ -1776,6 +1920,10 @@ with st.sidebar:
             </div>
         """, unsafe_allow_html=True)
 
+
+# ============================================================================
+# 8. PANEL PRINCIPAL
+# ============================================================================
 
 # ============================================================================
 # FIN DEL CÓDIGO DEL SIDEBAR
@@ -2224,7 +2372,7 @@ if not st.session_state.data.empty:
             df_p = df_p.sort_values(by=["O_Oca", "Precio ($)", "Precio por Kg ($)"]).reset_index(drop=True)
             som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-            fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=espacio_v, row_heights=[0.15, 0.85])
+            fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=espacio_v, row_heights=[0.13, 0.09, 0.78])
 
             fig.add_trace(go.Scatter(
                 x=df_p["Producto"], y=df_p["SOM (%)"], mode="lines+markers+text", 
@@ -2232,7 +2380,15 @@ if not st.session_state.data.empty:
                 marker=dict(size=30, color="#E5E5E5", symbol="square", line=dict(color="#CCCCCC", width=1)), 
                 text=[f"<b>{row['SOM (%)']}%</b>" for _, row in df_p.iterrows()],
                 textposition="middle center", textfont=dict(size=t_som, color="black"),
+                showlegend=False,
             ), row=1, col=1)
+
+            # --- FILA 2 (NUEVA): trace invisible solo para habilitar el eje de la franja de "Escalón de Precio" ---
+            fig.add_trace(go.Scatter(
+                x=df_p["Producto"], y=[0] * len(df_p), mode="markers",
+                marker=dict(size=0.001, color="rgba(0,0,0,0)"),
+                showlegend=False, hoverinfo="skip"
+            ), row=2, col=1)
 
             # --- TRACE 2: BARRAS DE PRECIO CON PERSONALIZACIÓN Y ALTO AJUSTABLE ---
             colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D","PROPUESTA":"#4B207E"}
@@ -2264,13 +2420,14 @@ if not st.session_state.data.empty:
                     y=[row["Precio ($)"] * alto_barras],  # ⭐ APLICAR MULTIPLICADOR DE ALTO
                     marker_color=bar_colors[idx],
                     marker_opacity=opacidad_barras, 
+                    marker_line=estilo_contorno_barras(),
                     width=ancho_barras,
                     text=[f"<b>{labels_precios[idx]}</b>"],
                     textposition="outside", 
                     textfont=dict(size=t_precios, color=label_colors_desembolso[idx]),
                     showlegend=False,
                     hovertemplate=f"{row['Producto']}<br>Precio: ${row['Precio ($)']}<extra></extra>"
-                ), row=2, col=1)
+                ), row=3, col=1)
 
             # Anotaciones de Precio por Kg dentro de las barras - CON PERSONALIZACIÓN
             for i, row in df_p.iterrows():
@@ -2279,18 +2436,10 @@ if not st.session_state.data.empty:
                     custom = st.session_state["custom_colors"][row["Producto"]]
                     color_texto_pkg = custom.get("texto_pkg", "white" if row["Fabricante"] == "BARCEL" else "black")
                     
-                    # Convertir el color del fondo si viene en formato hex
+                    # Convertir el color del fondo si viene en formato hex (metodología propia de Price Ladder: opacidad 0.8, default por Fabricante)
                     fondo_pkg_custom = custom.get("fondo_pkg", None)
-                    if fondo_pkg_custom and fondo_pkg_custom.startswith("#"):
-                        # Convertir hex a rgba con opacidad
-                        import matplotlib.colors as mcolors
-                        try:
-                            rgb = mcolors.hex2color(fondo_pkg_custom)
-                            color_fondo_pkg = f"rgba({int(rgb[0]*255)}, {int(rgb[1]*255)}, {int(rgb[2]*255)}, 0.8)"
-                        except:
-                            color_fondo_pkg = fondo_pkg_custom
-                    else:
-                        color_fondo_pkg = fondo_pkg_custom if fondo_pkg_custom else ("rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)")
+                    default_fondo_ladder = "rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)"
+                    color_fondo_pkg = hex_a_rgba(fondo_pkg_custom, 0.8, default_fondo_ladder)
                     
                     color_borde_pkg = custom.get("borde_pkg", "#444" if row["Fabricante"] != "BARCEL" else None)
                 else:
@@ -2306,29 +2455,109 @@ if not st.session_state.data.empty:
                     bgcolor=color_fondo_pkg,
                     bordercolor=color_borde_pkg,
                     borderwidth=1, 
-                    row=2, col=1
+                    row=3, col=1
                 )
 
             for i in range(len(df_p) + 1):
-                fig.add_shape(type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50, xref="x2", yref="paper", line=dict(color="#DDDDDD", width=1))
+                fig.add_shape(type="line", x0=i-0.5, x1=i-0.5, y0=-0.01, y1=-0.50, xref="x3", yref="paper", line=dict(color="#DDDDDD", width=1))
 
             for cat in df_p["Ocasión"].unique():
                 idx_list = df_p.index[df_p["Ocasión"] == cat].tolist()
                 fig.add_shape(
                     type="line", x0=idx_list[-1] + 0.5, x1=idx_list[-1] + 0.5, 
-                    y0=-0.60, y1=1, xref="x2", yref="paper", 
+                    y0=-0.60, y1=1, xref="x3", yref="paper", 
                     line=dict(color="#CCCCCC", width=2)
                 )
                 center = (idx_list[0] + idx_list[-1]) / 2
                 fig.add_annotation(
-                    x=center, y=-0.60, xref="x2", yref="paper", 
+                    x=center, y=-0.60, xref="x3", yref="paper", 
                     text=f"<b>{cat}</b><br><span style='font-size:18px;'>{som_por_ocasion[cat]:.1f}%</span>", 
                     showarrow=False, font=dict(size=16, color="black"), align="center"
                 )
 
+            # --- PESO POR ESCALÓN DE PRECIO (TIER): suma de SOM de los productos que comparten el mismo precio ---
+            # Ahora vive en su propia fila (fila 2), entre el gráfico de SOM y la escalera de precios,
+            # con bandas intercaladas teal/lavanda: neutras, no compiten con Barcel (azul) ni Sabritas (dorado).
+            df_p["_grupo_precio"] = (df_p["Precio ($)"] != df_p["Precio ($)"].shift()).cumsum()
+            resumen_tiers = df_p.groupby("_grupo_precio").agg(
+                precio=("Precio ($)", "first"),
+                som_total=("SOM (%)", "sum"),
+            )
+            resumen_tiers["idx_ini"] = df_p.groupby("_grupo_precio").apply(lambda g: g.index[0])
+            resumen_tiers["idx_fin"] = df_p.groupby("_grupo_precio").apply(lambda g: g.index[-1])
+
+            # Marco superior e inferior que enmarca toda la franja del tier, para que se lea como una banda propia
+            fig.add_shape(
+                type="line", x0=0, x1=1, y0=1, y1=1, xref="paper", yref="y2 domain",
+                line=dict(color="#AFAFAF", width=1.5)
+            )
+            fig.add_shape(
+                type="line", x0=0, x1=1, y0=0, y1=0, xref="paper", yref="y2 domain",
+                line=dict(color="#AFAFAF", width=1.5)
+            )
+
+            # Bandas alternadas: gris suave / lavanda suave, con su texto a juego (más saturado para contraste)
+            bandas_tier = [
+                {"fondo": "#F2F2F2", "texto": "#666666"},   # gris clarito
+                {"fondo": "#F1EAF9", "texto": "#6A3E9B"},   # lavanda suave
+            ]
+
+            for n_tier, (_, fila_tier) in enumerate(resumen_tiers.iterrows()):
+                idx_ini, idx_fin = fila_tier["idx_ini"], fila_tier["idx_fin"]
+                center_tier = (idx_ini + idx_fin) / 2
+                p_val = fila_tier["precio"]
+                precio_txt_tier = f"${p_val:.1f}" if p_val < 10 else f"${int(p_val)}"
+
+                banda = bandas_tier[n_tier % 2]
+                color_fondo_tier = banda["fondo"]
+                color_texto_tier = "#333333"
+                color_pct_tier = banda["texto"]
+
+                # Fondo intercalado para cada escalón de precio
+                fig.add_shape(
+                    type="rect",
+                    x0=idx_ini - 0.5, x1=idx_fin + 0.5, y0=0, y1=1,
+                    xref="x2", yref="y2 domain",
+                    fillcolor=color_fondo_tier,
+                    line=dict(color="rgba(0,0,0,0)", width=0),
+                    layer="below"
+                )
+
+                # Línea divisoria entre escalones de precio (dentro de la franja de la fila 2)
+                if idx_fin < len(df_p) - 1:
+                    fig.add_shape(
+                        type="line", x0=idx_fin + 0.5, x1=idx_fin + 0.5,
+                        y0=0, y1=1, xref="x2", yref="y2 domain",
+                        line=dict(color="rgba(0,0,0,0.12)", width=1)
+                    )
+
+                fig.add_annotation(
+                    x=center_tier, y=0.5, xref="x2", yref="y2 domain",
+                    text=f"<span style='color:{color_texto_tier};'><b>{precio_txt_tier}</b></span><br><span style='font-size:13px; color:{color_pct_tier};'><b>{fila_tier['som_total']:.1f}%</b></span>",
+                    showarrow=False, font=dict(size=12), align="center"
+                )
+
+            # --- LEYENDA DE COLORES POR FABRICANTE ---
+            # Trazas "fantasma" (sin datos reales) solo para que aparezcan en la leyenda.
+            # Las barras reales siguen con showlegend=False, así que esto no las duplica.
+            fabricantes_presentes = df_p["Fabricante"].astype(str).str.upper().unique().tolist()
+            for fab in ["BARCEL", "SABRITAS", "OTROS", "PROPUESTA"]:
+                if fab in fabricantes_presentes:
+                    fig.add_trace(go.Bar(
+                        x=[None], y=[None],
+                        marker_color=colors.get(fab, "#999"),
+                        marker_line=estilo_contorno_barras(),
+                        name=fab.title(),
+                        showlegend=True,
+                    ), row=3, col=1)
+
             fig.update_layout(
-                height=alto_grafico, width=1950, template="plotly_white", showlegend=False, 
-                margin=dict(t=50, b=margen_b, l=40, r=40),
+                height=alto_grafico, width=1950, template="plotly_white", showlegend=True, 
+                legend=dict(
+                    orientation="h", yanchor="bottom", y=1.06, xanchor="center", x=0.5,
+                    font=dict(size=13)
+                ),
+                margin=dict(t=85, b=margen_b, l=40, r=40),
                 # Configuración de layer para el grid
                 xaxis_layer=st.session_state.get("grid_layer", "below traces"),
                 yaxis_layer=st.session_state.get("grid_layer", "below traces"),
@@ -2342,10 +2571,11 @@ if not st.session_state.data.empty:
                 gridcolor=grid_color,
                 gridwidth=grid_grosor,
                 griddash=grid_estilo,
-                row=2, col=1
+                row=3, col=1
             )
             
             fig.update_yaxes(showticklabels=False, showgrid=False, row=1, col=1)
+            fig.update_yaxes(showticklabels=False, showgrid=False, zeroline=False, row=2, col=1)
             fig.update_yaxes(
                 showgrid=grid_y_visible,
                 gridcolor=grid_color,
@@ -2354,18 +2584,31 @@ if not st.session_state.data.empty:
                 nticks=nticks_y,
                 tickprefix="$", 
                 tickfont=dict(size=14), 
-                row=2, col=1
+                row=3, col=1
             )
             
-            st.plotly_chart(fig, use_container_width=True, config={
-                'toImageButtonOptions': {
-                    'format': 'png',
-                    'filename': 'Price_Ladder_Export',
-                    'height': alto_grafico,
-                    'width': 1950,
-                    'scale': 2
+            st.markdown("""
+                <style>
+                .st-key-card_price_ladder {
+                    background-color: #FFFFFF;
+                    border-radius: 14px;
+                    padding: 20px 16px 8px 16px;
+                    box-shadow: 0 4px 18px rgba(0,0,0,0.10);
+                    border: 1px solid #EEEEEE;
                 }
-            })
+                </style>
+            """, unsafe_allow_html=True)
+
+            with st.container(border=False, key="card_price_ladder"):
+                st.plotly_chart(fig, use_container_width=True, config={
+                    'toImageButtonOptions': {
+                        'format': 'png',
+                        'filename': 'Price_Ladder_Export',
+                        'height': alto_grafico,
+                        'width': 1950,
+                        'scale': 2
+                    }
+                })
 
         elif modo == "Price Pack" and "Canal" in st.session_state.data.columns:
             ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIOS": 5, "CONVENIENCIA": 6}
@@ -2387,7 +2630,7 @@ if not st.session_state.data.empty:
                 x=df_p.index, 
                 y=df_p["Precio por Kg ($)"] * alto_barras,  # ⭐ APLICAR MULTIPLICADOR DE ALTO
                 marker_color=bar_colors_pp,
-                marker_line=dict(color="#D1D1D1", width=1),
+                marker_line=estilo_contorno_barras(),
                 marker_opacity=opacidad_barras,
                 width=ancho_barras,
                 showlegend=False
@@ -2408,17 +2651,9 @@ if not st.session_state.data.empty:
                     custom = st.session_state["custom_colors"][r["Producto"]]
                     color_texto_pkg = custom.get("texto_pkg", "#212121")
                     
-                    # Convertir fondo_pkg de hex a rgba si es necesario
+                    # Convertir fondo_pkg de hex a rgba si es necesario (metodología propia de Price Pack: opacidad 0.9, default fijo)
                     fondo_pkg_custom = custom.get("fondo_pkg", "rgba(255,255,255,0.9)")
-                    if fondo_pkg_custom and fondo_pkg_custom.startswith("#"):
-                        import matplotlib.colors as mcolors
-                        try:
-                            rgb = mcolors.hex2color(fondo_pkg_custom)
-                            color_fondo_pkg = f"rgba({int(rgb[0]*255)}, {int(rgb[1]*255)}, {int(rgb[2]*255)}, 0.9)"
-                        except:
-                            color_fondo_pkg = fondo_pkg_custom
-                    else:
-                        color_fondo_pkg = fondo_pkg_custom
+                    color_fondo_pkg = hex_a_rgba(fondo_pkg_custom, 0.9, "rgba(255,255,255,0.9)")
                     
                     color_borde_pkg = custom.get("borde_pkg", "#616161")
                     color_texto_desembolso = custom.get("texto_desembolso", "white")
@@ -2516,13 +2751,9 @@ if not st.session_state.data.empty:
             })
                 
 # --- 8. COMPARATIVAS INDEX (UNIFICADO: LADDER + ARQUITECTURA PPT) ---
-# IMPORTS NECESARIOS AL INICIO DEL ARCHIVO (agregar si no están)
-from PIL import Image, ImageDraw, ImageFont
-import io
-import base64
 
 # Agregamos la condición para que esta sección solo se ejecute en los modos que usan Index
-if modo != "Price and Volume" and not st.session_state.data.empty:
+if not st.session_state.data.empty:
     st.divider()
     df_comp = st.session_state.data.copy()
     
@@ -3081,7 +3312,7 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
 
 # --- 12. ANALISTA MAESTRO INTEGRAL: LADDER ULTRA 2.6 + ARQUITECTURA PRO ---
 # Ajuste: No mostrar en el modo de Volume para evitar KeyErrors
-if modo != "Price and Volume" and not st.session_state.data.empty:
+if not st.session_state.data.empty:
     st.divider()
     
     # 1. PREPARACIÓN DE DATOS (Común para ambos modos)
@@ -3302,7 +3533,7 @@ if modo != "Price and Volume" and not st.session_state.data.empty:
 
 # --- 12. GENERADOR DE RESUMEN EJECUTIVO ESTRATÉGICO ---
 # Ajuste: No mostrar en el modo de Volumen para evitar errores de compilación de hallazgos
-if modo != "Price and Volume" and not st.session_state.data.empty:
+if not st.session_state.data.empty:
     st.divider()
     
     # Título dinámico según el modo
@@ -4130,631 +4361,6 @@ if modo == "Price Ladder":
                     - Los ajustes se mantienen al agregar SKUs
                     """)
 
-if modo == "Price and Volume":
-    if st.session_state.data.empty:
-        st.info("ℹ️ Por favor, selecciona una plantilla en la barra lateral y presiona 'Cargar Datos'.")
-    else:
-        st.success(f"✅ Datos cargados: {len(st.session_state.data)} registros encontrados.")
-        # Opcional: mostrar una vista previa pequeña
-        with st.expander("Ver vista previa de datos"):
-            st.dataframe(st.session_state.data.head())
-            
-# --- 15. ANÁLISIS DE ELASTICIDAD: PRICE & VOLUME (VERSIÓN PRO CON FEATURES AVANZADAS) ---
-if modo == "Price and Volume" and not st.session_state.data.empty:
-    st.divider()
-    st.markdown("""
-        <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                    padding: 2rem; border-radius: 15px; margin-bottom: 2rem;'>
-            <h2 style='color: white; margin: 0; font-weight: 700;'>
-                📈 Curvas Precio Volumen
-            </h2>
-            <p style='color: rgba(255,255,255,0.9); margin-top: 0.5rem; margin-bottom: 0;'>
-                Visualiza la evolución de precios, valor y volumen con detección automática de anomalías y patrones estacionales
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
-
-    df_pv = st.session_state.data.copy()
-    columnas_necesarias = ["Producto", "Semana", "Venta Valor ($)", "Venta Volumen (Pzas)", "Precio ($)"]
-    
-    if all(col in df_pv.columns for col in columnas_necesarias):
-        # --- TOOLTIPS INFORMATIVOS ---
-        def tooltip_info(texto, explicacion):
-            return f"""
-                <span style='position: relative; display: inline-block; cursor: help;'>
-                    {texto} 
-                    <span style='
-                        position: absolute;
-                        bottom: 100%;
-                        left: 50%;
-                        transform: translateX(-50%);
-                        background: #1F2937;
-                        color: white;
-                        padding: 0.75rem;
-                        border-radius: 8px;
-                        font-size: 0.85rem;
-                        width: 250px;
-                        opacity: 0;
-                        pointer-events: none;
-                        transition: opacity 0.3s;
-                        z-index: 1000;
-                        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-                    ' class='tooltip-text'>
-                        {explicacion}
-                    </span>
-                </span>
-            """
-        
-        st.markdown("""
-            <style>
-            span:hover .tooltip-text {
-                opacity: 1 !important;
-            }
-            .stSelectbox label, .stSlider label {
-                font-weight: 600;
-                color: #2D3748;
-                font-size: 0.95rem;
-            }
-            </style>
-        """, unsafe_allow_html=True)
-        
-        # --- FILTROS CON DISEÑO MEJORADO ---
-        c_f1, c_f2, c_f3 = st.columns([2, 3, 2])
-        with c_f1:
-            lista_prods = sorted(df_pv["Producto"].unique())
-            prod_sel = st.selectbox("🏷️ Seleccionar Producto:", lista_prods)
-        with c_f2:
-            min_sem, max_sem = int(df_pv["Semana"].min()), int(df_pv["Semana"].max())
-            rango_sem = st.slider("📅 Rango de Semanas para Análisis:", min_sem, max_sem, (min_sem, max_sem))
-        with c_f3:
-            mostrar_outliers = st.checkbox("🔍 Detectar Outliers", value=True, help="Marca semanas con comportamiento atípico en precio o volumen")
-
-        mask = (df_pv["Producto"] == prod_sel) & (df_pv["Semana"].between(rango_sem[0], rango_sem[1]))
-        df_filtrado = df_pv[mask].sort_values("Semana").copy()
-
-        if not df_filtrado.empty:
-            import plotly.graph_objects as go
-            from plotly.subplots import make_subplots
-            import numpy as np
-
-            # --- DETECCIÓN DE OUTLIERS (Z-SCORE) ---
-            def detectar_outliers(serie, umbral=2):
-                media = serie.mean()
-                std = serie.std()
-                z_scores = np.abs((serie - media) / std) if std > 0 else np.zeros(len(serie))
-                return z_scores > umbral
-            
-            df_filtrado['outlier_precio'] = detectar_outliers(df_filtrado['Precio ($)'])
-            df_filtrado['outlier_volumen'] = detectar_outliers(df_filtrado['Venta Volumen (Pzas)'])
-            df_filtrado['es_outlier'] = df_filtrado['outlier_precio'] | df_filtrado['outlier_volumen']
-            
-            num_outliers = df_filtrado['es_outlier'].sum()
-
-            # --- ANÁLISIS DE ESTACIONALIDAD ---
-            if len(df_filtrado) >= 4:
-                df_filtrado['semana_ciclo'] = df_filtrado['Semana'] % 4  # Ciclo de 4 semanas
-                estacionalidad = df_filtrado.groupby('semana_ciclo').agg({
-                    'Venta Volumen (Pzas)': 'mean',
-                    'Precio ($)': 'mean'
-                })
-                coef_variacion_vol = (estacionalidad['Venta Volumen (Pzas)'].std() / 
-                                     estacionalidad['Venta Volumen (Pzas)'].mean()) * 100 if estacionalidad['Venta Volumen (Pzas)'].mean() > 0 else 0
-                hay_estacionalidad = coef_variacion_vol > 15  # Más de 15% de variación indica estacionalidad
-            else:
-                hay_estacionalidad = False
-                coef_variacion_vol = 0
-
-            # --- GRÁFICO PRINCIPAL: VOLUMEN Y VALOR CON OUTLIERS ---
-            m_lat = 80 
-            margen_alineado = dict(l=m_lat, r=m_lat, t=40, b=40)
-
-            fig_perf = make_subplots(specs=[[{"secondary_y": True}]])
-            
-            # Área de valor con gradiente
-            fig_perf.add_trace(go.Scatter(
-                x=df_filtrado["Semana"], 
-                y=df_filtrado["Venta Valor ($)"],
-                name="Venta Valor ($)", 
-                fill='tozeroy', 
-                mode='lines',
-                line=dict(color='#10B981', width=3, shape='spline'),
-                fillcolor='rgba(16, 185, 129, 0.15)',
-                hovertemplate='<b>Semana %{x}</b><br>Valor: $%{y:,.0f}<extra></extra>'
-            ), secondary_y=True)
-            
-            # CORRECCIÓN: Barras de volumen - mostrar TODOS los datos
-            if mostrar_outliers:
-                # Si está activado, separar normales y outliers
-                df_normal = df_filtrado[~df_filtrado['es_outlier']]
-                df_outlier = df_filtrado[df_filtrado['es_outlier']]
-                
-                # Barras normales
-                if not df_normal.empty:
-                    fig_perf.add_trace(go.Bar(
-                        x=df_normal["Semana"], 
-                        y=df_normal["Venta Volumen (Pzas)"],
-                        name="Volumen (Pzas)", 
-                        marker=dict(
-                            color='#002366',
-                            line=dict(color='#001a4d', width=1.5)
-                        ),
-                        hovertemplate='<b>Semana %{x}</b><br>Volumen: %{y:,} pzas<extra></extra>'
-                    ), secondary_y=False)
-                
-                # Barras de outliers con estilo diferente
-                if not df_outlier.empty:
-                    fig_perf.add_trace(go.Bar(
-                        x=df_outlier["Semana"], 
-                        y=df_outlier["Venta Volumen (Pzas)"],
-                        name="⚠️ Outliers", 
-                        marker=dict(
-                            color='#DC2626',
-                            line=dict(color='#991B1B', width=2),
-                            pattern=dict(shape="/", bgcolor="white", fgcolor="#DC2626", size=8, solidity=0.3)
-                        ),
-                        hovertemplate='<b>⚠️ Semana %{x} (Anomalía)</b><br>Volumen: %{y:,} pzas<extra></extra>'
-                    ), secondary_y=False)
-            else:
-                # Si NO está activado, mostrar TODO como normal
-                fig_perf.add_trace(go.Bar(
-                    x=df_filtrado["Semana"], 
-                    y=df_filtrado["Venta Volumen (Pzas)"],
-                    name="Volumen (Pzas)", 
-                    marker=dict(
-                        color='#002366',
-                        line=dict(color='#001a4d', width=1.5)
-                    ),
-                    hovertemplate='<b>Semana %{x}</b><br>Volumen: %{y:,} pzas<extra></extra>'
-                ), secondary_y=False)
-
-            fig_perf.update_layout(
-                height=480, 
-                template="plotly_white", 
-                margin=margen_alineado,
-                legend=dict(
-                    orientation="h", 
-                    yanchor="bottom", 
-                    y=1.02, 
-                    xanchor="center", 
-                    x=0.5,
-                    font=dict(size=12, family="Arial, sans-serif"),
-                    bgcolor="rgba(255,255,255,0.9)",
-                    bordercolor="#E2E8F0",
-                    borderwidth=1
-                ),
-                barmode='overlay',
-                plot_bgcolor='rgba(248, 250, 252, 0.5)',
-                font=dict(family="Arial, sans-serif", size=12, color="#2D3748"),
-                hovermode='x unified'
-            )
-            fig_perf.update_xaxes(
-                title_text="Semana",
-                showgrid=True,
-                gridwidth=1,
-                gridcolor='rgba(226, 232, 240, 0.5)',
-                title_font=dict(size=13, color="#4A5568")
-            )
-            fig_perf.update_yaxes(
-                title_text="Volumen (Pzas)", 
-                secondary_y=False,
-                showgrid=True,
-                gridwidth=1,
-                gridcolor='rgba(226, 232, 240, 0.5)',
-                title_font=dict(size=13, color="#2563EB")
-            )
-            fig_perf.update_yaxes(
-                title_text="Venta Valor ($)", 
-                secondary_y=True,
-                showgrid=False,
-                title_font=dict(size=13, color="#10B981")
-            )
-
-            # --- GRÁFICO DE PRECIO CON DISEÑO PREMIUM Y OUTLIERS ---
-            fig_price = make_subplots(specs=[[{"secondary_y": True}]])
-            
-            # Precios normales
-            df_price_normal = df_filtrado[~df_filtrado['outlier_precio']]
-            if not df_price_normal.empty:
-                fig_price.add_trace(go.Scatter(
-                    x=df_price_normal["Semana"], 
-                    y=df_price_normal["Precio ($)"],
-                    name="Precio Unitario ($)", 
-                    line=dict(color='#DC2626', width=4, shape='spline'),
-                    mode='lines+markers+text',
-                    text=df_price_normal["Precio ($)"].apply(lambda x: f"${x:.1f}"),
-                    textposition="top center",
-                    textfont=dict(size=11, color='#DC2626', family="Arial Black, sans-serif"),
-                    marker=dict(
-                        size=14, 
-                        symbol='circle', 
-                        color='#DC2626',
-                        line=dict(width=3, color='white')
-                    ),
-                    hovertemplate='<b>Semana %{x}</b><br>Precio: $%{y:.2f}<extra></extra>'
-                ), secondary_y=False)
-            
-            # Precios outliers
-            df_price_outlier = df_filtrado[df_filtrado['outlier_precio']]
-            if mostrar_outliers and not df_price_outlier.empty:
-                fig_price.add_trace(go.Scatter(
-                    x=df_price_outlier["Semana"], 
-                    y=df_price_outlier["Precio ($)"],
-                    name="⚠️ Precio Atípico", 
-                    mode='markers+text',
-                    text=df_price_outlier["Precio ($)"].apply(lambda x: f"${x:.1f}"),
-                    textposition="top center",
-                    textfont=dict(size=11, color='#F59E0B', family="Arial Black, sans-serif"),
-                    marker=dict(
-                        size=18, 
-                        symbol='star', 
-                        color='#F59E0B',
-                        line=dict(width=3, color='white')
-                    ),
-                    hovertemplate='<b>⚠️ Semana %{x} (Precio Atípico)</b><br>Precio: $%{y:.2f}<extra></extra>'
-                ), secondary_y=False)
-
-            fig_price.update_layout(
-                height=300, 
-                paper_bgcolor='rgba(0,0,0,0)', 
-                plot_bgcolor='rgba(0,0,0,0)',
-                margin=margen_alineado, 
-                xaxis=dict(visible=False), 
-                showlegend=False,
-                font=dict(family="Arial, sans-serif")
-            )
-            fig_price.update_yaxes(
-                title_text="Precio ($)", 
-                color="#DC2626", 
-                secondary_y=False,
-                range=[df_filtrado["Precio ($)"].min()*0.85, df_filtrado["Precio ($)"].max()*1.65],
-                showgrid=False,
-                title_font=dict(size=13)
-            )
-            fig_price.update_yaxes(
-                title_text="", 
-                secondary_y=True, 
-                showticklabels=False
-            )
-
-            st.markdown("""
-                <style>
-                .price-overlay { 
-                    margin-top: -340px; 
-                    position: relative; 
-                    z-index: 99; 
-                    pointer-events: none; 
-                } 
-                .price-overlay .js-plotly-plot .plotly .main-svg { 
-                    background: transparent !important; 
-                }
-                </style>
-            """, unsafe_allow_html=True)
-            
-            st.plotly_chart(fig_perf, use_container_width=True)
-            st.markdown('<div class="price-overlay">', unsafe_allow_html=True)
-            st.plotly_chart(fig_price, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-            # --- ALERTAS DE OUTLIERS Y ESTACIONALIDAD ---
-            if num_outliers > 0 or hay_estacionalidad:
-                st.markdown("<br>", unsafe_allow_html=True)
-                col_alert1, col_alert2 = st.columns(2)
-                
-                with col_alert1:
-                    if num_outliers > 0:
-                        semanas_outlier = df_filtrado[df_filtrado['es_outlier']]['Semana'].tolist()
-                        st.markdown(f"""
-                            <div style='background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%); 
-                                        padding: 1.2rem; border-radius: 10px; border-left: 4px solid #F59E0B;'>
-                                <p style='margin: 0; color: #92400E;'>
-                                    <strong>🔍 {num_outliers} Anomalía(s) Detectada(s)</strong><br>
-                                    <span style='font-size: 0.9rem;'>Semanas con comportamiento atípico: {', '.join(map(str, semanas_outlier))}</span>
-                                </p>
-                            </div>
-                        """, unsafe_allow_html=True)
-                
-                with col_alert2:
-                    if hay_estacionalidad:
-                        st.markdown(f"""
-                            <div style='background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); 
-                                        padding: 1.2rem; border-radius: 10px; border-left: 4px solid #3B82F6;'>
-                                <p style='margin: 0; color: #1E40AF;'>
-                                    <strong>📊 Patrón Estacional Detectado</strong><br>
-                                    <span style='font-size: 0.9rem;'>Coeficiente de variación: {coef_variacion_vol:.1f}% - El volumen sigue un patrón cíclico</span>
-                                </p>
-                            </div>
-                        """, unsafe_allow_html=True)
-
-            # --- CALCULADORA DE ELASTICIDAD CON DISEÑO MEJORADO ---
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            st.markdown(f"""
-                <div style='background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); 
-                            padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;'>
-                    <h3 style='color: white; margin: 0; font-weight: 700; font-size: 1.4rem;'>
-                        🧮 Calculadora de Elasticidad por Ventana de Tiempo
-                    </h3>
-                    <p style='color: rgba(255,255,255,0.95); margin-top: 0.5rem; margin-bottom: 0; font-size: 0.95rem;'>
-                        Compara períodos y mide el impacto de cambios de precio en el volumen
-                    </p>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # ELIMINADO: Toggle de modo comparativo (ya no se usa)
-            
-            with st.expander("⚙️ Configurar Análisis de Impacto", expanded=True):
-                # CORRECCIÓN: Layout mejorado para los selectores
-                st.markdown("""
-                    <style>
-                    div[data-testid="stNumberInput"] > div > div > input {
-                        font-size: 1rem;
-                        padding: 0.5rem;
-                    }
-                    div[data-testid="stSelectbox"] > div > div > div {
-                        font-size: 1rem;
-                    }
-                    </style>
-                """, unsafe_allow_html=True)
-                
-                c1, c2 = st.columns([1, 1])
-                with c1:
-                    st.markdown("**📍 Semana del Cambio (Corte)**")
-                    st.caption("Semana donde ocurrió el cambio de precio o estrategia que quieres analizar")
-                    sem_corte = st.selectbox(
-                        "Selecciona la semana:", 
-                        df_filtrado["Semana"].unique(), 
-                        index=len(df_filtrado)//2,
-                        label_visibility="collapsed"
-                    )
-                with c2:
-                    st.markdown("**📊 Semanas a Promediar (Ventana)**")
-                    st.caption("Número de semanas antes y después del corte para calcular promedios")
-                    ventana = st.number_input(
-                        "Ventana:", 
-                        min_value=1, 
-                        max_value=8, 
-                        value=3,
-                        label_visibility="collapsed"
-                    )
-                
-                df_antes = df_filtrado[df_filtrado["Semana"] < sem_corte].tail(ventana)
-                df_despues = df_filtrado[df_filtrado["Semana"] >= sem_corte].head(ventana)
-
-                if len(df_antes) > 0 and len(df_despues) > 0:
-                    # Cálculos
-                    p_antes = df_antes["Precio ($)"].mean()
-                    p_despues = df_despues["Precio ($)"].mean()
-                    v_antes = df_antes["Venta Volumen (Pzas)"].mean()
-                    v_despues = df_despues["Venta Volumen (Pzas)"].mean()
-                    val_antes = df_antes["Venta Valor ($)"].mean()
-                    val_despues = df_despues["Venta Valor ($)"].mean()
-
-                    var_p = (p_despues / p_antes) - 1
-                    var_v = (v_despues / v_antes) - 1
-                    var_val = (val_despues / val_antes) - 1
-                    elasticidad = var_v / var_p if var_p != 0 else 0
-
-                    st.markdown(f"""
-                        <div style='background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); 
-                                    padding: 1rem; border-radius: 10px; border-left: 4px solid #3B82F6; margin-top: 1rem;'>
-                            <p style='margin: 0; color: #1E40AF; font-size: 0.95rem;'>
-                                📊 <strong>Período de Comparación:</strong> Promedio de {len(df_antes)} semanas antes vs {len(df_despues)} semanas después
-                            </p>
-                        </div>
-                    """, unsafe_allow_html=True)
-
-                    # --- TARJETAS DE MÉTRICAS CON DISEÑO PREMIUM ---
-                    st.markdown("""
-                        <style>
-                        .metric-card {
-                            background: white;
-                            padding: 1.5rem;
-                            border-radius: 12px;
-                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
-                            border-left: 4px solid;
-                            transition: transform 0.2s, box-shadow 0.2s;
-                        }
-                        .metric-card:hover {
-                            transform: translateY(-2px);
-                            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.1);
-                        }
-                        .metric-label {
-                            font-size: 0.85rem;
-                            color: #64748B;
-                            font-weight: 600;
-                            margin-bottom: 0.5rem;
-                            text-transform: uppercase;
-                            letter-spacing: 0.5px;
-                        }
-                        .metric-value {
-                            font-size: 2rem;
-                            font-weight: 700;
-                            margin: 0;
-                            line-height: 1;
-                        }
-                        .metric-delta {
-                            font-size: 0.9rem;
-                            margin-top: 0.5rem;
-                            font-weight: 500;
-                        }
-                        </style>
-                    """, unsafe_allow_html=True)
-
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    st.markdown("### 📊 Cambios Detectados")
-                    res1, res2, res3, res4 = st.columns(4)
-                    
-                    # Tarjeta 1: Precio
-                    delta_color_p = "#10B981" if var_p > 0 else "#EF4444"
-                    arrow_p = "↑" if var_p > 0 else "↓"
-                    with res1:
-                        st.markdown(f"""
-                            <div class="metric-card" style="border-left-color: {delta_color_p};">
-                                <div class="metric-label">💰 Δ Precio Promedio</div>
-                                <div class="metric-value" style="color: {delta_color_p};">
-                                    {var_p:.1%}
-                                </div>
-                                <div class="metric-delta" style="color: {delta_color_p};">
-                                    {arrow_p} ${p_antes:.2f} → ${p_despues:.2f}
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    
-                    # Tarjeta 2: Volumen
-                    delta_color_v = "#10B981" if var_v > 0 else "#EF4444"
-                    arrow_v = "↑" if var_v > 0 else "↓"
-                    with res2:
-                        st.markdown(f"""
-                            <div class="metric-card" style="border-left-color: {delta_color_v};">
-                                <div class="metric-label">📦 Δ Volumen Promedio</div>
-                                <div class="metric-value" style="color: {delta_color_v};">
-                                    {var_v:.1%}
-                                </div>
-                                <div class="metric-delta" style="color: {delta_color_v};">
-                                    {arrow_v} {v_antes:,.0f} → {v_despues:,.0f} pzas
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    
-                    # Tarjeta 3: Valor
-                    delta_color_val = "#10B981" if var_val > 0 else "#EF4444"
-                    arrow_val = "↑" if var_val > 0 else "↓"
-                    with res3:
-                        st.markdown(f"""
-                            <div class="metric-card" style="border-left-color: {delta_color_val};">
-                                <div class="metric-label">💵 Δ Valor Promedio</div>
-                                <div class="metric-value" style="color: {delta_color_val};">
-                                    {var_val:.1%}
-                                </div>
-                                <div class="metric-delta" style="color: {delta_color_val};">
-                                    {arrow_val} ${val_antes:,.0f} → ${val_despues:,.0f}
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    
-                    # Tarjeta 4: Elasticidad
-                    if abs(elasticidad) > 1:
-                        elastic_color = "#DC2626"
-                        elastic_icon = "⚠️"
-                        elastic_label = "ELÁSTICO"
-                    else:
-                        elastic_color = "#059669"
-                        elastic_icon = "✅"
-                        elastic_label = "INELÁSTICO"
-                    
-                    with res4:
-                        st.markdown(f"""
-                            <div class="metric-card" style="border-left-color: {elastic_color};">
-                                <div class="metric-label">{elastic_icon} Elasticidad</div>
-                                <div class="metric-value" style="color: {elastic_color};">
-                                    {elasticidad:.2f}
-                                </div>
-                                <div class="metric-delta" style="color: {elastic_color};">
-                                    {elastic_label}
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    
-                    # Mensaje interpretativo
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    if abs(elasticidad) > 1:
-                        st.markdown(f"""
-                            <div style='background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%); 
-                                        padding: 1.2rem; border-radius: 10px; border-left: 4px solid #DC2626;'>
-                                <p style='margin: 0; color: #991B1B;'>
-                                    <strong>⚠️ Producto Elástico (|E| = {abs(elasticidad):.2f} > 1):</strong><br>
-                                    El volumen es muy sensible a cambios de precio. Una variación del 1% en precio genera 
-                                    un cambio del {abs(elasticidad):.2f}% en volumen. Se recomienda precaución con incrementos de precio.
-                                </p>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"""
-                            <div style='background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); 
-                                        padding: 1.2rem; border-radius: 10px; border-left: 4px solid #059669;'>
-                                <p style='margin: 0; color: #064E3B;'>
-                                    <strong>✅ Producto Inelástico (|E| = {abs(elasticidad):.2f} < 1):</strong><br>
-                                    El volumen es poco sensible a cambios de precio. Una variación del 1% en precio genera 
-                                    solo un {abs(elasticidad):.2f}% de cambio en volumen. Hay margen para ajustes de precio.
-                                </p>
-                            </div>
-                        """, unsafe_allow_html=True)
-                else:
-                    st.error("❌ No hay suficientes semanas antes o después de la seleccionada para calcular promedios.")
-
-            # --- MÉTRICAS GENERALES DEL PERÍODO ---
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("""
-                <div style='background: linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%); 
-                            padding: 1rem; border-radius: 10px; margin-bottom: 1rem;'>
-                    <h4 style='color: #334155; margin: 0; font-weight: 600;'>
-                        📊 Resumen del Período Completo
-                    </h4>
-                </div>
-            """, unsafe_allow_html=True)
-
-            m1, m2, m3, m4 = st.columns(4)
-            
-            with m1:
-                st.markdown(f"""
-                    <div class="metric-card" style="border-left-color: #3B82F6;">
-                        <div class="metric-label">📦 Volumen Total</div>
-                        <div class="metric-value" style="color: #1E40AF;">
-                            {df_filtrado['Venta Volumen (Pzas)'].sum():,.0f}
-                        </div>
-                        <div class="metric-delta" style="color: #64748B;">
-                            Piezas vendidas
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-            
-            with m2:
-                st.markdown(f"""
-                    <div class="metric-card" style="border-left-color: #10B981;">
-                        <div class="metric-label">💵 Venta Total</div>
-                        <div class="metric-value" style="color: #065F46;">
-                            ${df_filtrado['Venta Valor ($)'].sum():,.0f}
-                        </div>
-                        <div class="metric-delta" style="color: #64748B;">
-                            Ingresos generados
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-            
-            with m3:
-                st.markdown(f"""
-                    <div class="metric-card" style="border-left-color: #F59E0B;">
-                        <div class="metric-label">💰 Precio Promedio</div>
-                        <div class="metric-value" style="color: #B45309;">
-                            ${df_filtrado['Precio ($)'].mean():.2f}
-                        </div>
-                        <div class="metric-delta" style="color: #64748B;">
-                            Precio unitario
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-            
-            if len(df_filtrado) > 1:
-                corr = df_filtrado["Precio ($)"].corr(df_filtrado["Venta Volumen (Pzas)"])
-                corr_color = "#DC2626" if corr < -0.3 else "#F59E0B" if corr < 0.3 else "#10B981"
-                corr_label = "Negativa" if corr < -0.3 else "Neutral" if corr < 0.3 else "Positiva"
-                
-                with m4:
-                    st.markdown(f"""
-                        <div class="metric-card" style="border-left-color: {corr_color};">
-                            <div class="metric-label">📈 Correlación P/V</div>
-                            <div class="metric-value" style="color: {corr_color};">
-                                {corr:.2f}
-                            </div>
-                            <div class="metric-delta" style="color: {corr_color};">
-                                {corr_label}
-                            </div>
-                        </div>
-                    """, unsafe_allow_html=True)
-        else:
-            st.warning("⚠️ No hay datos disponibles para los filtros seleccionados.")
-    else:
-        st.error("❌ Error: Faltan columnas necesarias en el dataset.")
 
 # --- APARTADO DE VISUALIZACIÓN: INDICADORES MACRO ---
 if modo == "Indicadores Macro":
@@ -5608,8 +5214,6 @@ if modo == "Indicadores Macro":
     # CÓDIGO FINAL CON DEBUG - COPIAR Y PEGAR AL FINAL DE TU APARTADO MACRO
     # ============================================================================
     
-    import pandas as pd
-    import requests
     from io import BytesIO
     import re
     import plotly.graph_objects as go
@@ -6005,641 +5609,3 @@ if modo == "Indicadores Macro":
         st.info("💡 **Nota:** Estas proyecciones se actualizan automáticamente desde la Encuesta de Expectativas de Banxico. Los valores son promedios de las respuestas de expertos.")
     else:
         st.error("❌ No se pudieron cargar las proyecciones. Revisa el mensaje de debug arriba.")
-
-
-# ============================================================================
-# 🤖 CHATBOT DE PRICING IA - ALIMENTADO POR ANÁLISIS ULTRA 2.6
-# ============================================================================
-# Copiar AL FINAL de tu app (después de las sugerencias Ultra 2.6)
-# ============================================================================
-
-import re
-
-# ============================================================================
-# CLASE DEL CHATBOT MEJORADO
-# ============================================================================
-
-class ChatbotPricingIA:
-    def __init__(self, df, modo, hallazgos_ultra=[]):
-        self.df = df
-        self.modo = modo
-        self.hallazgos = hallazgos_ultra  # ← AQUÍ SE ALIMENTA DE TUS SUGERENCIAS
-        
-        # Detectar columnas
-        cols = list(df.columns)
-        self.col_prod = 'Producto' if 'Producto' in cols else None
-        self.col_fab = 'Fabricante' if 'Fabricante' in cols else None
-        self.col_precio = 'Precio ($)' if 'Precio ($)' in cols else None
-        self.col_gram = 'Gramaje (g)' if 'Gramaje (g)' in cols else None
-        self.col_som = 'SOM (%)' if 'SOM (%)' in cols else None
-        self.col_ocasion = 'Ocasión' if 'Ocasión' in cols else None
-        
-        # Precio por kg
-        pkg_cols = [c for c in cols if 'precio' in c.lower() and 'kg' in c.lower()]
-        self.col_pkg = pkg_cols[0] if pkg_cols else None
-        
-        if not self.col_pkg and self.col_precio and self.col_gram:
-            self.df['_pkg'] = (self.df[self.col_precio] / self.df[self.col_gram]) * 1000
-            self.col_pkg = '_pkg'
-    
-    def responder(self, pregunta):
-        """Procesa la pregunta y devuelve respuesta"""
-        p = pregunta.lower()
-        
-        if not self.col_pkg:
-            return "❌ No hay información de precios en los datos"
-        
-        try:
-            # ANÁLISIS DE SUGERENCIAS AUTOMÁTICAS
-            if any(w in p for w in ["sugerencia", "recomendación", "qué debería", "oportunidad", "hallazgo"]):
-                return self._analizar_sugerencias(p)
-            
-            # ANÁLISIS DE ÍNDICES
-            elif any(w in p for w in ["índice", "index", "sobre-preciado", "sub-valuado"]):
-                return self._analizar_indices(p)
-            
-            # ANÁLISIS DE GAPS
-            elif any(w in p for w in ["gap", "hueco", "escalón", "brecha"]):
-                return self._analizar_gaps(p)
-            
-            # COMPARATIVAS
-            elif "compara" in p or " vs " in p:
-                return self._comparar(p)
-            
-            # TOP/RANKING
-            elif "más caro" in p or "más barato" in p or "top" in p:
-                return self._ranking(p)
-            
-            # ANÁLISIS POR OCASIÓN
-            elif any(w in p for w in ["ocasión", "segmento", "individual", "hambre", "familiar"]):
-                return self._analizar_ocasion(p)
-            
-            # PROMEDIO/ESTADÍSTICAS
-            elif "promedio" in p or "estadística" in p:
-                return self._estadisticas(p)
-            
-            # LISTA DE PRODUCTOS
-            elif "lista" in p or "muestra" in p or "productos" in p:
-                return self._listar(p)
-            
-            # WHITE SPACES
-            elif "white space" in p or "donde no participa" in p:
-                return self._white_spaces()
-            
-            # AYUDA
-            else:
-                return self._ayuda()
-        
-        except Exception as e:
-            return f"❌ Error: {str(e)}\n\nIntenta reformular tu pregunta"
-    
-    def _analizar_sugerencias(self, p):
-        """Analiza las sugerencias automáticas del Ultra 2.6"""
-        if not self.hallazgos:
-            return """💡 **RECOMENDACIONES GENERALES**
-
-No hay sugerencias automáticas en este momento.
-
-Esto puede deberse a:
-• Portfolio bien balanceado
-• Precios competitivos
-• No se detectaron gaps significativos
-
-¿Quieres que analice algo específico?"""
-        
-        # Filtrar por prioridad si se menciona
-        filtro_prioridad = None
-        if "alta" in p or "crítica" in p:
-            filtro_prioridad = "ALTA"
-        elif "media" in p:
-            filtro_prioridad = "MEDIA"
-        elif "baja" in p:
-            filtro_prioridad = "BAJA"
-        
-        hallazgos_filtrados = [h for h in self.hallazgos 
-                               if filtro_prioridad is None or h["Prioridad"] == filtro_prioridad]
-        
-        if not hallazgos_filtrados:
-            return f"✅ No hay hallazgos de prioridad {filtro_prioridad}"
-        
-        # Generar respuesta
-        total = len(hallazgos_filtrados)
-        prioridad_texto = f" de prioridad {filtro_prioridad}" if filtro_prioridad else ""
-        
-        resp = [f"💡 **ANÁLISIS DE SUGERENCIAS{prioridad_texto.upper()}**"]
-        resp.append(f"\n**Total de hallazgos:** {total}\n")
-        
-        # Agrupar por tipo
-        por_tipo = {}
-        for h in hallazgos_filtrados:
-            tipo = h["Tipo"]
-            if tipo not in por_tipo:
-                por_tipo[tipo] = []
-            por_tipo[tipo].append(h)
-        
-        # Mostrar resumen
-        resp.append("**Resumen por tipo:**")
-        for tipo, lista in por_tipo.items():
-            emoji = "🔴" if lista[0]["Prioridad"] == "ALTA" else "🟡" if lista[0]["Prioridad"] == "MEDIA" else "🔵"
-            resp.append(f"{emoji} {tipo}: {len(lista)} caso{'s' if len(lista) > 1 else ''}")
-        
-        resp.append("\n**Detalle de las principales sugerencias:**\n")
-        
-        # Mostrar hasta 5 hallazgos principales
-        for i, h in enumerate(hallazgos_filtrados[:5], 1):
-            emoji = "🔴" if h["Prioridad"] == "ALTA" else "🟡" if h["Prioridad"] == "MEDIA" else "🔵"
-            resp.append(f"{emoji} **{i}. {h['Tipo']} - {h['Ocasión']}**")
-            resp.append(f"   {h['Msg']}")
-            resp.append(f"   {h['Accion']}\n")
-        
-        if len(hallazgos_filtrados) > 5:
-            resp.append(f"... y {len(hallazgos_filtrados) - 5} sugerencias más")
-        
-        resp.append("\n💬 ¿Quieres profundizar en algún hallazgo específico?")
-        
-        return "\n".join(resp)
-    
-    def _analizar_indices(self, p):
-        """Analiza índices de precio"""
-        if not self.hallazgos:
-            return "❌ No hay análisis de índices disponible. Carga datos primero."
-        
-        # Filtrar hallazgos relacionados con índices
-        indices = [h for h in self.hallazgos if "Index" in h.get("Detalle", "") or 
-                   h["Tipo"] in ["DUELO", "RENTABILIDAD", "BAJO INDEX", "SOBREPRECIO"]]
-        
-        if not indices:
-            return "✅ No se detectaron problemas de índice de precio"
-        
-        resp = ["📊 **ANÁLISIS DE ÍNDICES DE PRECIO**\n"]
-        
-        # Separar por tipo de problema
-        sobre_preciados = [h for h in indices if "sobre" in h["Msg"].lower() or "Index" in h["Detalle"] and int(re.search(r'Index (\d+)', h["Detalle"]).group(1) if re.search(r'Index (\d+)', h["Detalle"]) else "100") > 95]
-        sub_valuados = [h for h in indices if "sub" in h["Msg"].lower() or "exceso" in h["Msg"].lower()]
-        
-        if sobre_preciados:
-            resp.append(f"🔴 **SOBRE-PRECIADOS ({len(sobre_preciados)}):**")
-            for h in sobre_preciados[:3]:
-                resp.append(f"• {h['Msg']}")
-                resp.append(f"  {h['Accion']}\n")
-        
-        if sub_valuados:
-            resp.append(f"🟢 **OPORTUNIDAD DE RENTABILIDAD ({len(sub_valuados)}):**")
-            for h in sub_valuados[:3]:
-                resp.append(f"• {h['Msg']}")
-                resp.append(f"  {h['Accion']}\n")
-        
-        return "\n".join(resp)
-    
-    def _analizar_gaps(self, p):
-        """Analiza gaps en la escalera"""
-        if not self.hallazgos:
-            return "❌ No hay análisis de gaps disponible"
-        
-        gaps = [h for h in self.hallazgos if h["Tipo"] == "ESCALÓN DE PRECIO"]
-        
-        if not gaps:
-            return "✅ No se detectaron gaps significativos en la escalera de precios"
-        
-        resp = [f"🪜 **ANÁLISIS DE GAPS EN ESCALERA**\n"]
-        resp.append(f"**Total de gaps detectados:** {len(gaps)}\n")
-        
-        for i, h in enumerate(gaps, 1):
-            resp.append(f"{i}. {h['Msg']}")
-            resp.append(f"   {h['Detalle']}")
-            resp.append(f"   {h['Accion']}\n")
-        
-        return "\n".join(resp)
-    
-    def _white_spaces(self):
-        """Analiza white spaces (ocasiones donde Barcel no participa)"""
-        if not self.hallazgos:
-            return "❌ No hay análisis disponible"
-        
-        ws = [h for h in self.hallazgos if h["Tipo"] == "WHITE SPACE"]
-        
-        if not ws:
-            return "✅ Barcel participa en todos los segmentos importantes"
-        
-        resp = ["⚪ **WHITE SPACES DETECTADOS**\n"]
-        resp.append("Ocasiones donde Barcel NO participa:\n")
-        
-        for h in ws:
-            resp.append(f"• **{h['Ocasión']}**")
-            resp.append(f"  {h['Detalle']}")
-            resp.append(f"  {h['Accion']}\n")
-        
-        return "\n".join(resp)
-    
-    def _comparar(self, p):
-        """Compara productos o marcas"""
-        if not self.col_fab or not self.col_pkg:
-            return "❌ No hay info suficiente para comparar"
-        
-        # Buscar fabricantes mencionados
-        fabs = [f for f in self.df[self.col_fab].unique() if f.lower() in p]
-        
-        if len(fabs) >= 2:
-            d1 = self.df[self.df[self.col_fab] == fabs[0]]
-            d2 = self.df[self.df[self.col_fab] == fabs[1]]
-            
-            a1 = d1[self.col_pkg].mean()
-            a2 = d2[self.col_pkg].mean()
-            dif = ((a1 - a2) / a2) * 100
-            
-            # Análisis de SOM si existe
-            som_info = ""
-            if self.col_som:
-                som1 = d1[self.col_som].sum()
-                som2 = d2[self.col_som].sum()
-                som_info = f"""
-**Share of Market:**
-• {fabs[0]}: {som1:.1f}%
-• {fabs[1]}: {som2:.1f}%"""
-            
-            return f"""📊 **COMPARATIVA: {fabs[0]} vs {fabs[1]}**
-
-**Precio Promedio/kg:**
-• {fabs[0]}: ${a1:.2f}/kg
-• {fabs[1]}: ${a2:.2f}/kg
-
-**Diferencia:** {abs(dif):.1f}% ({fabs[0] if dif > 0 else fabs[1]} más caro)
-
-**Productos:**
-• {fabs[0]}: {len(d1)}
-• {fabs[1]}: {len(d2)}
-{som_info}
-
-💡 {'Oportunidad de cerrar brecha' if abs(dif) > 10 else 'Precios similares'}"""
-        
-        # Comparar productos
-        prods = self._buscar_productos(p)
-        if len(prods) >= 2:
-            p1 = self.df[self.df[self.col_prod].str.contains(prods[0], case=False, na=False)]
-            p2 = self.df[self.df[self.col_prod].str.contains(prods[1], case=False, na=False)]
-            
-            if len(p1) > 0 and len(p2) > 0:
-                r1, r2 = p1.iloc[0], p2.iloc[0]
-                dif_pkg = ((r1[self.col_pkg] - r2[self.col_pkg]) / r2[self.col_pkg]) * 100
-                
-                return f"""📊 **COMPARATIVA DE PRODUCTOS**
-
-**{r1[self.col_prod]}**
-• Precio: ${r1[self.col_precio]:.2f}
-• $/kg: ${r1[self.col_pkg]:.2f}/kg
-• Gramaje: {r1[self.col_gram]:.0f}g
-{f"• SOM: {r1[self.col_som]:.1f}%" if self.col_som and r1[self.col_som] > 0 else ""}
-
-**{r2[self.col_prod]}**
-• Precio: ${r2[self.col_precio]:.2f}
-• $/kg: ${r2[self.col_pkg]:.2f}/kg
-• Gramaje: {r2[self.col_gram]:.0f}g
-{f"• SOM: {r2[self.col_som]:.1f}%" if self.col_som and r2[self.col_som] > 0 else ""}
-
-**Diferencia:** {abs(dif_pkg):.1f}% por kg
-
-💡 {r1[self.col_prod] if dif_pkg < 0 else r2[self.col_prod]} ofrece mejor relación precio/cantidad"""
-        
-        return "Menciona 2 productos o 2 marcas. Ej: 'Compara Takis vs Doritos'"
-    
-    def _ranking(self, p):
-        """Top productos"""
-        es_caro = "caro" in p
-        top = self.df.nlargest(5, self.col_pkg) if es_caro else self.df.nsmallest(5, self.col_pkg)
-        
-        lines = [f"{'🔴 TOP 5 MÁS CAROS' if es_caro else '🟢 TOP 5 MÁS ECONÓMICOS'} (por kg)\n"]
-        for i, (_, r) in enumerate(top.iterrows(), 1):
-            lines.append(f"**{i}. {r[self.col_prod]}**")
-            lines.append(f"   ${r[self.col_precio]:.2f} (${r[self.col_pkg]:.2f}/kg)")
-            if self.col_fab:
-                lines.append(f"   🏭 {r[self.col_fab]}")
-            if self.col_som and r[self.col_som] > 0:
-                lines.append(f"   📊 SOM: {r[self.col_som]:.1f}%")
-            lines.append("")
-        
-        return "\n".join(lines)
-    
-    def _analizar_ocasion(self, p):
-        """Analiza por ocasión/segmento"""
-        if not self.col_ocasion:
-            return "❌ No hay información de ocasiones en los datos"
-        
-        # Buscar ocasión mencionada
-        ocasion_buscada = None
-        for oc in self.df[self.col_ocasion].unique():
-            if oc.lower() in p:
-                ocasion_buscada = oc
-                break
-        
-        if not ocasion_buscada:
-            # Mostrar resumen de todas las ocasiones
-            ocasiones = self.df.groupby(self.col_ocasion).agg({
-                self.col_pkg: 'mean',
-                self.col_prod: 'count'
-            }).reset_index()
-            ocasiones.columns = ['Ocasión', 'Precio/kg Promedio', 'Productos']
-            
-            if self.col_som:
-                som_oca = self.df.groupby(self.col_ocasion)[self.col_som].sum().to_dict()
-                ocasiones['SOM Total'] = ocasiones['Ocasión'].map(som_oca)
-                ocasiones = ocasiones.sort_values('SOM Total', ascending=False)
-            else:
-                ocasiones = ocasiones.sort_values('Precio/kg Promedio', ascending=False)
-            
-            lines = ["📊 **ANÁLISIS POR OCASIÓN**\n"]
-            for _, row in ocasiones.iterrows():
-                lines.append(f"**{row['Ocasión']}**")
-                lines.append(f"• Precio promedio: ${row['Precio/kg Promedio']:.2f}/kg")
-                lines.append(f"• Productos: {int(row['Productos'])}")
-                if 'SOM Total' in row:
-                    lines.append(f"• SOM: {row['SOM Total']:.1f}%")
-                lines.append("")
-            
-            return "\n".join(lines)
-        
-        else:
-            # Análisis de ocasión específica
-            df_oca = self.df[self.df[self.col_ocasion] == ocasion_buscada]
-            
-            if len(df_oca) == 0:
-                return f"❌ No hay productos en {ocasion_buscada}"
-            
-            # Separar Barcel vs Competencia
-            if self.col_fab:
-                barcel = df_oca[df_oca[self.col_fab] == "BARCEL"]
-                comp = df_oca[df_oca[self.col_fab] != "BARCEL"]
-                
-                lines = [f"📊 **ANÁLISIS: {ocasion_buscada}**\n"]
-                
-                if len(barcel) > 0:
-                    lines.append(f"**🟦 BARCEL ({len(barcel)} productos):**")
-                    lines.append(f"• Precio promedio: ${barcel[self.col_pkg].mean():.2f}/kg")
-                    if self.col_som:
-                        lines.append(f"• SOM: {barcel[self.col_som].sum():.1f}%")
-                    lines.append("")
-                
-                if len(comp) > 0:
-                    lines.append(f"**⚫ COMPETENCIA ({len(comp)} productos):**")
-                    lines.append(f"• Precio promedio: ${comp[self.col_pkg].mean():.2f}/kg")
-                    if self.col_som:
-                        lines.append(f"• SOM: {comp[self.col_som].sum():.1f}%")
-                    
-                    # Líder competitivo
-                    if self.col_som:
-                        lider = comp.loc[comp[self.col_som].idxmax()]
-                        lines.append(f"\n🏆 **Líder:** {lider[self.col_prod]} (SOM: {lider[self.col_som]:.1f}%)")
-                
-                # Hallazgos específicos de esta ocasión
-                hallazgos_oca = [h for h in self.hallazgos if h["Ocasión"] == ocasion_buscada]
-                if hallazgos_oca:
-                    lines.append(f"\n⚠️ **Hallazgos en {ocasion_buscada}:**")
-                    for h in hallazgos_oca[:3]:
-                        lines.append(f"• {h['Msg']}")
-                        lines.append(f"  {h['Accion']}")
-                
-                return "\n".join(lines)
-            
-            return f"📊 **{ocasion_buscada}:** {len(df_oca)} productos, precio promedio ${df_oca[self.col_pkg].mean():.2f}/kg"
-    
-    def _estadisticas(self, p):
-        """Estadísticas generales o de producto"""
-        prods = self._buscar_productos(p)
-        
-        if prods:
-            prod_df = self.df[self.df[self.col_prod].str.contains(prods[0], case=False, na=False)]
-            if len(prod_df) > 0:
-                r = prod_df.iloc[0]
-                return f"""📊 **{r[self.col_prod]}**
-
-**Información de Precio:**
-• Precio: ${r[self.col_precio]:.2f}
-• $/kg: ${r[self.col_pkg]:.2f}/kg
-• Gramaje: {r[self.col_gram]:.0f}g
-
-**Información General:**
-{f"• Fabricante: {r[self.col_fab]}" if self.col_fab else ""}
-{f"• Ocasión: {r[self.col_ocasion]}" if self.col_ocasion else ""}
-{f"• SOM: {r[self.col_som]:.1f}%" if self.col_som and r[self.col_som] > 0 else ""}
-
-**vs Promedio:**
-• {((r[self.col_pkg] / self.df[self.col_pkg].mean() - 1) * 100):+.1f}% vs mercado"""
-        
-        return f"""📊 **ESTADÍSTICAS GENERALES - {self.modo}**
-
-**Precios (por kg):**
-• Promedio: ${self.df[self.col_pkg].mean():.2f}
-• Mediano: ${self.df[self.col_pkg].median():.2f}
-• Rango: ${self.df[self.col_pkg].min():.2f} - ${self.df[self.col_pkg].max():.2f}
-
-**Portfolio:**
-• Total productos: {len(self.df)}
-{f"• Fabricantes: {len(self.df[self.col_fab].unique())}" if self.col_fab else ""}
-{f"• Ocasiones: {len(self.df[self.col_ocasion].unique())}" if self.col_ocasion else ""}
-
-**Hallazgos detectados:** {len(self.hallazgos)}"""
-    
-    def _listar(self, p):
-        """Lista productos"""
-        filtered = self.df.copy()
-        
-        # Filtrar por fabricante
-        if self.col_fab:
-            for fab in self.df[self.col_fab].unique():
-                if fab.lower() in p:
-                    filtered = filtered[filtered[self.col_fab] == fab]
-                    break
-        
-        # Filtrar por ocasión
-        if self.col_ocasion:
-            for oc in self.df[self.col_ocasion].unique():
-                if oc.lower() in p:
-                    filtered = filtered[filtered[self.col_ocasion] == oc]
-                    break
-        
-        if len(filtered) == 0:
-            return "❌ No encontré productos con esos criterios"
-        
-        filtered = filtered.head(10)
-        lines = [f"📋 **PRODUCTOS ({len(filtered)})**\n"]
-        for i, (_, r) in enumerate(filtered.iterrows(), 1):
-            lines.append(f"{i}. {r[self.col_prod]} - ${r[self.col_precio]:.2f} (${r[self.col_pkg]:.2f}/kg)")
-        
-        return "\n".join(lines)
-    
-    def _ayuda(self):
-        return f"""👋 **ASISTENTE DE PRICING IA - {self.modo}**
-
-**Datos cargados:** {len(self.df)} productos | {len(self.hallazgos)} hallazgos
-
-**PUEDO AYUDARTE CON:**
-
-💡 **Sugerencias Automáticas**
-• "Dame las recomendaciones"
-• "Muestra sugerencias de alta prioridad"
-• "¿Dónde hay oportunidades?"
-
-📊 **Análisis de Índices**
-• "¿Qué productos están sobre-preciados?"
-• "Analiza los índices de precio"
-• "¿Hay productos con exceso de gramaje?"
-
-🪜 **Análisis de Escalera**
-• "¿Hay gaps en la escalera?"
-• "Muestra los huecos de precio"
-
-⚪ **White Spaces**
-• "¿Dónde no participa Barcel?"
-• "Muestra white spaces"
-
-⚖️ **Comparativas**
-• "Compara Barcel vs Sabritas"
-• "Compara Takis vs Doritos"
-
-🎯 **Por Ocasión**
-• "Analiza la ocasión INDIVIDUAL"
-• "Muestra productos FAMILIAR"
-
-📋 **Listados**
-• "Lista productos de Barcel"
-• "Muestra los más caros"
-• "Productos bajo $30"
-
-**¿En qué te puedo ayudar?**"""
-    
-    def _buscar_productos(self, texto):
-        """Busca productos en el texto"""
-        if not self.col_prod:
-            return []
-        encontrados = []
-        for prod in self.df[self.col_prod].unique():
-            palabras = [pal for pal in prod.lower().split() if len(pal) > 3]
-            if any(pal in texto.lower() for pal in palabras):
-                encontrados.append(prod)
-        return encontrados[:2]
-
-
-# ============================================================================
-# RENDERIZADO DEL CHATBOT
-# ============================================================================
-
-# Inicializar chatbot ALIMENTÁNDOLO con los hallazgos del Ultra 2.6
-if not st.session_state.data.empty:
-    # Obtener hallazgos de la variable global 'hallazgos' si existe
-    hallazgos_disponibles = hallazgos if 'hallazgos' in locals() else []
-    
-    if ('chatbot_ia' not in st.session_state or 
-        st.session_state.get('chat_modo') != modo or
-        st.session_state.get('chat_datos_len') != len(st.session_state.data)):
-        
-        st.session_state['chatbot_ia'] = ChatbotPricingIA(
-            st.session_state.data, 
-            modo, 
-            hallazgos_disponibles  # ← AQUÍ SE ALIMENTA
-        )
-        st.session_state['chat_modo'] = modo
-        st.session_state['chat_datos_len'] = len(st.session_state.data)
-        st.session_state['historial_chat'] = []
-        st.session_state['chat_abierto'] = False
-
-# Mostrar chatbot
-if st.session_state.get('chatbot_ia'):
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Botón para abrir/cerrar
-    col_spacer, col_btn = st.columns([4, 1])
-    with col_btn:
-        if st.button("🤖 Chat IA", key="toggle_chat", use_container_width=True, type="primary"):
-            st.session_state['chat_abierto'] = not st.session_state.get('chat_abierto', False)
-    
-    # Panel del chat
-    if st.session_state.get('chat_abierto'):
-        st.markdown("---")
-        
-        # Header
-        col_h1, col_h2 = st.columns([4, 1])
-        with col_h1:
-            st.markdown("## 🤖 Asistente de Pricing IA")
-            num_hallazgos = len(st.session_state['chatbot_ia'].hallazgos)
-            st.caption(f"📊 {modo} | {len(st.session_state.data)} productos | {num_hallazgos} hallazgos detectados")
-        with col_h2:
-            if st.button("❌", key="cerrar_chat", help="Cerrar"):
-                st.session_state['chat_abierto'] = False
-                st.rerun()
-        
-        # Mensajes
-        msg_container = st.container(height=400)
-        with msg_container:
-            if not st.session_state['historial_chat']:
-                st.info(f"👋 ¡Hola! Tengo {num_hallazgos} hallazgos de tu análisis. ¿Qué quieres saber?")
-            else:
-                for msg in st.session_state['historial_chat']:
-                    if msg['tipo'] == 'user':
-                        st.markdown(f"""
-                        <div style='background: linear-gradient(135deg, #667eea, #764ba2); 
-                                    color: white; padding: 10px 14px; border-radius: 12px; 
-                                    margin: 8px 0; margin-left: 20%; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
-                            <strong>Tú:</strong> {msg['texto']}
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"""
-                        <div style='background: white; border: 1px solid #ddd; padding: 10px 14px; 
-                                    border-radius: 12px; margin: 8px 0; margin-right: 20%;'>
-                            <strong>🤖 Asistente:</strong>
-                            <pre style='white-space: pre-line; font-family: inherit; margin-top: 8px; 
-                                       font-size: 13px; line-height: 1.5;'>{msg['texto']}</pre>
-                        </div>
-                        """, unsafe_allow_html=True)
-        
-        # Input
-        st.markdown("### ✍️ Pregúntame:")
-        
-        col_in, col_send, col_clear = st.columns([6, 1, 1])
-        with col_in:
-            q = st.text_input("Pregunta", key="chat_q", label_visibility="collapsed",
-                             placeholder="Ej: Dame las recomendaciones de alta prioridad")
-        with col_send:
-            if st.button("📤", use_container_width=True, type="primary"):
-                if q:
-                    st.session_state['historial_chat'].append({'tipo': 'user', 'texto': q})
-                    resp = st.session_state['chatbot_ia'].responder(q)
-                    st.session_state['historial_chat'].append({'tipo': 'bot', 'texto': resp})
-                    st.rerun()
-        with col_clear:
-            if st.button("🗑️", use_container_width=True):
-                st.session_state['historial_chat'] = []
-                st.rerun()
-        
-        # Botones de ejemplo
-        st.markdown("### 💡 Prueba rápida:")
-        col_ej1, col_ej2, col_ej3 = st.columns(3)
-        
-        with col_ej1:
-            if st.button("💡 Sugerencias", key="ej_sug"):
-                st.session_state['historial_chat'].append({'tipo': 'user', 'texto': 'Dame las recomendaciones'})
-                resp = st.session_state['chatbot_ia'].responder('Dame las recomendaciones')
-                st.session_state['historial_chat'].append({'tipo': 'bot', 'texto': resp})
-                st.rerun()
-        
-        with col_ej2:
-            if st.button("📊 Índices", key="ej_idx"):
-                st.session_state['historial_chat'].append({'tipo': 'user', 'texto': 'Analiza los índices'})
-                resp = st.session_state['chatbot_ia'].responder('Analiza los índices')
-                st.session_state['historial_chat'].append({'tipo': 'bot', 'texto': resp})
-                st.rerun()
-        
-        with col_ej3:
-            if st.button("⚖️ Compara", key="ej_comp"):
-                st.session_state['historial_chat'].append({'tipo': 'user', 'texto': 'Compara Barcel vs Sabritas'})
-                resp = st.session_state['chatbot_ia'].responder('Compara Barcel vs Sabritas')
-                st.session_state['historial_chat'].append({'tipo': 'bot', 'texto': resp})
-                st.rerun()
-
-else:
-    st.info("💡 Carga datos para activar el Asistente IA")
-
-
-# ============================================================================
-# FIN DEL CHATBOT
-# ============================================================================
-        
