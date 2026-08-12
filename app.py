@@ -353,7 +353,7 @@ def guardar_configuracion(nombre):
             "slider_opacidad": st.session_state.get("slider_opacidad", 1.0),
             "slider_alto": st.session_state.get("slider_alto", 950),
             "slider_espacio": st.session_state.get("slider_espacio", 0.03),
-            "slider_margen_b": st.session_state.get("slider_margen_b", 400),
+            "slider_margen_b": st.session_state.get("slider_margen_b", 440),
             "slider_angulo": st.session_state.get("slider_angulo", -90)
         },
         "grid": {
@@ -558,7 +558,7 @@ if "slider_alto" not in st.session_state:
 if "slider_espacio" not in st.session_state:
     st.session_state["slider_espacio"] = 0.03
 if "slider_margen_b" not in st.session_state:
-    st.session_state["slider_margen_b"] = 400
+    st.session_state["slider_margen_b"] = 440
 if "slider_angulo" not in st.session_state:
     st.session_state["slider_angulo"] = -90
 
@@ -1292,7 +1292,7 @@ with st.sidebar:
             st.session_state["slider_opacidad"] = 1.0
             st.session_state["slider_alto"] = 950
             st.session_state["slider_espacio"] = 0.03
-            st.session_state["slider_margen_b"] = 400
+            st.session_state["slider_margen_b"] = 440
             st.session_state["slider_angulo"] = -90
             st.session_state["custom_colors"] = {}
             # Resets para grid (CORREGIDOS)
@@ -2432,7 +2432,7 @@ if not st.session_state.data.empty:
             resumen_tiers["idx_ini"] = df_p.groupby("_grupo_precio").apply(lambda g: g.index[0])
             resumen_tiers["idx_fin"] = df_p.groupby("_grupo_precio").apply(lambda g: g.index[-1])
 
-            y_tier = -0.85  # fila debajo del resumen por Ocasión (-0.60)
+            y_tier = -0.70  # fila debajo del resumen por Ocasión (-0.60), pegada para caber en el margen
 
             for _, fila_tier in resumen_tiers.iterrows():
                 idx_ini, idx_fin = fila_tier["idx_ini"], fila_tier["idx_fin"]
@@ -2443,7 +2443,7 @@ if not st.session_state.data.empty:
                 # Línea corta divisoria entre escalones de precio (solo en la franja de esta fila)
                 fig.add_shape(
                     type="line", x0=idx_fin + 0.5, x1=idx_fin + 0.5,
-                    y0=y_tier - 0.10, y1=-0.62, xref="x2", yref="paper",
+                    y0=y_tier - 0.04, y1=-0.62, xref="x2", yref="paper",
                     line=dict(color="#EEEEEE", width=1)
                 )
 
