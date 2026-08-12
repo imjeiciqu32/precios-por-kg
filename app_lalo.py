@@ -357,13 +357,13 @@ def guardar_configuracion(nombre):
             "slider_angulo": st.session_state.get("slider_angulo", -90)
         },
         "grid": {
-            "grid_color": st.session_state.get("grid_color", "#DCDCDC"),
-            "grid_grosor": st.session_state.get("grid_grosor", 1.0),
+            "grid_color": st.session_state.get("grid_color", "#707070"),
+            "grid_grosor": st.session_state.get("grid_grosor", 1.2),
             "grid_opacidad": st.session_state.get("grid_opacidad", 0.5),
             "grid_estilo": st.session_state.get("grid_estilo", "solid"),
             "grid_y_visible": st.session_state.get("grid_y_visible", True),
             "grid_x_visible": st.session_state.get("grid_x_visible", False),
-            "nticks_y": st.session_state.get("nticks_y", 10),
+            "nticks_y": st.session_state.get("nticks_y", 16),
             "grid_layer": st.session_state.get("grid_layer", "below traces")
         },
         "colores_personalizados": st.session_state.get("custom_colors", {})
@@ -1296,13 +1296,13 @@ with st.sidebar:
             st.session_state["slider_angulo"] = -90
             st.session_state["custom_colors"] = {}
             # Resets para grid (CORREGIDOS)
-            st.session_state["grid_color"] = "#DCDCDC"
-            st.session_state["grid_grosor"] = 1.0
+            st.session_state["grid_color"] = "#707070"
+            st.session_state["grid_grosor"] = 1.2
             st.session_state["grid_opacidad"] = 0.5
             st.session_state["grid_estilo"] = "solid"
             st.session_state["grid_y_visible"] = True
             st.session_state["grid_x_visible"] = False
-            st.session_state["nticks_y"] = 10
+            st.session_state["nticks_y"] = 16
             st.session_state["grid_layer"] = "below traces"  # CORREGIDO
             
         if st.button("Resetear Todo el Diseño"):
@@ -1354,7 +1354,7 @@ with st.sidebar:
             with col_style1:
                 grid_color = st.color_picker(
                     "Color de Líneas",
-                    value=st.session_state.get("grid_color", "#DCDCDC"),
+                    value=st.session_state.get("grid_color", "#707070"),
                     key="grid_color",
                     help="Color de las líneas divisorias"
                 )
@@ -1363,7 +1363,7 @@ with st.sidebar:
                 grid_grosor = st.slider(
                     "Grosor de Líneas",
                     0.1, 5.0, 
-                    value=st.session_state.get("grid_grosor", 1.0),
+                    value=st.session_state.get("grid_grosor", 1.2),
                     step=0.1,
                     key="grid_grosor",
                     help="Grosor de las líneas en puntos"
@@ -1411,7 +1411,7 @@ with st.sidebar:
                 nticks_y = st.slider(
                     "Número de líneas horizontales",
                     3, 30,
-                    value=st.session_state.get("nticks_y", 10),
+                    value=st.session_state.get("nticks_y", 16),
                     key="nticks_y",
                     help="Cantidad de divisiones en el eje Y"
                 )
@@ -2431,7 +2431,8 @@ if not st.session_state.data.empty:
                 )
 
             # --- PESO POR ESCALÓN DE PRECIO (TIER): suma de SOM de los productos que comparten el mismo precio ---
-            # Ahora vive en su propia fila (fila 2), entre el gráfico de SOM y la escalera de precios.
+            # Ahora vive en su propia fila (fila 2), entre el gráfico de SOM y la escalera de precios,
+            # con banda de fondo alternada para diferenciarla claramente como su propia franja.
             df_p["_grupo_precio"] = (df_p["Precio ($)"] != df_p["Precio ($)"].shift()).cumsum()
             resumen_tiers = df_p.groupby("_grupo_precio").agg(
                 precio=("Precio ($)", "first"),
@@ -2440,24 +2441,46 @@ if not st.session_state.data.empty:
             resumen_tiers["idx_ini"] = df_p.groupby("_grupo_precio").apply(lambda g: g.index[0])
             resumen_tiers["idx_fin"] = df_p.groupby("_grupo_precio").apply(lambda g: g.index[-1])
 
-            for _, fila_tier in resumen_tiers.iterrows():
+            # Marco superior e inferior que enmarca toda la franja del tier, para que se lea como una banda propia
+            fig.add_shape(
+                type="line", x0=0, x1=1, y0=1, y1=1, xref="paper", yref="y2 domain",
+                line=dict(color="#B0BEC5", width=1.5)
+            )
+            fig.add_shape(
+                type="line", x0=0, x1=1, y0=0, y1=0, xref="paper", yref="y2 domain",
+                line=dict(color="#B0BEC5", width=1.5)
+            )
+
+            colores_banda = ["#EAF1FB", "#FFF7E0"]  # azul muy claro / dorado muy claro, alternados
+
+            for n_tier, (_, fila_tier) in enumerate(resumen_tiers.iterrows()):
                 idx_ini, idx_fin = fila_tier["idx_ini"], fila_tier["idx_fin"]
                 center_tier = (idx_ini + idx_fin) / 2
                 p_val = fila_tier["precio"]
                 precio_txt_tier = f"${p_val:.1f}" if p_val < 10 else f"${int(p_val)}"
 
-                # Línea corta divisoria entre escalones de precio (dentro de la franja de la fila 2)
+                # Fondo de color alternado para cada escalón de precio
+                fig.add_shape(
+                    type="rect",
+                    x0=idx_ini - 0.5, x1=idx_fin + 0.5, y0=0, y1=1,
+                    xref="x2", yref="y2 domain",
+                    fillcolor=colores_banda[n_tier % 2],
+                    line=dict(color="rgba(0,0,0,0)", width=0),
+                    layer="below"
+                )
+
+                # Línea divisoria entre escalones de precio (dentro de la franja de la fila 2)
                 if idx_fin < len(df_p) - 1:
                     fig.add_shape(
                         type="line", x0=idx_fin + 0.5, x1=idx_fin + 0.5,
                         y0=0, y1=1, xref="x2", yref="y2 domain",
-                        line=dict(color="#EEEEEE", width=1)
+                        line=dict(color="#C9C9C9", width=1)
                     )
 
                 fig.add_annotation(
                     x=center_tier, y=0.5, xref="x2", yref="y2 domain",
-                    text=f"<b>{precio_txt_tier}</b><br><span style='font-size:13px;'>{fila_tier['som_total']:.1f}%</span>",
-                    showarrow=False, font=dict(size=12, color="#555555"), align="center"
+                    text=f"<span style='color:#0B3C8C;'><b>{precio_txt_tier}</b></span><br><span style='font-size:13px; color:#B8860B;'><b>{fila_tier['som_total']:.1f}%</b></span>",
+                    showarrow=False, font=dict(size=12), align="center"
                 )
 
             fig.update_layout(
