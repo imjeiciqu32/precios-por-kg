@@ -2410,7 +2410,7 @@ if not st.session_state.data.empty:
 
             # --- PESO POR ESCALÓN DE PRECIO (TIER): suma de SOM de los productos que comparten el mismo precio ---
             # Ahora vive en su propia fila (fila 2), entre el gráfico de SOM y la escalera de precios,
-            # con un heatmap en escala de verdes: más SOM% = verde más intenso.
+            # con bandas intercaladas teal/lavanda: neutras, no compiten con Barcel (azul) ni Sabritas (dorado).
             df_p["_grupo_precio"] = (df_p["Precio ($)"] != df_p["Precio ($)"].shift()).cumsum()
             resumen_tiers = df_p.groupby("_grupo_precio").agg(
                 precio=("Precio ($)", "first"),
@@ -2429,30 +2429,24 @@ if not st.session_state.data.empty:
                 line=dict(color="#AFAFAF", width=1.5)
             )
 
-            def _color_heatmap_verde(valor, minimo, maximo):
-                """Un solo verde consistente; solo la OPACIDAD varía con el SOM (nunca satura, se mantiene discreto)."""
-                if maximo - minimo < 1e-9:
-                    t = 0.5
-                else:
-                    t = (valor - minimo) / (maximo - minimo)
-                alpha = 0.07 + 0.28 * t  # entre 7% y 35% de opacidad como máximo
-                return f"rgba(56, 142, 60, {alpha:.2f})", t
+            # Bandas alternadas: teal suave / lavanda suave, con su texto a juego (más saturado para contraste)
+            bandas_tier = [
+                {"fondo": "#DFF3F1", "texto": "#0E6E63"},   # teal suave
+                {"fondo": "#F1EAF9", "texto": "#6A3E9B"},   # lavanda suave
+            ]
 
-            min_som_tier = resumen_tiers["som_total"].min()
-            max_som_tier = resumen_tiers["som_total"].max()
-
-            for _, fila_tier in resumen_tiers.iterrows():
+            for n_tier, (_, fila_tier) in enumerate(resumen_tiers.iterrows()):
                 idx_ini, idx_fin = fila_tier["idx_ini"], fila_tier["idx_fin"]
                 center_tier = (idx_ini + idx_fin) / 2
                 p_val = fila_tier["precio"]
                 precio_txt_tier = f"${p_val:.1f}" if p_val < 10 else f"${int(p_val)}"
 
-                color_fondo_tier, intensidad = _color_heatmap_verde(fila_tier["som_total"], min_som_tier, max_som_tier)
-                # El fondo nunca pasa de un verde pálido, así que el texto se queda fijo (sin necesidad de blanco)
+                banda = bandas_tier[n_tier % 2]
+                color_fondo_tier = banda["fondo"]
                 color_texto_tier = "#333333"
-                color_pct_tier = "#2E7D32"
+                color_pct_tier = banda["texto"]
 
-                # Fondo tipo heatmap para cada escalón de precio
+                # Fondo intercalado para cada escalón de precio
                 fig.add_shape(
                     type="rect",
                     x0=idx_ini - 0.5, x1=idx_fin + 0.5, y0=0, y1=1,
