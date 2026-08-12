@@ -358,7 +358,7 @@ def guardar_configuracion(nombre):
         },
         "grid": {
             "grid_color": st.session_state.get("grid_color", "#707070"),
-            "grid_grosor": st.session_state.get("grid_grosor", 1.2),
+            "grid_grosor": st.session_state.get("grid_grosor", 1.30),
             "grid_opacidad": st.session_state.get("grid_opacidad", 0.5),
             "grid_estilo": st.session_state.get("grid_estilo", "solid"),
             "grid_y_visible": st.session_state.get("grid_y_visible", True),
@@ -1297,7 +1297,7 @@ with st.sidebar:
             st.session_state["custom_colors"] = {}
             # Resets para grid (CORREGIDOS)
             st.session_state["grid_color"] = "#707070"
-            st.session_state["grid_grosor"] = 1.2
+            st.session_state["grid_grosor"] = 1.30
             st.session_state["grid_opacidad"] = 0.5
             st.session_state["grid_estilo"] = "solid"
             st.session_state["grid_y_visible"] = True
@@ -1363,7 +1363,7 @@ with st.sidebar:
                 grid_grosor = st.slider(
                     "Grosor de Líneas",
                     0.1, 5.0, 
-                    value=st.session_state.get("grid_grosor", 1.2),
+                    value=st.session_state.get("grid_grosor", 1.30),
                     step=0.1,
                     key="grid_grosor",
                     help="Grosor de las líneas en puntos"
@@ -2325,6 +2325,7 @@ if not st.session_state.data.empty:
                 marker=dict(size=30, color="#E5E5E5", symbol="square", line=dict(color="#CCCCCC", width=1)), 
                 text=[f"<b>{row['SOM (%)']}%</b>" for _, row in df_p.iterrows()],
                 textposition="middle center", textfont=dict(size=t_som, color="black"),
+                showlegend=False,
             ), row=1, col=1)
 
             # --- FILA 2 (NUEVA): trace invisible solo para habilitar el eje de la franja de "Escalón de Precio" ---
@@ -2444,14 +2445,14 @@ if not st.session_state.data.empty:
             # Marco superior e inferior que enmarca toda la franja del tier, para que se lea como una banda propia
             fig.add_shape(
                 type="line", x0=0, x1=1, y0=1, y1=1, xref="paper", yref="y2 domain",
-                line=dict(color="#B0BEC5", width=1.5)
+                line=dict(color="#AFAFAF", width=1.5)
             )
             fig.add_shape(
                 type="line", x0=0, x1=1, y0=0, y1=0, xref="paper", yref="y2 domain",
-                line=dict(color="#B0BEC5", width=1.5)
+                line=dict(color="#AFAFAF", width=1.5)
             )
 
-            colores_banda = ["#EAF1FB", "#FFF7E0"]  # azul muy claro / dorado muy claro, alternados
+            colores_banda = ["#EDEDED", "#F8F8F8"]  # gris neutro alternado, sin significado de marca (no compite con Barcel/Sabritas)
 
             for n_tier, (_, fila_tier) in enumerate(resumen_tiers.iterrows()):
                 idx_ini, idx_fin = fila_tier["idx_ini"], fila_tier["idx_fin"]
@@ -2479,13 +2480,34 @@ if not st.session_state.data.empty:
 
                 fig.add_annotation(
                     x=center_tier, y=0.5, xref="x2", yref="y2 domain",
-                    text=f"<span style='color:#0B3C8C;'><b>{precio_txt_tier}</b></span><br><span style='font-size:13px; color:#B8860B;'><b>{fila_tier['som_total']:.1f}%</b></span>",
+                    text=f"<span style='color:#333333;'><b>{precio_txt_tier}</b></span><br><span style='font-size:13px; color:#757575;'><b>{fila_tier['som_total']:.1f}%</b></span>",
                     showarrow=False, font=dict(size=12), align="center"
                 )
 
+            # --- LEYENDA DE COLORES POR FABRICANTE ---
+            # Trazas "fantasma" (sin datos reales) solo para que aparezcan en la leyenda.
+            # Las barras reales siguen con showlegend=False, así que esto no las duplica.
+            fabricantes_presentes = df_p["Fabricante"].astype(str).str.upper().unique().tolist()
+            for fab in ["BARCEL", "SABRITAS", "OTROS", "PROPUESTA"]:
+                if fab in fabricantes_presentes:
+                    fig.add_trace(go.Bar(
+                        x=[None], y=[None],
+                        marker_color=colors.get(fab, "#999"),
+                        marker_line=dict(
+                            color=st.session_state.get("color_contorno_barras", "#000000"),
+                            width=st.session_state.get("grosor_contorno_barras", 1.0)
+                        ),
+                        name=fab.title(),
+                        showlegend=True,
+                    ), row=3, col=1)
+
             fig.update_layout(
-                height=alto_grafico, width=1950, template="plotly_white", showlegend=False, 
-                margin=dict(t=50, b=margen_b, l=40, r=40),
+                height=alto_grafico, width=1950, template="plotly_white", showlegend=True, 
+                legend=dict(
+                    orientation="h", yanchor="bottom", y=1.06, xanchor="center", x=0.5,
+                    font=dict(size=13)
+                ),
+                margin=dict(t=85, b=margen_b, l=40, r=40),
                 # Configuración de layer para el grid
                 xaxis_layer=st.session_state.get("grid_layer", "below traces"),
                 yaxis_layer=st.session_state.get("grid_layer", "below traces"),
@@ -2515,15 +2537,28 @@ if not st.session_state.data.empty:
                 row=3, col=1
             )
             
-            st.plotly_chart(fig, use_container_width=True, config={
-                'toImageButtonOptions': {
-                    'format': 'png',
-                    'filename': 'Price_Ladder_Export',
-                    'height': alto_grafico,
-                    'width': 1950,
-                    'scale': 2
+            st.markdown("""
+                <style>
+                .st-key-card_price_ladder {
+                    background-color: #FFFFFF;
+                    border-radius: 14px;
+                    padding: 20px 16px 8px 16px;
+                    box-shadow: 0 4px 18px rgba(0,0,0,0.10);
+                    border: 1px solid #EEEEEE;
                 }
-            })
+                </style>
+            """, unsafe_allow_html=True)
+
+            with st.container(border=False, key="card_price_ladder"):
+                st.plotly_chart(fig, use_container_width=True, config={
+                    'toImageButtonOptions': {
+                        'format': 'png',
+                        'filename': 'Price_Ladder_Export',
+                        'height': alto_grafico,
+                        'width': 1950,
+                        'scale': 2
+                    }
+                })
 
         elif modo == "Price Pack" and "Canal" in st.session_state.data.columns:
             ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIOS": 5, "CONVENIENCIA": 6}
