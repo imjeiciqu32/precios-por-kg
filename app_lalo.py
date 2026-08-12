@@ -2433,7 +2433,7 @@ if not st.session_state.data.empty:
 
             # --- PESO POR ESCALÓN DE PRECIO (TIER): suma de SOM de los productos que comparten el mismo precio ---
             # Ahora vive en su propia fila (fila 2), entre el gráfico de SOM y la escalera de precios,
-            # con banda de fondo alternada para diferenciarla claramente como su propia franja.
+            # con un heatmap en escala de verdes: más SOM% = verde más intenso.
             df_p["_grupo_precio"] = (df_p["Precio ($)"] != df_p["Precio ($)"].shift()).cumsum()
             resumen_tiers = df_p.groupby("_grupo_precio").agg(
                 precio=("Precio ($)", "first"),
@@ -2452,20 +2452,39 @@ if not st.session_state.data.empty:
                 line=dict(color="#AFAFAF", width=1.5)
             )
 
-            colores_banda = ["#EDEDED", "#F8F8F8"]  # gris neutro alternado, sin significado de marca (no compite con Barcel/Sabritas)
+            def _color_heatmap_verde(valor, minimo, maximo):
+                """Interpola entre verde muy claro (menor SOM) y verde oscuro (mayor SOM). Devuelve (hex, intensidad 0-1)."""
+                if maximo - minimo < 1e-9:
+                    t = 0.5
+                else:
+                    t = (valor - minimo) / (maximo - minimo)
+                c_claro = (232, 245, 233)   # #E8F5E9
+                c_oscuro = (27, 94, 32)     # #1B5E20
+                r = int(c_claro[0] + (c_oscuro[0] - c_claro[0]) * t)
+                g = int(c_claro[1] + (c_oscuro[1] - c_claro[1]) * t)
+                b = int(c_claro[2] + (c_oscuro[2] - c_claro[2]) * t)
+                return f"#{r:02X}{g:02X}{b:02X}", t
 
-            for n_tier, (_, fila_tier) in enumerate(resumen_tiers.iterrows()):
+            min_som_tier = resumen_tiers["som_total"].min()
+            max_som_tier = resumen_tiers["som_total"].max()
+
+            for _, fila_tier in resumen_tiers.iterrows():
                 idx_ini, idx_fin = fila_tier["idx_ini"], fila_tier["idx_fin"]
                 center_tier = (idx_ini + idx_fin) / 2
                 p_val = fila_tier["precio"]
                 precio_txt_tier = f"${p_val:.1f}" if p_val < 10 else f"${int(p_val)}"
 
-                # Fondo de color alternado para cada escalón de precio
+                color_fondo_tier, intensidad = _color_heatmap_verde(fila_tier["som_total"], min_som_tier, max_som_tier)
+                # Texto blanco sobre verdes oscuros, gris oscuro sobre verdes claros, para mantener contraste
+                color_texto_tier = "#FFFFFF" if intensidad > 0.55 else "#2E2E2E"
+                color_pct_tier = "#E8F5E9" if intensidad > 0.55 else "#1B5E20"
+
+                # Fondo tipo heatmap para cada escalón de precio
                 fig.add_shape(
                     type="rect",
                     x0=idx_ini - 0.5, x1=idx_fin + 0.5, y0=0, y1=1,
                     xref="x2", yref="y2 domain",
-                    fillcolor=colores_banda[n_tier % 2],
+                    fillcolor=color_fondo_tier,
                     line=dict(color="rgba(0,0,0,0)", width=0),
                     layer="below"
                 )
@@ -2475,12 +2494,12 @@ if not st.session_state.data.empty:
                     fig.add_shape(
                         type="line", x0=idx_fin + 0.5, x1=idx_fin + 0.5,
                         y0=0, y1=1, xref="x2", yref="y2 domain",
-                        line=dict(color="#C9C9C9", width=1)
+                        line=dict(color="rgba(255,255,255,0.55)", width=1)
                     )
 
                 fig.add_annotation(
                     x=center_tier, y=0.5, xref="x2", yref="y2 domain",
-                    text=f"<span style='color:#333333;'><b>{precio_txt_tier}</b></span><br><span style='font-size:13px; color:#757575;'><b>{fila_tier['som_total']:.1f}%</b></span>",
+                    text=f"<span style='color:{color_texto_tier};'><b>{precio_txt_tier}</b></span><br><span style='font-size:13px; color:{color_pct_tier};'><b>{fila_tier['som_total']:.1f}%</b></span>",
                     showarrow=False, font=dict(size=12), align="center"
                 )
 
