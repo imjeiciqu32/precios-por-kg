@@ -330,6 +330,33 @@ def registrar_cambio(producto, campo, valor_anterior, valor_nuevo, modo_app):
         st.session_state["historial_cambios"].append(cambio)
     
 
+# --- 2.5.1 Utilidades compartidas entre Price Ladder y Price Pack ---
+# NOTA: solo se comparte lo que es genuinamente idéntico (utilidades de color/formato).
+# La metodología de cada modo (qué colores default usar, cómo se arma cada gráfico) se queda
+# separada a propósito, porque Price Ladder y Price Pack tienen lógicas de negocio distintas.
+
+def estilo_contorno_barras():
+    """Devuelve el dict de marker_line (color + grosor del contorno) desde los controles
+    de 'Colores Personalizados'. Usado igual en Price Ladder y Price Pack."""
+    return dict(
+        color=st.session_state.get("color_contorno_barras", "#000000"),
+        width=st.session_state.get("grosor_contorno_barras", 1.0)
+    )
+
+
+def hex_a_rgba(color, opacidad, color_default=None):
+    """Convierte un color hex (#RRGGBB) a rgba(...) con la opacidad indicada.
+    Si 'color' ya viene en otro formato (rgba, nombre de color, o vacío), lo respeta o
+    cae al 'color_default'. Utilidad de formato pura, sin lógica de negocio."""
+    if color and str(color).startswith("#"):
+        import matplotlib.colors as mcolors
+        try:
+            rgb = mcolors.hex2color(color)
+            return f"rgba({int(rgb[0]*255)}, {int(rgb[1]*255)}, {int(rgb[2]*255)}, {opacidad})"
+        except Exception:
+            return color
+    return color if color else color_default
+
 # --- FUNCIÓN PARA GUARDAR CONFIGURACIÓN ---
 def guardar_configuracion(nombre):
     """Guarda la configuración actual completa"""
@@ -635,6 +662,12 @@ if "modo_presentacion" in st.session_state and st.session_state["modo_presentaci
         if st.button("🚪 Salir", key="exit_presentation"):
             st.session_state["modo_presentacion"] = False
             st.rerun()
+
+    # Aviso de bienvenida, solo la primera vez por sesión: el sidebar (controles, carga de
+    # datos, personalización) está oculto porque "Modo Presentación" arranca activado por default.
+    if not st.session_state.get("aviso_modo_presentacion_mostrado", False):
+        st.info("👋 Estás en **Modo Presentación** (el gráfico se ve a todo lo ancho). Si necesitas cargar datos o personalizar, presiona **🚪 Salir** arriba a la derecha para ver los controles.")
+        st.session_state["aviso_modo_presentacion_mostrado"] = True
 
 
 
@@ -1285,8 +1318,64 @@ with st.sidebar:
         if st.button("Resetear Todo el Diseño"):
             reset_diseno()
             st.rerun()
-            
-        with st.expander("📏 Dimensiones y Espaciado"):
+
+        # --- PRESETS DE ESTILO: configura varios controles de un jalón ---
+        def aplicar_preset_estilo(nombre_preset):
+            if nombre_preset == "Ejecutivo":
+                st.session_state["slider_nombres"] = 16
+                st.session_state["slider_precios"] = 18
+                st.session_state["slider_pkg"] = 15
+                st.session_state["slider_som"] = 15
+                st.session_state["slider_ancho"] = 0.8
+                st.session_state["slider_alto"] = 950
+                st.session_state["slider_margen_b"] = 440
+                st.session_state["grid_color"] = "#707070"
+                st.session_state["grid_grosor"] = 1.30
+                st.session_state["nticks_y"] = 16
+                st.session_state["grid_x_visible"] = False
+            elif nombre_preset == "Presentación Cliente":
+                st.session_state["slider_nombres"] = 18
+                st.session_state["slider_precios"] = 22
+                st.session_state["slider_pkg"] = 18
+                st.session_state["slider_som"] = 16
+                st.session_state["slider_ancho"] = 0.85
+                st.session_state["slider_alto"] = 1050
+                st.session_state["slider_margen_b"] = 480
+                st.session_state["grid_color"] = "#4A4A4A"
+                st.session_state["grid_grosor"] = 1.5
+                st.session_state["nticks_y"] = 12
+                st.session_state["grid_x_visible"] = False
+                st.session_state["modo_presentacion"] = True
+            elif nombre_preset == "Debug (revisión interna)":
+                st.session_state["slider_nombres"] = 12
+                st.session_state["slider_precios"] = 14
+                st.session_state["slider_ancho"] = 0.7
+                st.session_state["slider_alto"] = 900
+                st.session_state["slider_margen_b"] = 420
+                st.session_state["grid_color"] = "#333333"
+                st.session_state["grid_grosor"] = 1.0
+                st.session_state["nticks_y"] = 24
+                st.session_state["grid_x_visible"] = True
+                st.session_state["modo_presentacion"] = False
+
+        col_preset1, col_preset2 = st.columns([3, 1])
+        with col_preset1:
+            preset_elegido = st.selectbox(
+                "Preset de estilo",
+                ["-- Manual (como está) --", "Ejecutivo", "Presentación Cliente", "Debug (revisión interna)"],
+                key="preset_estilo_select",
+                help="Configura de un jalón varios controles (fuentes, grid, tamaño). Puedes seguir ajustando manualmente después."
+            )
+        with col_preset2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Aplicar", key="btn_aplicar_preset", use_container_width=True):
+                if preset_elegido != "-- Manual (como está) --":
+                    aplicar_preset_estilo(preset_elegido)
+                    st.rerun()
+
+        tab_dim, tab_tipo, tab_grid, tab_colores = st.tabs(["📏 Dimensiones", "🔡 Tipografía", "📊 Grid", "🎨 Colores"])
+
+        with tab_dim:
             alto_grafico = st.slider("Alto del Gráfico", 400, 1500, value=st.session_state["slider_alto"], key="slider_alto")
             espacio_v = st.slider("Espacio entre Gráficos", 0.0, 0.2, value=st.session_state["slider_espacio"], key="slider_espacio")
             margen_b = st.slider("Margen Inferior (Nombres)", 50, 600, value=st.session_state["slider_margen_b"], key="slider_margen_b")
@@ -1299,7 +1388,7 @@ with st.sidebar:
             
             opacidad_barras = st.slider("Opacidad Barras", 0.1, 1.0, value=st.session_state["slider_opacidad"], key="slider_opacidad")
         
-        with st.expander("🔡 Tipografía y Texto"):
+        with tab_tipo:
             t_nombres = st.slider("Tamaño Nombres", 8, 30, value=st.session_state["slider_nombres"], key="slider_nombres")
             t_precios = st.slider("Tamaño Precios ($)", 10, 40, value=st.session_state["slider_precios"], key="slider_precios")
             t_pkg = st.slider("Tamaño $/Kg", 10, 40, value=st.session_state["slider_pkg"], key="slider_pkg")
@@ -1307,7 +1396,7 @@ with st.sidebar:
             angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, value=st.session_state["slider_angulo"], key="slider_angulo")
         
         # === EXPANDER PARA LÍNEAS DIVISORIAS / GRID (CORREGIDO) ===
-        with st.expander("📊 Líneas Divisorias (Grid)"):
+        with tab_grid:
             st.markdown("#### Visibilidad del Grid")
             col_vis1, col_vis2 = st.columns(2)
             with col_vis1:
@@ -1423,7 +1512,7 @@ with st.sidebar:
                 """, unsafe_allow_html=True)
     
         # ✨ SELECTOR DE COLORES PERSONALIZADOS
-        with st.expander("🎨 Colores Personalizados (Opcional)"):
+        with tab_colores:
             st.markdown("**Contorno de las barras (aplica a todas):**")
             col_contorno1, col_contorno2 = st.columns(2)
             with col_contorno1:
@@ -2342,10 +2431,7 @@ if not st.session_state.data.empty:
                     y=[row["Precio ($)"] * alto_barras],  # ⭐ APLICAR MULTIPLICADOR DE ALTO
                     marker_color=bar_colors[idx],
                     marker_opacity=opacidad_barras, 
-                    marker_line=dict(
-                        color=st.session_state.get("color_contorno_barras", "#000000"),
-                        width=st.session_state.get("grosor_contorno_barras", 1.0)
-                    ),
+                    marker_line=estilo_contorno_barras(),
                     width=ancho_barras,
                     text=[f"<b>{labels_precios[idx]}</b>"],
                     textposition="outside", 
@@ -2361,18 +2447,10 @@ if not st.session_state.data.empty:
                     custom = st.session_state["custom_colors"][row["Producto"]]
                     color_texto_pkg = custom.get("texto_pkg", "white" if row["Fabricante"] == "BARCEL" else "black")
                     
-                    # Convertir el color del fondo si viene en formato hex
+                    # Convertir el color del fondo si viene en formato hex (metodología propia de Price Ladder: opacidad 0.8, default por Fabricante)
                     fondo_pkg_custom = custom.get("fondo_pkg", None)
-                    if fondo_pkg_custom and fondo_pkg_custom.startswith("#"):
-                        # Convertir hex a rgba con opacidad
-                        import matplotlib.colors as mcolors
-                        try:
-                            rgb = mcolors.hex2color(fondo_pkg_custom)
-                            color_fondo_pkg = f"rgba({int(rgb[0]*255)}, {int(rgb[1]*255)}, {int(rgb[2]*255)}, 0.8)"
-                        except:
-                            color_fondo_pkg = fondo_pkg_custom
-                    else:
-                        color_fondo_pkg = fondo_pkg_custom if fondo_pkg_custom else ("rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)")
+                    default_fondo_ladder = "rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)"
+                    color_fondo_pkg = hex_a_rgba(fondo_pkg_custom, 0.8, default_fondo_ladder)
                     
                     color_borde_pkg = custom.get("borde_pkg", "#444" if row["Fabricante"] != "BARCEL" else None)
                 else:
@@ -2429,9 +2507,9 @@ if not st.session_state.data.empty:
                 line=dict(color="#AFAFAF", width=1.5)
             )
 
-            # Bandas alternadas: teal suave / lavanda suave, con su texto a juego (más saturado para contraste)
+            # Bandas alternadas: gris suave / lavanda suave, con su texto a juego (más saturado para contraste)
             bandas_tier = [
-                {"fondo": "#DFF3F1", "texto": "#0E6E63"},   # teal suave
+                {"fondo": "#E6E6E6", "texto": "#555555"},   # gris suave
                 {"fondo": "#F1EAF9", "texto": "#6A3E9B"},   # lavanda suave
             ]
 
@@ -2479,10 +2557,7 @@ if not st.session_state.data.empty:
                     fig.add_trace(go.Bar(
                         x=[None], y=[None],
                         marker_color=colors.get(fab, "#999"),
-                        marker_line=dict(
-                            color=st.session_state.get("color_contorno_barras", "#000000"),
-                            width=st.session_state.get("grosor_contorno_barras", 1.0)
-                        ),
+                        marker_line=estilo_contorno_barras(),
                         name=fab.title(),
                         showlegend=True,
                     ), row=3, col=1)
@@ -2566,10 +2641,7 @@ if not st.session_state.data.empty:
                 x=df_p.index, 
                 y=df_p["Precio por Kg ($)"] * alto_barras,  # ⭐ APLICAR MULTIPLICADOR DE ALTO
                 marker_color=bar_colors_pp,
-                marker_line=dict(
-                    color=st.session_state.get("color_contorno_barras", "#000000"),
-                    width=st.session_state.get("grosor_contorno_barras", 1.0)
-                ),
+                marker_line=estilo_contorno_barras(),
                 marker_opacity=opacidad_barras,
                 width=ancho_barras,
                 showlegend=False
@@ -2590,17 +2662,9 @@ if not st.session_state.data.empty:
                     custom = st.session_state["custom_colors"][r["Producto"]]
                     color_texto_pkg = custom.get("texto_pkg", "#212121")
                     
-                    # Convertir fondo_pkg de hex a rgba si es necesario
+                    # Convertir fondo_pkg de hex a rgba si es necesario (metodología propia de Price Pack: opacidad 0.9, default fijo)
                     fondo_pkg_custom = custom.get("fondo_pkg", "rgba(255,255,255,0.9)")
-                    if fondo_pkg_custom and fondo_pkg_custom.startswith("#"):
-                        import matplotlib.colors as mcolors
-                        try:
-                            rgb = mcolors.hex2color(fondo_pkg_custom)
-                            color_fondo_pkg = f"rgba({int(rgb[0]*255)}, {int(rgb[1]*255)}, {int(rgb[2]*255)}, 0.9)"
-                        except:
-                            color_fondo_pkg = fondo_pkg_custom
-                    else:
-                        color_fondo_pkg = fondo_pkg_custom
+                    color_fondo_pkg = hex_a_rgba(fondo_pkg_custom, 0.9, "rgba(255,255,255,0.9)")
                     
                     color_borde_pkg = custom.get("borde_pkg", "#616161")
                     color_texto_desembolso = custom.get("texto_desembolso", "white")
