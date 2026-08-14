@@ -30,7 +30,7 @@ PLANTILLAS = {
         {"Producto": "Pringles 19G",          "Fabricante": "KELLOGGS", "Ocasión": "BITES",      "Precio ($)": 5.0,  "Gramaje (g)": 19, "SOM (%)": 1.12},
         # --- INDIVIDUAL ---
         {"Producto": "Lay's 31G",             "Fabricante": "PEPSICO",  "Ocasión": "INDIVIDUAL", "Precio ($)": 4.0,  "Gramaje (g)": 31, "SOM (%)": 34.77},
-        {"Producto": "Chip's 36G",            "Fabricante": "BARCEL",   "Ocasión": "INDIVIDUAL", "Precio ($)": 5.0,  "Gramaje (g)": 36, "SOM (%)": 14.36},
+        {"Producto": "Chip's 36G",            "Fabricante": "BARCEL",   "Ocasión": "INDIVIDUAL", "Precio ($)": 5.5,  "Gramaje (g)": 36, "SOM (%)": 14.36},
         {"Producto": "Pringles 37G",          "Fabricante": "KELLOGGS", "Ocasión": "INDIVIDUAL", "Precio ($)": 10.0, "Gramaje (g)": 37, "SOM (%)": 1.30},
     ],
 
