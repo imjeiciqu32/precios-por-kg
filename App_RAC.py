@@ -1354,8 +1354,11 @@ with st.sidebar:
                     value=st.session_state.get("grid_opacidad", 0.5),
                     step=0.05,
                     key="grid_opacidad",
-                    help="Transparencia de las líneas (visual, no afecta Plotly)"
+                    help="Transparencia de las líneas del grid"
                 )
+
+            # Convertir color + opacidad en un solo rgba real que sí usa Plotly
+            grid_color_rgba = hex_a_rgba(grid_color, grid_opacidad, grid_color)
             
             col_style4, col_style5 = st.columns(2)
             
@@ -2493,7 +2496,7 @@ if not st.session_state.data.empty:
                 tickfont=dict(size=t_nombres, color="black"),
                 showline=False,
                 showgrid=grid_x_visible,
-                gridcolor=grid_color,
+                gridcolor=grid_color_rgba,
                 gridwidth=grid_grosor,
                 griddash=grid_estilo,
                 row=3, col=1
@@ -2503,7 +2506,7 @@ if not st.session_state.data.empty:
             fig.update_yaxes(showticklabels=False, showgrid=False, zeroline=False, row=2, col=1)
             fig.update_yaxes(
                 showgrid=grid_y_visible,
-                gridcolor=grid_color,
+                gridcolor=grid_color_rgba,
                 gridwidth=grid_grosor,
                 griddash=grid_estilo,
                 nticks=nticks_y,
@@ -2651,14 +2654,14 @@ if not st.session_state.data.empty:
                     tickangle=angulo_nombres,
                     tickfont=dict(color="#000000", size=t_nombres, family="Verdana"),
                     showgrid=grid_x_visible,
-                    gridcolor=grid_color,
+                    gridcolor=grid_color_rgba,
                     gridwidth=grid_grosor,
                     griddash=grid_estilo,
                 ),
                 yaxis=dict(
                     tickprefix=simbolo_moneda, 
                     showgrid=grid_y_visible,
-                    gridcolor=grid_color,
+                    gridcolor=grid_color_rgba,
                     gridwidth=grid_grosor,
                     griddash=grid_estilo,
                     nticks=nticks_y,
