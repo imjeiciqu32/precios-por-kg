@@ -2336,10 +2336,7 @@ if not st.session_state.data.empty:
             labels_precios = []
             for _, row in df_p.iterrows():
                 p = row["Precio ($)"]
-                if p < 10:
-                    labels_precios.append(f"{simbolo_moneda}{p:.2f}")
-                else:
-                    labels_precios.append(f"{simbolo_moneda}{int(p)}")
+                labels_precios.append(f"{simbolo_moneda}{p:.2f}")
 
             # Crear un trace por cada producto con alto ajustable
             for idx, (i, row) in enumerate(df_p.iterrows()):
@@ -2434,7 +2431,7 @@ if not st.session_state.data.empty:
                 idx_ini, idx_fin = fila_tier["idx_ini"], fila_tier["idx_fin"]
                 center_tier = (idx_ini + idx_fin) / 2
                 p_val = fila_tier["precio"]
-                precio_txt_tier = f"{simbolo_moneda}{p_val:.2f}" if p_val < 10 else f"{simbolo_moneda}{int(p_val)}"
+                precio_txt_tier = f"{simbolo_moneda}{p_val:.2f}"
 
                 banda = bandas_tier[n_tier % 2]
                 color_fondo_tier = banda["fondo"]
@@ -2612,7 +2609,7 @@ if not st.session_state.data.empty:
                 
                 # ETIQUETAS PARA PRECIO DESEMBOLSO
                 p_pp = r['Precio ($)']
-                txt_p_pp = f"{simbolo_moneda}{p_pp:.2f}" if p_pp < 10 else f"{simbolo_moneda}{int(p_pp)}"
+                txt_p_pp = f"{simbolo_moneda}{p_pp:.2f}"
 
                 fig.add_annotation(
                     x=i, y=r["Precio por Kg ($)"] * alto_barras * 0.25,  # ⭐ PROPORCIONAL a esta barra, no un valor fijo
