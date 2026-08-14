@@ -2376,7 +2376,7 @@ if not st.session_state.data.empty:
                     color_borde_pkg = "#444" if row["Fabricante"] != "BARCEL" else None
                 
                 fig.add_annotation(
-                    x=i, y=2.5 * alto_barras,  # ⭐ AJUSTAR POSICIÓN SEGÚN ALTO DE BARRAS
+                    x=i, y=row["Precio ($)"] * alto_barras * 0.25,  # ⭐ PROPORCIONAL a esta barra (25% de su alto), no un valor fijo
                     text=f"<b>{simbolo_moneda}{int(row['Precio por Kg ($)'])}</b>",
                     showarrow=False, 
                     font=dict(size=t_pkg, color=color_texto_pkg),
@@ -2615,7 +2615,7 @@ if not st.session_state.data.empty:
                 txt_p_pp = f"{simbolo_moneda}{p_pp:.2f}" if p_pp < 10 else f"{simbolo_moneda}{int(p_pp)}"
 
                 fig.add_annotation(
-                    x=i, y=15 * alto_barras,  # ⭐ AJUSTAR SEGÚN ALTO
+                    x=i, y=r["Precio por Kg ($)"] * alto_barras * 0.25,  # ⭐ PROPORCIONAL a esta barra, no un valor fijo
                     text=f"<b>{txt_p_pp}</b>", 
                     showarrow=False, 
                     font=dict(size=t_precios, color=color_texto_desembolso),
