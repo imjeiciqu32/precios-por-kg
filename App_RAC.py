@@ -1875,7 +1875,7 @@ if modo in ["Price Ladder", "Price Pack"]:
             f_nom = col1.text_input("Nombre del Producto").upper()
             
             if modo == "Price Ladder":
-                f_fab = col2.selectbox("Fabricante", ["BARCEL", "SABRITAS", "OTROS", "PROPUESTA"])
+                f_fab = col2.selectbox("Fabricante", ["BARCEL", "SABRITAS", "PEPSICO", "OTROS", "PROPUESTA"])
                 f_cat = col3.selectbox("Ocasión de Consumo", opciones_agru)
                 col4, col5, col6 = st.columns(3)
                 f_pre = col4.number_input("Precio ($)", min_value=0.0, step=0.5)
@@ -2319,7 +2319,7 @@ if not st.session_state.data.empty:
             ), row=2, col=1)
 
             # --- TRACE 2: BARRAS DE PRECIO CON PERSONALIZACIÓN Y ALTO AJUSTABLE ---
-            colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D","PROPUESTA":"#4B207E"}
+            colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "PEPSICO": "#F5C400", "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"}
 
             bar_colors = []
             label_colors_desembolso = []
@@ -2330,14 +2330,14 @@ if not st.session_state.data.empty:
                     bar_colors.append(st.session_state["custom_colors"][row["Producto"]]["barra"])
                     label_colors_desembolso.append(st.session_state["custom_colors"][row["Producto"]].get("texto_desembolso", "black"))
                 else:
-                    bar_colors.append(colors.get(str(row["Fabricante"]).upper(), "#999"))
+                    bar_colors.append(colors.get(str(row["Fabricante"]).upper(), colors["OTROS"]))
                     label_colors_desembolso.append("black")
 
             labels_precios = []
             for _, row in df_p.iterrows():
                 p = row["Precio ($)"]
                 if p < 10:
-                    labels_precios.append(f"{simbolo_moneda}{p:.1f}")
+                    labels_precios.append(f"{simbolo_moneda}{p:.2f}")
                 else:
                     labels_precios.append(f"{simbolo_moneda}{int(p)}")
 
@@ -2434,7 +2434,7 @@ if not st.session_state.data.empty:
                 idx_ini, idx_fin = fila_tier["idx_ini"], fila_tier["idx_fin"]
                 center_tier = (idx_ini + idx_fin) / 2
                 p_val = fila_tier["precio"]
-                precio_txt_tier = f"{simbolo_moneda}{p_val:.1f}" if p_val < 10 else f"{simbolo_moneda}{int(p_val)}"
+                precio_txt_tier = f"{simbolo_moneda}{p_val:.2f}" if p_val < 10 else f"{simbolo_moneda}{int(p_val)}"
 
                 banda = bandas_tier[n_tier % 2]
                 color_fondo_tier = banda["fondo"]
@@ -2469,11 +2469,11 @@ if not st.session_state.data.empty:
             # Trazas "fantasma" (sin datos reales) solo para que aparezcan en la leyenda.
             # Las barras reales siguen con showlegend=False, así que esto no las duplica.
             fabricantes_presentes = df_p["Fabricante"].astype(str).str.upper().unique().tolist()
-            for fab in ["BARCEL", "SABRITAS", "OTROS", "PROPUESTA"]:
+            for fab in ["BARCEL", "SABRITAS", "PEPSICO", "OTROS", "PROPUESTA"]:
                 if fab in fabricantes_presentes:
                     fig.add_trace(go.Bar(
                         x=[None], y=[None],
-                        marker_color=colors.get(fab, "#999"),
+                        marker_color=colors.get(fab, colors["OTROS"]),
                         marker_line=estilo_contorno_barras(),
                         name=fab.title(),
                         showlegend=True,
@@ -2612,7 +2612,7 @@ if not st.session_state.data.empty:
                 
                 # ETIQUETAS PARA PRECIO DESEMBOLSO
                 p_pp = r['Precio ($)']
-                txt_p_pp = f"{simbolo_moneda}{p_pp:.1f}" if p_pp < 10 else f"{simbolo_moneda}{int(p_pp)}"
+                txt_p_pp = f"{simbolo_moneda}{p_pp:.2f}" if p_pp < 10 else f"{simbolo_moneda}{int(p_pp)}"
 
                 fig.add_annotation(
                     x=i, y=15 * alto_barras,  # ⭐ AJUSTAR SEGÚN ALTO
@@ -4070,7 +4070,7 @@ if modo == "Price Ladder":
             
                 # === CONSTRUCCIÓN DEL GRÁFICO ===
                 fig = go.Figure()
-                colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"}
+                colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "PEPSICO": "#F5C400", "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"}
                 
                 x_ptr = 0
                 max_h = df_viz['Alto (cm)'].max()
