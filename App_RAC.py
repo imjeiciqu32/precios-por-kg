@@ -401,7 +401,7 @@ def duplicar_configuracion(nombre_original, nombre_nuevo):
 
 # --- 1. CONFIGURACIÓN Y CARGA DE PLANTILLAS ---
 try:
-    from plantillas import PLANTILLAS 
+    from Escaleras_RAC import PLANTILLAS 
 except ImportError:
     PLANTILLAS = {}
 
