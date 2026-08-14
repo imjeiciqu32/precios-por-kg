@@ -2358,6 +2358,10 @@ if not st.session_state.data.empty:
                 ), row=3, col=1)
 
             # Anotaciones de Precio por Kg dentro de las barras - CON PERSONALIZACIÓN
+            # Altura FIJA para todos los badges: 30% de la barra MÁS CHICA del gráfico,
+            # así todos quedan a la misma altura, pegados a la base, sin importar el precio de cada uno.
+            y_badge_pkg_fijo = df_p["Precio ($)"].min() * alto_barras * 0.30
+
             for i, row in df_p.iterrows():
                 # Obtener colores personalizados o usar defaults
                 if row["Producto"] in st.session_state["custom_colors"]:
@@ -2376,7 +2380,7 @@ if not st.session_state.data.empty:
                     color_borde_pkg = "#444" if row["Fabricante"] != "BARCEL" else None
                 
                 fig.add_annotation(
-                    x=i, y=row["Precio ($)"] * alto_barras * 0.25,  # ⭐ PROPORCIONAL a esta barra (25% de su alto), no un valor fijo
+                    x=i, y=y_badge_pkg_fijo,  # ⭐ MISMA altura fija para todos los badges de esta barra
                     text=f"<b>{simbolo_moneda}{int(row['Precio por Kg ($)'])}</b>",
                     showarrow=False, 
                     font=dict(size=t_pkg, color=color_texto_pkg),
@@ -2573,6 +2577,10 @@ if not st.session_state.data.empty:
                 ) 
 
             # Iteración para etiquetas y anotaciones - CON PERSONALIZACIÓN COMPLETA
+            # Altura FIJA para el badge de "Precio Desembolso": 30% de la barra ($/Kg) más chica,
+            # así todos quedan a la misma altura, pegados a la base, sin importar el precio de cada uno.
+            y_badge_desembolso_fijo = df_p["Precio por Kg ($)"].min() * alto_barras * 0.30
+
             for i, r in df_p.iterrows():
                 # Obtener colores personalizados
                 if r["Producto"] in st.session_state["custom_colors"]:
@@ -2615,7 +2623,7 @@ if not st.session_state.data.empty:
                 txt_p_pp = f"{simbolo_moneda}{p_pp:.2f}"
 
                 fig.add_annotation(
-                    x=i, y=r["Precio por Kg ($)"] * alto_barras * 0.25,  # ⭐ PROPORCIONAL a esta barra, no un valor fijo
+                    x=i, y=y_badge_desembolso_fijo,  # ⭐ MISMA altura fija para todos (30% de la barra más chica)
                     text=f"<b>{txt_p_pp}</b>", 
                     showarrow=False, 
                     font=dict(size=t_precios, color=color_texto_desembolso),
