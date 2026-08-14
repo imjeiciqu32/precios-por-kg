@@ -49,11 +49,13 @@ PLANTILLAS = {
         {"Producto": "Diana Centavitos 12G",  "Fabricante": "DIANA",        "Ocasión": "BITES",      "Precio ($)": 1.0, "Gramaje (g)": 12, "SOM (%)": 3.28},
         {"Producto": "Cebollitas 11G",        "Fabricante": "PEPSICO",      "Ocasión": "BITES",      "Precio ($)": 1.0, "Gramaje (g)": 11, "SOM (%)": 6.62},
         {"Producto": "Pikarones 11G",         "Fabricante": "PEPSICO",      "Ocasión": "BITES",      "Precio ($)": 1.0, "Gramaje (g)": 11, "SOM (%)": 6.41},
+        {"Producto": "Pix 15G",               "Fabricante": "BARCEL",       "Ocasión": "BITES",      "Precio ($)": 1.5, "Gramaje (g)": 15, "SOM (%)": 0.0},  
         {"Producto": "Cheetos 21G",           "Fabricante": "PEPSICO",      "Ocasión": "BITES",      "Precio ($)": 2.0, "Gramaje (g)": 21, "SOM (%)": 2.08},
         {"Producto": "Cheetos 17G",           "Fabricante": "PEPSICO",      "Ocasión": "BITES",      "Precio ($)": 2.0, "Gramaje (g)": 17, "SOM (%)": 9.74},
         {"Producto": "Crujitos 17G",          "Fabricante": "PEPSICO",      "Ocasión": "BITES",      "Precio ($)": 2.0, "Gramaje (g)": 17, "SOM (%)": 1.85},
         # --- INDIVIDUAL ---
         {"Producto": "Cheetos 29G",           "Fabricante": "PEPSICO",      "Ocasión": "INDIVIDUAL", "Precio ($)": 3.5, "Gramaje (g)": 29, "SOM (%)": 6.10},
+        {"Producto": "Pix 45G",               "Fabricante": "BARCEL",       "Ocasión": "INDIVIDUAL", "Precio ($)": 4.0, "Gramaje (g)": 45, "SOM (%)": 0.0},  
     ],
 
     "GT - DT - MIXES": [
