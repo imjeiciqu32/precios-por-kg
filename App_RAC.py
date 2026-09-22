@@ -479,7 +479,7 @@ aplicar_modo_presentacion()
 
 try:
     # Asegúrate de que 'logo_row.png' esté en tu carpeta del repositorio
-    bin_str = get_base64_of_bin_file('logo_row.png')
+    bin_str = get_base64_of_bin_file('logo_ro.png')
     st.markdown(
         f"""
         <style>
