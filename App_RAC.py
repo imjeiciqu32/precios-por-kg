@@ -488,8 +488,8 @@ try:
             }}
             .logo-container {{
                 position: fixed;
-                top: 10px;
-                right: 20px;
+                top: 1px;
+                right: 2px;
                 z-index: 999999;
             }}
         </style>
@@ -1261,7 +1261,7 @@ with st.sidebar:
                 st.session_state["slider_precios"] = 22
                 st.session_state["slider_pkg"] = 18
                 st.session_state["slider_som"] = 16
-                st.session_state["slider_ancho"] = 0.85
+                st.session_state["slider_ancho"] = 0.90
                 st.session_state["slider_alto"] = 1050
                 st.session_state["slider_margen_b"] = 480
                 st.session_state["grid_color"] = "#4A4A4A"
