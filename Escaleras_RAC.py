@@ -49,13 +49,13 @@ PLANTILLAS = {
         {"Producto": "Diana Centavitos 12G",  "Fabricante": "DIANA",        "Ocasión": "BITES",      "Precio ($)": 1.0, "Gramaje (g)": 12, "SOM (%)": 3.28},
         {"Producto": "Cebollitas 11G",        "Fabricante": "PEPSICO",      "Ocasión": "BITES",      "Precio ($)": 1.0, "Gramaje (g)": 11, "SOM (%)": 6.62},
         {"Producto": "Pikarones 11G",         "Fabricante": "PEPSICO",      "Ocasión": "BITES",      "Precio ($)": 1.0, "Gramaje (g)": 11, "SOM (%)": 6.41},
-        {"Producto": "Pix 15G",               "Fabricante": "BARCEL",       "Ocasión": "BITES",      "Precio ($)": 1.5, "Gramaje (g)": 15, "SOM (%)": 0.0},  
+        {"Producto": "Pix 15G",               "Fabricante": "BARCEL",       "Ocasión": "BITES",      "Precio ($)": 1.5, "Gramaje (g)": 15, "SOM (%)": 0.0},
         {"Producto": "Cheetos 21G",           "Fabricante": "PEPSICO",      "Ocasión": "BITES",      "Precio ($)": 2.0, "Gramaje (g)": 21, "SOM (%)": 2.08},
         {"Producto": "Cheetos 17G",           "Fabricante": "PEPSICO",      "Ocasión": "BITES",      "Precio ($)": 2.0, "Gramaje (g)": 17, "SOM (%)": 9.74},
         {"Producto": "Crujitos 17G",          "Fabricante": "PEPSICO",      "Ocasión": "BITES",      "Precio ($)": 2.0, "Gramaje (g)": 17, "SOM (%)": 1.85},
         # --- INDIVIDUAL ---
         {"Producto": "Cheetos 29G",           "Fabricante": "PEPSICO",      "Ocasión": "INDIVIDUAL", "Precio ($)": 3.5, "Gramaje (g)": 29, "SOM (%)": 6.10},
-        {"Producto": "Pix 45G",               "Fabricante": "BARCEL",       "Ocasión": "INDIVIDUAL", "Precio ($)": 4.0, "Gramaje (g)": 45, "SOM (%)": 0.0},  
+        {"Producto": "Pix 45G",               "Fabricante": "BARCEL",       "Ocasión": "INDIVIDUAL", "Precio ($)": 4.0, "Gramaje (g)": 45, "SOM (%)": 0.0},
     ],
 
     "GT - DT - MIXES": [
@@ -70,5 +70,57 @@ PLANTILLAS = {
         {"Producto": "De Todito 55G",         "Fabricante": "PEPSICO",      "Ocasión": "INDIVIDUAL", "Precio ($)": 5.0, "Gramaje (g)": 55, "SOM (%)": 9.54},
         {"Producto": "De Todito 48G",         "Fabricante": "PEPSICO",      "Ocasión": "INDIVIDUAL", "Precio ($)": 5.0, "Gramaje (g)": 48, "SOM (%)": 20.43},
         {"Producto": "Big Mix 40G",           "Fabricante": "BARCEL",       "Ocasión": "INDIVIDUAL", "Precio ($)": 5.0, "Gramaje (g)": 40, "SOM (%)": 0.21},
+    ],
+
+    "CO - DT - MAÍZ": [
+        # --- BITES ---
+        {"Producto": "Tosti 28G",             "Fabricante": "VALIDAR",  "Ocasión": "BITES",      "Precio ($)": 1500.0,  "Gramaje (g)": 28,  "SOM (%)": 5.45},
+        {"Producto": "Mini Takis 35G",        "Fabricante": "BARCEL",   "Ocasión": "BITES",      "Precio ($)": 2000.0,  "Gramaje (g)": 35,  "SOM (%)": 0.26},
+        {"Producto": "Choclitos 45G",         "Fabricante": "PEPSICO",  "Ocasión": "BITES",      "Precio ($)": 2100.0,  "Gramaje (g)": 45,  "SOM (%)": 11.03},
+        {"Producto": "Maizitos 45G",          "Fabricante": "RAMO",     "Ocasión": "BITES",      "Precio ($)": 2100.0,  "Gramaje (g)": 45,  "SOM (%)": 4.19},
+        {"Producto": "Tostacos 38G",          "Fabricante": "RAMO",     "Ocasión": "BITES",      "Precio ($)": 2200.0,  "Gramaje (g)": 38,  "SOM (%)": 4.56},
+        {"Producto": "Doritos Nacho 34G",     "Fabricante": "PEPSICO",  "Ocasión": "BITES",      "Precio ($)": 2400.0,  "Gramaje (g)": 34,  "SOM (%)": 1.44},
+        {"Producto": "Doritos Nacho 43G",     "Fabricante": "PEPSICO",  "Ocasión": "BITES",      "Precio ($)": 2700.0,  "Gramaje (g)": 43,  "SOM (%)": 21.94},
+        {"Producto": "Doritos Inno 41G",      "Fabricante": "PEPSICO",  "Ocasión": "BITES",      "Precio ($)": 2700.0,  "Gramaje (g)": 41,  "SOM (%)": 6.52},
+        {"Producto": "Dinamita 50G",          "Fabricante": "PEPSICO",  "Ocasión": "BITES",      "Precio ($)": 3000.0,  "Gramaje (g)": 50,  "SOM (%)": 8.62},
+        {"Producto": "Takis 50G",             "Fabricante": "BARCEL",   "Ocasión": "BITES",      "Precio ($)": 3600.0,  "Gramaje (g)": 50,  "SOM (%)": 10.58},
+        # --- HAMBRE ---
+        {"Producto": "Doritos Nacho 80G",     "Fabricante": "PEPSICO",  "Ocasión": "HAMBRE",     "Precio ($)": 4300.0,  "Gramaje (g)": 80,  "SOM (%)": 3.59},
+        # --- FAMILIAR ---
+        {"Producto": "Choclitos 210G",        "Fabricante": "PEPSICO",  "Ocasión": "FAMILIAR",   "Precio ($)": 7900.0,  "Gramaje (g)": 210, "SOM (%)": 2.43},
+        {"Producto": "Tostacos 200G",         "Fabricante": "RAMO",     "Ocasión": "FAMILIAR",   "Precio ($)": 8000.0,  "Gramaje (g)": 200, "SOM (%)": 1.69},
+        {"Producto": "Doritos 185G",          "Fabricante": "PEPSICO",  "Ocasión": "FAMILIAR",   "Precio ($)": 8600.0,  "Gramaje (g)": 185, "SOM (%)": 8.46},
+        {"Producto": "Takis 185G",            "Fabricante": "BARCEL",   "Ocasión": "FAMILIAR",   "Precio ($)": 10100.0, "Gramaje (g)": 185, "SOM (%)": 1.81},
+    ],
+
+    "CO - AS - MAÍZ": [
+        # --- BITES ---
+        {"Producto": "Maizitos 30G",          "Fabricante": "RAMO",     "Ocasión": "BITES",      "Precio ($)": 1160.0,  "Gramaje (g)": 30,  "SOM (%)": 1.93},
+        {"Producto": "Tostacos 25G",          "Fabricante": "RAMO",     "Ocasión": "BITES",      "Precio ($)": 1449.0,  "Gramaje (g)": 25,  "SOM (%)": 1.89},
+        {"Producto": "Tosti 28G",             "Fabricante": "VALIDAR",  "Ocasión": "BITES",      "Precio ($)": 1870.0,  "Gramaje (g)": 28,  "SOM (%)": 1.92},
+        {"Producto": "Tostacos 38G",          "Fabricante": "RAMO",     "Ocasión": "BITES",      "Precio ($)": 1900.0,  "Gramaje (g)": 38,  "SOM (%)": 2.50},
+        {"Producto": "Choclitos 45G",         "Fabricante": "PEPSICO",  "Ocasión": "BITES",      "Precio ($)": 2000.0,  "Gramaje (g)": 45,  "SOM (%)": 6.41},
+        {"Producto": "Maizitos 45G",          "Fabricante": "RAMO",     "Ocasión": "BITES",      "Precio ($)": 2200.0,  "Gramaje (g)": 45,  "SOM (%)": 2.85},
+        {"Producto": "Doritos 34G",           "Fabricante": "PEPSICO",  "Ocasión": "BITES",      "Precio ($)": 2200.0,  "Gramaje (g)": 34,  "SOM (%)": 1.39},
+        {"Producto": "Doritos Nacho 43G",     "Fabricante": "PEPSICO",  "Ocasión": "BITES",      "Precio ($)": 2700.0,  "Gramaje (g)": 43,  "SOM (%)": 11.23},
+        {"Producto": "Doritos Inno 41G",      "Fabricante": "PEPSICO",  "Ocasión": "BITES",      "Precio ($)": 2700.0,  "Gramaje (g)": 41,  "SOM (%)": 4.78},
+        {"Producto": "Dinamita 50G",          "Fabricante": "PEPSICO",  "Ocasión": "BITES",      "Precio ($)": 3100.0,  "Gramaje (g)": 50,  "SOM (%)": 7.03},
+        {"Producto": "Takis 50G",             "Fabricante": "BARCEL",   "Ocasión": "BITES",      "Precio ($)": 3700.0,  "Gramaje (g)": 50,  "SOM (%)": 9.65},
+        # --- HAMBRE ---
+        {"Producto": "Doritos 80G",           "Fabricante": "PEPSICO",  "Ocasión": "HAMBRE",     "Precio ($)": 3500.0,  "Gramaje (g)": 80,  "SOM (%)": 5.20},
+        # --- COMPARTIR ---
+        {"Producto": "Choclitos 125G",        "Fabricante": "PEPSICO",  "Ocasión": "COMPARTIR",  "Precio ($)": 4300.0,  "Gramaje (g)": 125, "SOM (%)": 2.30},
+        {"Producto": "Tosti 150G",            "Fabricante": "VALIDAR",  "Ocasión": "COMPARTIR",  "Precio ($)": 6000.0,  "Gramaje (g)": 150, "SOM (%)": 1.17},
+        # --- FAMILIAR ---
+        {"Producto": "Chidos 170G",           "Fabricante": "OTROS",  "Ocasión": "FAMILIAR",   "Precio ($)": 6500.0,  "Gramaje (g)": 170, "SOM (%)": 0.76},
+        {"Producto": "Choclitos 210G",        "Fabricante": "PEPSICO",  "Ocasión": "FAMILIAR",   "Precio ($)": 7700.0,  "Gramaje (g)": 210, "SOM (%)": 3.69},
+        {"Producto": "Fiestos 190G",          "Fabricante": "VALIDAR",  "Ocasión": "FAMILIAR",   "Precio ($)": 7900.0,  "Gramaje (g)": 190, "SOM (%)": 1.19},
+        {"Producto": "Tostacos 200G",         "Fabricante": "RAMO",     "Ocasión": "FAMILIAR",   "Precio ($)": 8200.0,  "Gramaje (g)": 200, "SOM (%)": 3.66},
+        {"Producto": "Doritos 175G",          "Fabricante": "PEPSICO",  "Ocasión": "FAMILIAR",   "Precio ($)": 8400.0,  "Gramaje (g)": 175, "SOM (%)": 1.21},
+        {"Producto": "Doritos 200G",          "Fabricante": "PEPSICO",  "Ocasión": "FAMILIAR",   "Precio ($)": 8600.0,  "Gramaje (g)": 200, "SOM (%)": 1.92},
+        {"Producto": "Doritos 185G",          "Fabricante": "PEPSICO",  "Ocasión": "FAMILIAR",   "Precio ($)": 8600.0,  "Gramaje (g)": 185, "SOM (%)": 10.05},
+        {"Producto": "Takis 185G",            "Fabricante": "BARCEL",   "Ocasión": "FAMILIAR",   "Precio ($)": 10400.0, "Gramaje (g)": 185, "SOM (%)": 6.73},
+        # --- REUNIÓN ---
+        {"Producto": "Doritos 320G",          "Fabricante": "PEPSICO",  "Ocasión": "REUNIÓN",    "Precio ($)": 13700.0, "Gramaje (g)": 320, "SOM (%)": 0.87},
     ],
 }
