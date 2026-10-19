@@ -355,6 +355,77 @@ def color_por_regla(producto, fabricante=None):
             return regla.get("color")
     return None
 
+# --- EDICIÓN RÁPIDA DEL GRÁFICO (espejo en el panel principal de los controles del sidebar) ---
+# Cada control usa su propia key "qe_<clave>" y al cambiar copia el valor a la key original
+# del sidebar, así ambos lugares quedan sincronizados y el gráfico se arma igual que antes.
+def _sync_edicion_rapida(clave):
+    st.session_state[clave] = st.session_state[f"qe_{clave}"]
+
+def control_rapido(widget, label, clave, default, **kwargs):
+    st.session_state[f"qe_{clave}"] = st.session_state.get(clave, default)
+    return widget(label, key=f"qe_{clave}", on_change=_sync_edicion_rapida, args=(clave,), **kwargs)
+
+def render_edicion_grafico():
+    with st.expander("🎛️ Edición del gráfico (dimensiones, letras, grid y contorno)", expanded=False):
+        st.caption("Mismos controles que '🎨 Controles de Diseño' del sidebar; los cambios se reflejan en ambos lados.")
+        qe_dim, qe_tipo, qe_grid, qe_cont = st.tabs(["📏 Dimensiones", "🔡 Tipografía", "📊 Grid", "🔲 Contorno"])
+
+        with qe_dim:
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                control_rapido(st.slider, "Alto del Gráfico", "slider_alto", 950, min_value=400, max_value=1500)
+                control_rapido(st.slider, "Ancho de Barras", "slider_ancho", 0.8, min_value=0.1, max_value=1.0)
+            with c2:
+                control_rapido(st.slider, "Espacio entre Gráficos", "slider_espacio", 0.03, min_value=0.0, max_value=0.2)
+                control_rapido(st.slider, "Alto de Barras (escala Y)", "slider_alto_barras", 1.0, min_value=0.1, max_value=2.0, step=0.1)
+            with c3:
+                control_rapido(st.slider, "Margen Inferior (Nombres)", "slider_margen_b", 440, min_value=50, max_value=600)
+                control_rapido(st.slider, "Opacidad Barras", "slider_opacidad", 1.0, min_value=0.1, max_value=1.0)
+
+        with qe_tipo:
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                control_rapido(st.slider, "Tamaño Nombres", "slider_nombres", 16, min_value=8, max_value=30)
+                control_rapido(st.slider, "Ángulo de Nombres", "slider_angulo", -90, min_value=-90, max_value=0)
+            with c2:
+                control_rapido(st.slider, "Tamaño Precios ($)", "slider_precios", 18, min_value=10, max_value=40)
+                control_rapido(st.slider, "Tamaño $/Kg", "slider_pkg", 15, min_value=10, max_value=40)
+            with c3:
+                if modo == "Price Ladder":
+                    control_rapido(st.slider, "Tamaño SOM (%)", "slider_som", 15, min_value=8, max_value=25)
+            if modo == "Price Ladder":
+                c4, c5, c6, c7 = st.columns(4)
+                with c4:
+                    control_rapido(st.color_picker, "Color texto SOM", "som_color_texto", "#000000")
+                with c5:
+                    control_rapido(st.color_picker, "Color fondo SOM", "som_color_fondo", "#E5E5E5")
+                with c6:
+                    control_rapido(st.slider, "Tamaño nombre de ocasión", "t_oca_nombre", 16, min_value=8, max_value=30)
+                with c7:
+                    control_rapido(st.slider, "Tamaño % SOM de ocasión", "t_oca_som", 18, min_value=8, max_value=30)
+
+        with qe_grid:
+            c1, c2, c3, c4 = st.columns(4)
+            with c1:
+                control_rapido(st.checkbox, "Mostrar líneas horizontales (Y)", "grid_y_visible", True)
+                control_rapido(st.checkbox, "Mostrar líneas verticales (X)", "grid_x_visible", False)
+            with c2:
+                control_rapido(st.color_picker, "Color de Líneas", "grid_color", "#707070")
+                control_rapido(st.selectbox, "Estilo de Línea", "grid_estilo", "solid", options=["solid", "dash", "dot", "dashdot"])
+            with c3:
+                control_rapido(st.slider, "Grosor de Líneas", "grid_grosor", 1.30, min_value=0.1, max_value=5.0, step=0.1)
+                control_rapido(st.slider, "Opacidad de Líneas", "grid_opacidad", 0.5, min_value=0.0, max_value=1.0, step=0.05)
+            with c4:
+                control_rapido(st.slider, "Número de líneas horizontales", "nticks_y", 16, min_value=3, max_value=30)
+                control_rapido(st.selectbox, "Posición de Grid", "grid_layer_select", "Detrás de barras", options=["Detrás de barras", "Delante de barras"])
+
+        with qe_cont:
+            c1, c2 = st.columns(2)
+            with c1:
+                control_rapido(st.color_picker, "Color del contorno", "color_contorno_barras", "#000000")
+            with c2:
+                control_rapido(st.slider, "Grosor del contorno", "grosor_contorno_barras", 1.0, min_value=0.0, max_value=5.0, step=0.25)
+
 # --- FUNCIÓN PARA GUARDAR CONFIGURACIÓN ---
 def guardar_configuracion(nombre):
     """Guarda la configuración actual completa"""
@@ -2481,6 +2552,9 @@ if not st.session_state.data.empty:
                 with col_bs6:
                     st.color_picker("% SOM banda 2", key="banda_texto_2")
 
+            # --- EDICIÓN DEL RESTO DEL GRÁFICO (espejo de los controles del sidebar) ---
+            render_edicion_grafico()
+
             ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5,"REUNIÓN":6, "FIESTA":7,"TRANSFORMADOR":8}
             df_p["O_Oca"] = df_p["Ocasión"].str.upper().map(ord_oca).fillna(99)
             
@@ -2851,6 +2925,9 @@ if not st.session_state.data.empty:
                             st.rerun()
 
         elif modo == "Price Pack" and "Canal" in st.session_state.data.columns:
+            # --- EDICIÓN DEL GRÁFICO (espejo de los controles del sidebar) ---
+            render_edicion_grafico()
+
             ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIOS": 5, "CONVENIENCIA": 6}
             df_p["O_Can"] = df_p["Canal"].str.upper().map(ord_can).fillna(99)
             df_p = df_p.sort_values(by=["O_Can", "Precio ($)"]).reset_index(drop=True)
