@@ -2495,6 +2495,10 @@ if not st.session_state.data.empty:
                 ), row=3, col=1)
 
             # Anotaciones de Precio por Kg dentro de las barras - CON PERSONALIZACIÓN
+            # Altura FIJA para todos los badges: 30% de la barra MÁS CHICA del gráfico,
+            # así todos quedan a la misma altura, pegados a la base, sin importar la escala de precios (USD, MXN, etc.).
+            y_badge_pkg_fijo = df_p["Precio ($)"].min() * alto_barras * 0.30
+
             for i, row in df_p.iterrows():
                 # Obtener colores personalizados o usar defaults
                 if row["Producto"] in st.session_state["custom_colors"]:
@@ -2513,7 +2517,7 @@ if not st.session_state.data.empty:
                     color_borde_pkg = "#444" if row["Fabricante"] != "BARCEL" else None
                 
                 fig.add_annotation(
-                    x=i, y=2.5 * alto_barras,  # ⭐ AJUSTAR POSICIÓN SEGÚN ALTO DE BARRAS
+                    x=i, y=y_badge_pkg_fijo,  # ⭐ MISMA altura fija para todos los badges, proporcional a la escala de precios
                     text=f"<b>{simbolo_moneda}{int(row['Precio por Kg ($)'])}</b>",
                     showarrow=False, 
                     font=dict(size=t_pkg, color=color_texto_pkg),
