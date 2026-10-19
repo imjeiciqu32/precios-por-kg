@@ -355,76 +355,315 @@ def color_por_regla(producto, fabricante=None):
             return regla.get("color")
     return None
 
-# --- EDICIÓN RÁPIDA DEL GRÁFICO (espejo en el panel principal de los controles del sidebar) ---
-# Cada control usa su propia key "qe_<clave>" y al cambiar copia el valor a la key original
-# del sidebar, así ambos lugares quedan sincronizados y el gráfico se arma igual que antes.
-def _sync_edicion_rapida(clave):
-    st.session_state[clave] = st.session_state[f"qe_{clave}"]
+# --- EDICIÓN DEL GRÁFICO (antes "Controles de Diseño" del sidebar) ---
+# Los controles usan las mismas keys de siempre (slider_*, grid_*, etc.), así que presets,
+# escenarios y "Resetear Todo el Diseño" siguen funcionando igual.
+def reset_diseno():
+    st.session_state["slider_nombres"] = 14
+    st.session_state["slider_precios"] = 18
+    st.session_state["slider_pkg"] = 16
+    st.session_state["slider_som"] = 13
+    st.session_state["slider_ancho"] = 0.6
+    st.session_state["slider_alto_barras"] = 1.0  # NUEVO: Alto de barras
+    st.session_state["slider_opacidad"] = 1.0
+    st.session_state["slider_alto"] = 950
+    st.session_state["slider_espacio"] = 0.03
+    st.session_state["slider_margen_b"] = 440
+    st.session_state["slider_angulo"] = -90
+    st.session_state["custom_colors"] = {}
+    # Resets para grid (CORREGIDOS)
+    st.session_state["grid_color"] = "#707070"
+    st.session_state["grid_grosor"] = 1.30
+    st.session_state["grid_opacidad"] = 0.5
+    st.session_state["grid_estilo"] = "solid"
+    st.session_state["grid_y_visible"] = True
+    st.session_state["grid_x_visible"] = False
+    st.session_state["nticks_y"] = 16
+    st.session_state["grid_layer"] = "below traces"  # CORREGIDO
+    st.session_state["grid_layer_select"] = "Detrás de barras"
+    # Resets de personalización de escalera (SOM, ocasión, banda) y reglas de color.
+    # Se aplican en el siguiente rerun porque algunos de esos widgets ya se dibujaron arriba.
+    programar_personalizacion({"valores": dict(CLAVES_PERSONALIZACION), "reglas_color": []})
 
-def control_rapido(widget, label, clave, default, **kwargs):
-    st.session_state[f"qe_{clave}"] = st.session_state.get(clave, default)
-    return widget(label, key=f"qe_{clave}", on_change=_sync_edicion_rapida, args=(clave,), **kwargs)
+# --- PRESETS DE ESTILO: configura varios controles de un jalón ---
+def aplicar_preset_estilo(nombre_preset):
+    if nombre_preset == "Ejecutivo":
+        st.session_state["slider_nombres"] = 16
+        st.session_state["slider_precios"] = 18
+        st.session_state["slider_pkg"] = 15
+        st.session_state["slider_som"] = 15
+        st.session_state["slider_ancho"] = 0.8
+        st.session_state["slider_alto"] = 950
+        st.session_state["slider_margen_b"] = 440
+        st.session_state["grid_color"] = "#707070"
+        st.session_state["grid_grosor"] = 1.30
+        st.session_state["nticks_y"] = 16
+        st.session_state["grid_x_visible"] = False
+    elif nombre_preset == "Pantalla completa":
+        st.session_state["slider_nombres"] = 18
+        st.session_state["slider_precios"] = 22
+        st.session_state["slider_pkg"] = 18
+        st.session_state["slider_som"] = 16
+        st.session_state["slider_ancho"] = 0.90
+        st.session_state["slider_alto"] = 1050
+        st.session_state["slider_margen_b"] = 480
+        st.session_state["grid_color"] = "#4A4A4A"
+        st.session_state["grid_grosor"] = 1.5
+        st.session_state["nticks_y"] = 12
+        st.session_state["grid_x_visible"] = False
+        st.session_state["modo_presentacion"] = True
 
 def render_edicion_grafico():
-    with st.expander("🎛️ Edición del gráfico (dimensiones, letras, grid y contorno)", expanded=False):
-        st.caption("Mismos controles que '🎨 Controles de Diseño' del sidebar; los cambios se reflejan en ambos lados.")
-        qe_dim, qe_tipo, qe_grid, qe_cont = st.tabs(["📏 Dimensiones", "🔡 Tipografía", "📊 Grid", "🔲 Contorno"])
+    with st.expander("🎛️ Edición del gráfico (diseño, letras, grid y colores)", expanded=False):
+        # Reset y presets van ANTES de los widgets para poder modificar sus keys en el mismo rerun
+        col_rs, col_pr1, col_pr2 = st.columns([1, 2, 1])
+        with col_rs:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Resetear Todo el Diseño", key="btn_reset_diseno", use_container_width=True):
+                reset_diseno()
+                st.rerun()
+        with col_pr1:
+            preset_elegido = st.selectbox(
+                "Preset de estilo",
+                ["-- Manual (como está) --", "Ejecutivo", "Pantalla completa"],
+                key="preset_estilo_select",
+                help="Configura de un jalón varios controles (fuentes, grid, tamaño). Puedes seguir ajustando manualmente después."
+            )
+        with col_pr2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Aplicar", key="btn_aplicar_preset", use_container_width=True):
+                if preset_elegido != "-- Manual (como está) --":
+                    aplicar_preset_estilo(preset_elegido)
+                    st.rerun()
+
+        qe_dim, qe_tipo, qe_grid, qe_col = st.tabs(["📏 Dimensiones", "🔡 Tipografía", "📊 Grid", "🎨 Colores"])
 
         with qe_dim:
             c1, c2, c3 = st.columns(3)
             with c1:
-                control_rapido(st.slider, "Alto del Gráfico", "slider_alto", 950, min_value=400, max_value=1500)
-                control_rapido(st.slider, "Ancho de Barras", "slider_ancho", 0.8, min_value=0.1, max_value=1.0)
+                st.slider("Alto del Gráfico", 400, 1500, key="slider_alto")
+                st.slider("Ancho de Barras", 0.1, 1.0, key="slider_ancho")
             with c2:
-                control_rapido(st.slider, "Espacio entre Gráficos", "slider_espacio", 0.03, min_value=0.0, max_value=0.2)
-                control_rapido(st.slider, "Alto de Barras (escala Y)", "slider_alto_barras", 1.0, min_value=0.1, max_value=2.0, step=0.1)
+                st.slider("Espacio entre Gráficos", 0.0, 0.2, key="slider_espacio")
+                st.slider("Alto de Barras (escala Y)", 0.1, 2.0, step=0.1, key="slider_alto_barras", help="Multiplica la altura de las barras. >1 = más altas, <1 = más bajas")
             with c3:
-                control_rapido(st.slider, "Margen Inferior (Nombres)", "slider_margen_b", 440, min_value=50, max_value=600)
-                control_rapido(st.slider, "Opacidad Barras", "slider_opacidad", 1.0, min_value=0.1, max_value=1.0)
+                st.slider("Margen Inferior (Nombres)", 50, 600, key="slider_margen_b")
+                st.slider("Opacidad Barras", 0.1, 1.0, key="slider_opacidad")
 
         with qe_tipo:
             c1, c2, c3 = st.columns(3)
             with c1:
-                control_rapido(st.slider, "Tamaño Nombres", "slider_nombres", 16, min_value=8, max_value=30)
-                control_rapido(st.slider, "Ángulo de Nombres", "slider_angulo", -90, min_value=-90, max_value=0)
+                st.slider("Tamaño Nombres", 8, 30, key="slider_nombres")
+                st.slider("Ángulo de Nombres", -90, 0, key="slider_angulo")
             with c2:
-                control_rapido(st.slider, "Tamaño Precios ($)", "slider_precios", 18, min_value=10, max_value=40)
-                control_rapido(st.slider, "Tamaño $/Kg", "slider_pkg", 15, min_value=10, max_value=40)
+                st.slider("Tamaño Precios ($)", 10, 40, key="slider_precios")
+                st.slider("Tamaño $/Kg", 10, 40, key="slider_pkg")
             with c3:
                 if modo == "Price Ladder":
-                    control_rapido(st.slider, "Tamaño SOM (%)", "slider_som", 15, min_value=8, max_value=25)
+                    st.slider("Tamaño SOM (%)", 8, 25, key="slider_som")
             if modo == "Price Ladder":
                 c4, c5, c6, c7 = st.columns(4)
                 with c4:
-                    control_rapido(st.color_picker, "Color texto SOM", "som_color_texto", "#000000")
+                    st.color_picker("Color texto SOM", key="som_color_texto")
                 with c5:
-                    control_rapido(st.color_picker, "Color fondo SOM", "som_color_fondo", "#E5E5E5")
+                    st.color_picker("Color fondo SOM", key="som_color_fondo")
                 with c6:
-                    control_rapido(st.slider, "Tamaño nombre de ocasión", "t_oca_nombre", 16, min_value=8, max_value=30)
+                    st.slider("Tamaño nombre de ocasión", 8, 30, key="t_oca_nombre")
                 with c7:
-                    control_rapido(st.slider, "Tamaño % SOM de ocasión", "t_oca_som", 18, min_value=8, max_value=30)
+                    st.slider("Tamaño % SOM de ocasión", 8, 30, key="t_oca_som")
 
         with qe_grid:
             c1, c2, c3, c4 = st.columns(4)
             with c1:
-                control_rapido(st.checkbox, "Mostrar líneas horizontales (Y)", "grid_y_visible", True)
-                control_rapido(st.checkbox, "Mostrar líneas verticales (X)", "grid_x_visible", False)
+                st.checkbox("Mostrar líneas horizontales (Y)", key="grid_y_visible")
+                st.checkbox("Mostrar líneas verticales (X)", key="grid_x_visible")
             with c2:
-                control_rapido(st.color_picker, "Color de Líneas", "grid_color", "#707070")
-                control_rapido(st.selectbox, "Estilo de Línea", "grid_estilo", "solid", options=["solid", "dash", "dot", "dashdot"])
+                st.color_picker("Color de Líneas", key="grid_color")
+                st.selectbox("Estilo de Línea", ["solid", "dash", "dot", "dashdot"], key="grid_estilo",
+                             help="Tipo de línea: solid (continua), dash (discontinua), dot (punteada), dashdot (mixta)")
             with c3:
-                control_rapido(st.slider, "Grosor de Líneas", "grid_grosor", 1.30, min_value=0.1, max_value=5.0, step=0.1)
-                control_rapido(st.slider, "Opacidad de Líneas", "grid_opacidad", 0.5, min_value=0.0, max_value=1.0, step=0.05)
+                st.slider("Grosor de Líneas", 0.1, 5.0, step=0.1, key="grid_grosor")
+                st.slider("Opacidad de Líneas", 0.0, 1.0, step=0.05, key="grid_opacidad")
             with c4:
-                control_rapido(st.slider, "Número de líneas horizontales", "nticks_y", 16, min_value=3, max_value=30)
-                control_rapido(st.selectbox, "Posición de Grid", "grid_layer_select", "Detrás de barras", options=["Detrás de barras", "Delante de barras"])
+                st.slider("Número de líneas horizontales", 3, 30, key="nticks_y")
+                st.selectbox("Posición de Grid", ["Detrás de barras", "Delante de barras"], key="grid_layer_select")
+            st.session_state["grid_layer"] = "below traces" if st.session_state["grid_layer_select"] == "Detrás de barras" else "above traces"
 
-        with qe_cont:
-            c1, c2 = st.columns(2)
-            with c1:
-                control_rapido(st.color_picker, "Color del contorno", "color_contorno_barras", "#000000")
-            with c2:
-                control_rapido(st.slider, "Grosor del contorno", "grosor_contorno_barras", 1.0, min_value=0.0, max_value=5.0, step=0.25)
+        with qe_col:
+            if modo == "Price Ladder":
+                st.markdown("**⚡ Reglas de color (varios productos a la vez):**")
+                st.caption("Ej: 'Producto contiene' DORITOS → rojo. La personalización individual de un producto tiene prioridad sobre las reglas.")
+                col_r1, col_r2, col_r3, col_r4 = st.columns([2, 2, 1, 1])
+                with col_r1:
+                    tipo_regla = st.selectbox("Condición", ["Producto contiene", "Fabricante es"], key="regla_tipo_nueva")
+                with col_r2:
+                    texto_regla = st.text_input("Texto", placeholder="Ej: DORITOS", key="regla_texto_nueva")
+                with col_r3:
+                    color_regla = st.color_picker("Color", value="#D32F2F", key="regla_color_nueva")
+                with col_r4:
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    if st.button("➕ Agregar regla", key="btn_agregar_regla", use_container_width=True):
+                        if texto_regla.strip():
+                            st.session_state["reglas_color"].append({
+                                "tipo": tipo_regla,
+                                "texto": texto_regla.strip().upper(),
+                                "color": color_regla
+                            })
+                            st.rerun()
+                        else:
+                            st.warning("⚠️ Escribe el texto de la regla")
+                for n_regla, regla in enumerate(list(st.session_state["reglas_color"])):
+                    col_ri, col_rb = st.columns([6, 1])
+                    with col_ri:
+                        st.markdown(
+                            f"<span style='display:inline-block; width:14px; height:14px; background:{regla['color']}; "
+                            f"border:1px solid #999; border-radius:3px; vertical-align:middle;'></span> "
+                            f"{regla['tipo']}: <b>{regla['texto']}</b>",
+                            unsafe_allow_html=True
+                        )
+                    with col_rb:
+                        if st.button("🗑️", key=f"del_regla_{n_regla}"):
+                            st.session_state["reglas_color"].pop(n_regla)
+                            st.rerun()
+                st.markdown("---")
+            st.markdown("**Contorno de las barras (aplica a todas):**")
+            col_contorno1, col_contorno2 = st.columns(2)
+            with col_contorno1:
+                st.color_picker("Color del contorno", key="color_contorno_barras",
+                                help="Color del borde/contorno de todas las barras del gráfico")
+            with col_contorno2:
+                st.slider("Grosor del contorno", 0.0, 5.0, step=0.25, key="grosor_contorno_barras",
+                          help="Grosor del borde de las barras (0 = sin contorno)")
+            st.markdown("---")
+            st.markdown("**Selecciona un producto para cambiar su color:**")
+            
+            if "Producto" in st.session_state.data.columns:
+                productos_disponibles = sorted(st.session_state.data["Producto"].unique().tolist())
+                
+                producto_seleccionado = st.selectbox(
+                    "Producto a personalizar:",
+                    ["-- Ninguno --"] + productos_disponibles,
+                    key="color_picker_producto"
+                )
+                
+                if producto_seleccionado != "-- Ninguno --":
+                    st.markdown("---")
+                    st.markdown("#### 🎨 Personalización de Barra")
+                    
+                    # Obtener fabricante del producto seleccionado para defaults inteligentes
+                    fabricante_prod = st.session_state.data[st.session_state.data["Producto"] == producto_seleccionado]["Fabricante"].iloc[0] if "Fabricante" in st.session_state.data.columns else "OTROS"
+                    
+                    # Defaults inteligentes según fabricante
+                    default_barra = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"}.get(fabricante_prod.upper(), "#999999")
+                    default_barra = color_por_regla(producto_seleccionado, fabricante_prod) or default_barra
+                    default_texto_pkg = "#FFFFFF" if fabricante_prod.upper() == "BARCEL" else "#000000"
+                    default_fondo_pkg = "#4682B4" if fabricante_prod.upper() == "BARCEL" else "#FFFFFF"
+                    default_borde_pkg = "#444444" if fabricante_prod.upper() != "BARCEL" else "#333333"
+                    
+                    # Color de la barra
+                    color_barra = st.color_picker(
+                        "Color de barra",
+                        value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("barra", default_barra),
+                        key=f"color_barra_{producto_seleccionado}"
+                    )
+                    
+                    st.markdown("#### 📝 Personalización de Precios")
+                    
+                    col_precio1, col_precio2 = st.columns(2)
+                    
+                    with col_precio1:
+                        st.markdown("**Precio Desembolso (arriba)**")
+                        # Color del texto del precio desembolso
+                        color_texto_desembolso = st.color_picker(
+                            "Color texto",
+                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("texto_desembolso", "#000000"),
+                            key=f"color_texto_desembolso_{producto_seleccionado}",
+                            help="Color del texto del precio arriba de la barra"
+                        )
+                        
+                        # Color de fondo del precio desembolso (solo Price Pack)
+                        if modo == "Price Pack":
+                            color_fondo_desembolso = st.color_picker(
+                                "Color fondo (caja azul)",
+                                value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("fondo_desembolso", "#00B0F0"),
+                                key=f"color_fondo_desembolso_{producto_seleccionado}"
+                            )
+                        else:
+                            color_fondo_desembolso = None
+                    
+                    with col_precio2:
+                        st.markdown("**Precio por Kg (dentro)**")
+                        # Color del texto del precio por kg
+                        color_texto_pkg = st.color_picker(
+                            "Color texto",
+                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("texto_pkg", default_texto_pkg),
+                            key=f"color_texto_pkg_{producto_seleccionado}",
+                            help="Color del texto del precio por kg dentro de la barra"
+                        )
+                        
+                        # Color de fondo del precio por kg
+                        color_fondo_pkg = st.color_picker(
+                            "Color fondo",
+                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("fondo_pkg", default_fondo_pkg),
+                            key=f"color_fondo_pkg_{producto_seleccionado}",
+                            help="Color de fondo de la cajita del precio por kg"
+                        )
+                    
+                    st.markdown("#### 🔲 Personalización de Bordes")
+                    
+                    col_borde1, col_borde2 = st.columns(2)
+                    
+                    with col_borde1:
+                        if modo == "Price Pack":
+                            # Color del borde del precio desembolso
+                            color_borde_desembolso = st.color_picker(
+                                "Borde Precio Desembolso",
+                                value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("borde_desembolso", "#000000"),
+                                key=f"color_borde_desembolso_{producto_seleccionado}"
+                            )
+                        else:
+                            color_borde_desembolso = None
+                    
+                    with col_borde2:
+                        # Color del borde del precio por kg
+                        color_borde_pkg = st.color_picker(
+                            "Borde Precio por Kg",
+                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("borde_pkg", default_borde_pkg),
+                            key=f"color_borde_pkg_{producto_seleccionado}"
+                        )
+                    
+                    # Guardar todos los colores personalizados
+                    st.session_state["custom_colors"][producto_seleccionado] = {
+                        "barra": color_barra,
+                        "texto_desembolso": color_texto_desembolso,
+                        "fondo_desembolso": color_fondo_desembolso,
+                        "texto_pkg": color_texto_pkg,
+                        "fondo_pkg": color_fondo_pkg,
+                        "borde_desembolso": color_borde_desembolso,
+                        "borde_pkg": color_borde_pkg
+                    }
+                    
+                    st.success(f"✅ Colores personalizados aplicados a: {producto_seleccionado}")
+                    
+                    # Botón para quitar personalización
+                    if st.button(f"🗑️ Quitar personalización de {producto_seleccionado}", key=f"remove_custom_{producto_seleccionado}"):
+                        if producto_seleccionado in st.session_state["custom_colors"]:
+                            del st.session_state["custom_colors"][producto_seleccionado]
+                            st.success(f"✅ Personalización eliminada de {producto_seleccionado}")
+                            st.rerun()
+                
+                # Mostrar productos personalizados
+                if st.session_state["custom_colors"]:
+                    st.markdown("---")
+                    st.markdown("**📋 Productos con colores personalizados:**")
+                    for prod in list(st.session_state["custom_colors"].keys()):
+                        col_prod, col_btn = st.columns([3, 1])
+                        with col_prod:
+                            st.caption(f"• {prod}")
+                        with col_btn:
+                            if st.button("🗑️", key=f"quick_remove_{prod}"):
+                                del st.session_state["custom_colors"][prod]
+                                st.rerun()
 
 # --- FUNCIÓN PARA GUARDAR CONFIGURACIÓN ---
 def guardar_configuracion(nombre):
@@ -594,6 +833,32 @@ if "historial_cambios" not in st.session_state:
     st.session_state["historial_cambios"] = []
 if "modo_presentacion" not in st.session_state:
     st.session_state["modo_presentacion"] = True
+
+# Defaults de los controles de diseño (ahora en el expander '🎛️ Edición del gráfico')
+DEFAULTS_DISENO = {
+    "slider_alto_barras": 1.0,
+    "grid_color": "#707070",
+    "grid_grosor": 1.30,
+    "grid_opacidad": 0.5,
+    "grid_estilo": "solid",
+    "grid_y_visible": True,
+    "grid_x_visible": False,
+    "nticks_y": 16,
+    "grid_layer": "below traces",
+    "color_contorno_barras": "#000000",
+    "grosor_contorno_barras": 1.0,
+}
+for _k_dis, _v_dis in DEFAULTS_DISENO.items():
+    if _k_dis not in st.session_state:
+        st.session_state[_k_dis] = _v_dis
+if "grid_layer_select" not in st.session_state:
+    st.session_state["grid_layer_select"] = "Detrás de barras" if st.session_state["grid_layer"] == "below traces" else "Delante de barras"
+# Streamlit borra el valor de un widget si en un rerun no se dibuja (expander no renderizado,
+# sin datos, etc.). Re-asignarlo aquí lo conserva entre reruns.
+for _k_dis in ["slider_nombres", "slider_precios", "slider_pkg", "slider_som", "slider_ancho", "slider_opacidad",
+               "slider_alto", "slider_espacio", "slider_margen_b", "slider_angulo", "grid_layer_select"] + list(DEFAULTS_DISENO.keys()):
+    if _k_dis in st.session_state:
+        st.session_state[_k_dis] = st.session_state[_k_dis]
 
 # ============================================================================
 # SISTEMA DE GUARDAR/CARGAR CONFIGURACIONES
@@ -1371,422 +1636,6 @@ with st.sidebar:
     
     # --- SECCIÓN 3: CONTROLES DE DISEÑO (MOVIDOS ANTES DEL FOOTER) ---
     if not st.session_state.data.empty:
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.divider()
-        st.subheader("🎨 Controles de Diseño")
-        
-        def reset_diseno():
-            st.session_state["slider_nombres"] = 14
-            st.session_state["slider_precios"] = 18
-            st.session_state["slider_pkg"] = 16
-            st.session_state["slider_som"] = 13
-            st.session_state["slider_ancho"] = 0.6
-            st.session_state["slider_alto_barras"] = 1.0  # NUEVO: Alto de barras
-            st.session_state["slider_opacidad"] = 1.0
-            st.session_state["slider_alto"] = 950
-            st.session_state["slider_espacio"] = 0.03
-            st.session_state["slider_margen_b"] = 440
-            st.session_state["slider_angulo"] = -90
-            st.session_state["custom_colors"] = {}
-            # Resets para grid (CORREGIDOS)
-            st.session_state["grid_color"] = "#707070"
-            st.session_state["grid_grosor"] = 1.30
-            st.session_state["grid_opacidad"] = 0.5
-            st.session_state["grid_estilo"] = "solid"
-            st.session_state["grid_y_visible"] = True
-            st.session_state["grid_x_visible"] = False
-            st.session_state["nticks_y"] = 16
-            st.session_state["grid_layer"] = "below traces"  # CORREGIDO
-            # Resets de personalización de escalera (SOM, ocasión, banda) y reglas de color
-            for _k_pers, _v_pers in CLAVES_PERSONALIZACION.items():
-                st.session_state[_k_pers] = _v_pers
-            st.session_state["reglas_color"] = []
-            
-        if st.button("Resetear Todo el Diseño"):
-            reset_diseno()
-            st.rerun()
-
-        # --- PRESETS DE ESTILO: configura varios controles de un jalón ---
-        def aplicar_preset_estilo(nombre_preset):
-            if nombre_preset == "Ejecutivo":
-                st.session_state["slider_nombres"] = 16
-                st.session_state["slider_precios"] = 18
-                st.session_state["slider_pkg"] = 15
-                st.session_state["slider_som"] = 15
-                st.session_state["slider_ancho"] = 0.8
-                st.session_state["slider_alto"] = 950
-                st.session_state["slider_margen_b"] = 440
-                st.session_state["grid_color"] = "#707070"
-                st.session_state["grid_grosor"] = 1.30
-                st.session_state["nticks_y"] = 16
-                st.session_state["grid_x_visible"] = False
-            elif nombre_preset == "Pantalla completa":
-                st.session_state["slider_nombres"] = 18
-                st.session_state["slider_precios"] = 22
-                st.session_state["slider_pkg"] = 18
-                st.session_state["slider_som"] = 16
-                st.session_state["slider_ancho"] = 0.90
-                st.session_state["slider_alto"] = 1050
-                st.session_state["slider_margen_b"] = 480
-                st.session_state["grid_color"] = "#4A4A4A"
-                st.session_state["grid_grosor"] = 1.5
-                st.session_state["nticks_y"] = 12
-                st.session_state["grid_x_visible"] = False
-                st.session_state["modo_presentacion"] = True
-
-        col_preset1, col_preset2 = st.columns([3, 1])
-        with col_preset1:
-            preset_elegido = st.selectbox(
-                "Preset de estilo",
-                ["-- Manual (como está) --", "Ejecutivo", "Pantalla completa"],
-                key="preset_estilo_select",
-                help="Configura de un jalón varios controles (fuentes, grid, tamaño). Puedes seguir ajustando manualmente después."
-            )
-        with col_preset2:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("Aplicar", key="btn_aplicar_preset", use_container_width=True):
-                if preset_elegido != "-- Manual (como está) --":
-                    aplicar_preset_estilo(preset_elegido)
-                    st.rerun()
-
-        tab_dim, tab_tipo, tab_grid, tab_colores = st.tabs(["📏 Dimensiones", "🔡 Tipografía", "📊 Grid", "🎨 Colores"])
-
-        with tab_dim:
-            alto_grafico = st.slider("Alto del Gráfico", 400, 1500, value=st.session_state["slider_alto"], key="slider_alto")
-            espacio_v = st.slider("Espacio entre Gráficos", 0.0, 0.2, value=st.session_state["slider_espacio"], key="slider_espacio")
-            margen_b = st.slider("Margen Inferior (Nombres)", 50, 600, value=st.session_state["slider_margen_b"], key="slider_margen_b")
-            
-            col_barras1, col_barras2 = st.columns(2)
-            with col_barras1:
-                ancho_barras = st.slider("Ancho de Barras", 0.1, 1.0, value=st.session_state["slider_ancho"], key="slider_ancho")
-            with col_barras2:
-                alto_barras = st.slider("Alto de Barras (escala Y)", 0.1, 2.0, value=st.session_state.get("slider_alto_barras", 1.0), step=0.1, key="slider_alto_barras", help="Multiplica la altura de las barras. >1 = más altas, <1 = más bajas")
-            
-            opacidad_barras = st.slider("Opacidad Barras", 0.1, 1.0, value=st.session_state["slider_opacidad"], key="slider_opacidad")
-        
-        with tab_tipo:
-            t_nombres = st.slider("Tamaño Nombres", 8, 30, value=st.session_state["slider_nombres"], key="slider_nombres")
-            t_precios = st.slider("Tamaño Precios ($)", 10, 40, value=st.session_state["slider_precios"], key="slider_precios")
-            t_pkg = st.slider("Tamaño $/Kg", 10, 40, value=st.session_state["slider_pkg"], key="slider_pkg")
-            t_som = st.slider("Tamaño SOM (%)", 8, 25, value=st.session_state["slider_som"], key="slider_som")
-            angulo_nombres = st.slider("Ángulo de Nombres", -90, 0, value=st.session_state["slider_angulo"], key="slider_angulo")
-            if modo == "Price Ladder":
-                st.markdown("---")
-                st.markdown("**Recuadros de SOM (fila superior):**")
-                col_som1, col_som2 = st.columns(2)
-                with col_som1:
-                    st.color_picker("Color texto SOM", key="som_color_texto")
-                with col_som2:
-                    st.color_picker("Color fondo SOM", key="som_color_fondo")
-                st.markdown("**Etiquetas de Ocasión (debajo de la escalera):**")
-                st.slider("Tamaño nombre de ocasión", 8, 30, key="t_oca_nombre")
-                st.slider("Tamaño % SOM de ocasión", 8, 30, key="t_oca_som")
-                st.caption("💡 Tamaños y colores de la banda de desembolso: expander '🎚️ Banda de desembolso y edición rápida' arriba de la gráfica.")
-        
-        # === EXPANDER PARA LÍNEAS DIVISORIAS / GRID (CORREGIDO) ===
-        with tab_grid:
-            st.markdown("#### Visibilidad del Grid")
-            col_vis1, col_vis2 = st.columns(2)
-            with col_vis1:
-                grid_y_visible = st.checkbox(
-                    "Mostrar líneas horizontales (Y)", 
-                    value=st.session_state.get("grid_y_visible", True),
-                    key="grid_y_visible",
-                    help="Líneas horizontales del eje Y"
-                )
-            with col_vis2:
-                grid_x_visible = st.checkbox(
-                    "Mostrar líneas verticales (X)", 
-                    value=st.session_state.get("grid_x_visible", False),
-                    key="grid_x_visible",
-                    help="Líneas verticales del eje X"
-                )
-            
-            st.markdown("#### Estilo de Líneas")
-            col_style1, col_style2, col_style3 = st.columns(3)
-            
-            with col_style1:
-                grid_color = st.color_picker(
-                    "Color de Líneas",
-                    value=st.session_state.get("grid_color", "#707070"),
-                    key="grid_color",
-                    help="Color de las líneas divisorias"
-                )
-            
-            with col_style2:
-                grid_grosor = st.slider(
-                    "Grosor de Líneas",
-                    0.1, 5.0, 
-                    value=st.session_state.get("grid_grosor", 1.30),
-                    step=0.1,
-                    key="grid_grosor",
-                    help="Grosor de las líneas en puntos"
-                )
-            
-            with col_style3:
-                grid_opacidad = st.slider(
-                    "Opacidad de Líneas",
-                    0.0, 1.0,
-                    value=st.session_state.get("grid_opacidad", 0.5),
-                    step=0.05,
-                    key="grid_opacidad",
-                    help="Transparencia de las líneas del grid"
-                )
-
-            # Convertir color + opacidad en un solo rgba real que sí usa Plotly
-            grid_color_rgba = hex_a_rgba(grid_color, grid_opacidad, grid_color)
-            
-            col_style4, col_style5 = st.columns(2)
-            
-            with col_style4:
-                grid_estilo = st.selectbox(
-                    "Estilo de Línea",
-                    options=["solid", "dash", "dot", "dashdot"],  # CORREGIDO: valores válidos
-                    index=["solid", "dash", "dot", "dashdot"].index(
-                        st.session_state.get("grid_estilo", "solid")
-                    ),
-                    key="grid_estilo",
-                    help="Tipo de línea: solid (continua), dash (discontinua), dot (punteada), dashdot (mixta)"
-                )
-            
-            with col_style5:
-                # CORREGIDO: usar valores válidos de Plotly
-                grid_layer_option = st.selectbox(
-                    "Posición de Grid",
-                    options=["Detrás de barras", "Delante de barras"],
-                    index=0 if st.session_state.get("grid_layer", "below traces") == "below traces" else 1,
-                    key="grid_layer_select",
-                    help="Si las líneas aparecen detrás o delante de las barras"
-                )
-                grid_layer = "below traces" if grid_layer_option == "Detrás de barras" else "above traces"
-                st.session_state["grid_layer"] = grid_layer
-            
-            st.markdown("#### Cantidad de Líneas")
-            col_qty1, col_qty2 = st.columns(2)
-            
-            with col_qty1:
-                nticks_y = st.slider(
-                    "Número de líneas horizontales",
-                    3, 30,
-                    value=st.session_state.get("nticks_y", 16),
-                    key="nticks_y",
-                    help="Cantidad de divisiones en el eje Y"
-                )
-            
-            with col_qty2:
-                st.info("💡 **Tip**: Más líneas = grid más denso. Menos líneas = gráfico más limpio.")
-            
-            # Preview de configuración actual
-            st.markdown("---")
-            st.markdown("#### 👁️ Vista Previa de Configuración")
-            preview_cols = st.columns(3)
-            with preview_cols[0]:
-                st.markdown(f"""
-                    <div style='background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd;'>
-                        <div style='font-size: 12px; color: #666; margin-bottom: 5px;'>Color</div>
-                        <div style='background: {grid_color}; height: 30px; border-radius: 3px; border: 1px solid #ccc;'></div>
-                    </div>
-                """, unsafe_allow_html=True)
-            with preview_cols[1]:
-                st.markdown(f"""
-                    <div style='background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd;'>
-                        <div style='font-size: 12px; color: #666; margin-bottom: 5px;'>Grosor & Opacidad</div>
-                        <div style='font-weight: bold; font-size: 18px; color: #333;'>{grid_grosor}px · {int(grid_opacidad*100)}%</div>
-                    </div>
-                """, unsafe_allow_html=True)
-            with preview_cols[2]:
-                st.markdown(f"""
-                    <div style='background: white; padding: 10px; border-radius: 5px; border: 1px solid #ddd;'>
-                        <div style='font-size: 12px; color: #666; margin-bottom: 5px;'>Estilo & Líneas</div>
-                        <div style='font-weight: bold; font-size: 18px; color: #333;'>{grid_estilo.title()} · {nticks_y} líneas</div>
-                    </div>
-                """, unsafe_allow_html=True)
-    
-        # ✨ SELECTOR DE COLORES PERSONALIZADOS
-        with tab_colores:
-            if modo == "Price Ladder":
-                st.markdown("**⚡ Reglas de color (varios productos a la vez):**")
-                st.caption("Ej: 'Producto contiene' DORITOS → rojo. La personalización individual de un producto tiene prioridad sobre las reglas.")
-                col_r1, col_r2, col_r3 = st.columns([2, 2, 1])
-                with col_r1:
-                    tipo_regla = st.selectbox("Condición", ["Producto contiene", "Fabricante es"], key="regla_tipo_nueva")
-                with col_r2:
-                    texto_regla = st.text_input("Texto", placeholder="Ej: DORITOS", key="regla_texto_nueva")
-                with col_r3:
-                    color_regla = st.color_picker("Color", value="#D32F2F", key="regla_color_nueva")
-                if st.button("➕ Agregar regla", key="btn_agregar_regla", use_container_width=True):
-                    if texto_regla.strip():
-                        st.session_state["reglas_color"].append({
-                            "tipo": tipo_regla,
-                            "texto": texto_regla.strip().upper(),
-                            "color": color_regla
-                        })
-                        st.rerun()
-                    else:
-                        st.warning("⚠️ Escribe el texto de la regla")
-                for n_regla, regla in enumerate(list(st.session_state["reglas_color"])):
-                    col_ri, col_rb = st.columns([4, 1])
-                    with col_ri:
-                        st.markdown(
-                            f"<span style='display:inline-block; width:14px; height:14px; background:{regla['color']}; "
-                            f"border:1px solid #999; border-radius:3px; vertical-align:middle;'></span> "
-                            f"{regla['tipo']}: <b>{regla['texto']}</b>",
-                            unsafe_allow_html=True
-                        )
-                    with col_rb:
-                        if st.button("🗑️", key=f"del_regla_{n_regla}"):
-                            st.session_state["reglas_color"].pop(n_regla)
-                            st.rerun()
-                st.markdown("---")
-            st.markdown("**Contorno de las barras (aplica a todas):**")
-            col_contorno1, col_contorno2 = st.columns(2)
-            with col_contorno1:
-                color_contorno_barras = st.color_picker(
-                    "Color del contorno",
-                    value=st.session_state.get("color_contorno_barras", "#000000"),
-                    key="color_contorno_barras",
-                    help="Color del borde/contorno de todas las barras del gráfico"
-                )
-            with col_contorno2:
-                grosor_contorno_barras = st.slider(
-                    "Grosor del contorno",
-                    0.0, 5.0,
-                    value=st.session_state.get("grosor_contorno_barras", 1.0),
-                    step=0.25,
-                    key="grosor_contorno_barras",
-                    help="Grosor del borde de las barras (0 = sin contorno)"
-                )
-            st.markdown("---")
-            st.markdown("**Selecciona un producto para cambiar su color:**")
-            
-            if "Producto" in st.session_state.data.columns:
-                productos_disponibles = sorted(st.session_state.data["Producto"].unique().tolist())
-                
-                producto_seleccionado = st.selectbox(
-                    "Producto a personalizar:",
-                    ["-- Ninguno --"] + productos_disponibles,
-                    key="color_picker_producto"
-                )
-                
-                if producto_seleccionado != "-- Ninguno --":
-                    st.markdown("---")
-                    st.markdown("#### 🎨 Personalización de Barra")
-                    
-                    # Obtener fabricante del producto seleccionado para defaults inteligentes
-                    fabricante_prod = st.session_state.data[st.session_state.data["Producto"] == producto_seleccionado]["Fabricante"].iloc[0] if "Fabricante" in st.session_state.data.columns else "OTROS"
-                    
-                    # Defaults inteligentes según fabricante
-                    default_barra = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"}.get(fabricante_prod.upper(), "#999999")
-                    default_barra = color_por_regla(producto_seleccionado, fabricante_prod) or default_barra
-                    default_texto_pkg = "#FFFFFF" if fabricante_prod.upper() == "BARCEL" else "#000000"
-                    default_fondo_pkg = "#4682B4" if fabricante_prod.upper() == "BARCEL" else "#FFFFFF"
-                    default_borde_pkg = "#444444" if fabricante_prod.upper() != "BARCEL" else "#333333"
-                    
-                    # Color de la barra
-                    color_barra = st.color_picker(
-                        "Color de barra",
-                        value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("barra", default_barra),
-                        key=f"color_barra_{producto_seleccionado}"
-                    )
-                    
-                    st.markdown("#### 📝 Personalización de Precios")
-                    
-                    col_precio1, col_precio2 = st.columns(2)
-                    
-                    with col_precio1:
-                        st.markdown("**Precio Desembolso (arriba)**")
-                        # Color del texto del precio desembolso
-                        color_texto_desembolso = st.color_picker(
-                            "Color texto",
-                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("texto_desembolso", "#000000"),
-                            key=f"color_texto_desembolso_{producto_seleccionado}",
-                            help="Color del texto del precio arriba de la barra"
-                        )
-                        
-                        # Color de fondo del precio desembolso (solo Price Pack)
-                        if modo == "Price Pack":
-                            color_fondo_desembolso = st.color_picker(
-                                "Color fondo (caja azul)",
-                                value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("fondo_desembolso", "#00B0F0"),
-                                key=f"color_fondo_desembolso_{producto_seleccionado}"
-                            )
-                        else:
-                            color_fondo_desembolso = None
-                    
-                    with col_precio2:
-                        st.markdown("**Precio por Kg (dentro)**")
-                        # Color del texto del precio por kg
-                        color_texto_pkg = st.color_picker(
-                            "Color texto",
-                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("texto_pkg", default_texto_pkg),
-                            key=f"color_texto_pkg_{producto_seleccionado}",
-                            help="Color del texto del precio por kg dentro de la barra"
-                        )
-                        
-                        # Color de fondo del precio por kg
-                        color_fondo_pkg = st.color_picker(
-                            "Color fondo",
-                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("fondo_pkg", default_fondo_pkg),
-                            key=f"color_fondo_pkg_{producto_seleccionado}",
-                            help="Color de fondo de la cajita del precio por kg"
-                        )
-                    
-                    st.markdown("#### 🔲 Personalización de Bordes")
-                    
-                    col_borde1, col_borde2 = st.columns(2)
-                    
-                    with col_borde1:
-                        if modo == "Price Pack":
-                            # Color del borde del precio desembolso
-                            color_borde_desembolso = st.color_picker(
-                                "Borde Precio Desembolso",
-                                value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("borde_desembolso", "#000000"),
-                                key=f"color_borde_desembolso_{producto_seleccionado}"
-                            )
-                        else:
-                            color_borde_desembolso = None
-                    
-                    with col_borde2:
-                        # Color del borde del precio por kg
-                        color_borde_pkg = st.color_picker(
-                            "Borde Precio por Kg",
-                            value=st.session_state["custom_colors"].get(producto_seleccionado, {}).get("borde_pkg", default_borde_pkg),
-                            key=f"color_borde_pkg_{producto_seleccionado}"
-                        )
-                    
-                    # Guardar todos los colores personalizados
-                    st.session_state["custom_colors"][producto_seleccionado] = {
-                        "barra": color_barra,
-                        "texto_desembolso": color_texto_desembolso,
-                        "fondo_desembolso": color_fondo_desembolso,
-                        "texto_pkg": color_texto_pkg,
-                        "fondo_pkg": color_fondo_pkg,
-                        "borde_desembolso": color_borde_desembolso,
-                        "borde_pkg": color_borde_pkg
-                    }
-                    
-                    st.success(f"✅ Colores personalizados aplicados a: {producto_seleccionado}")
-                    
-                    # Botón para quitar personalización
-                    if st.button(f"🗑️ Quitar personalización de {producto_seleccionado}", key=f"remove_custom_{producto_seleccionado}"):
-                        if producto_seleccionado in st.session_state["custom_colors"]:
-                            del st.session_state["custom_colors"][producto_seleccionado]
-                            st.success(f"✅ Personalización eliminada de {producto_seleccionado}")
-                            st.rerun()
-                
-                # Mostrar productos personalizados
-                if st.session_state["custom_colors"]:
-                    st.markdown("---")
-                    st.markdown("**📋 Productos con colores personalizados:**")
-                    for prod in list(st.session_state["custom_colors"].keys()):
-                        col_prod, col_btn = st.columns([3, 1])
-                        with col_prod:
-                            st.caption(f"• {prod}")
-                        with col_btn:
-                            if st.button("🗑️", key=f"quick_remove_{prod}"):
-                                del st.session_state["custom_colors"][prod]
-                                st.rerun()
-                            
         # --- SECCIÓN 4: HERRAMIENTAS AVANZADAS ---
         st.markdown("<br>", unsafe_allow_html=True)
         
@@ -2481,6 +2330,29 @@ if modo == "Price Ladder" and not st.session_state.data.empty:
         )
         st.write("")
 
+# --- VARIABLES DE DISEÑO (antes las definían los widgets del sidebar) ---
+alto_grafico = st.session_state["slider_alto"]
+espacio_v = st.session_state["slider_espacio"]
+margen_b = st.session_state["slider_margen_b"]
+ancho_barras = st.session_state["slider_ancho"]
+alto_barras = st.session_state["slider_alto_barras"]
+opacidad_barras = st.session_state["slider_opacidad"]
+t_nombres = st.session_state["slider_nombres"]
+t_precios = st.session_state["slider_precios"]
+t_pkg = st.session_state["slider_pkg"]
+t_som = st.session_state["slider_som"]
+angulo_nombres = st.session_state["slider_angulo"]
+grid_y_visible = st.session_state["grid_y_visible"]
+grid_x_visible = st.session_state["grid_x_visible"]
+grid_color = st.session_state["grid_color"]
+grid_grosor = st.session_state["grid_grosor"]
+grid_opacidad = st.session_state["grid_opacidad"]
+grid_estilo = st.session_state["grid_estilo"]
+nticks_y = st.session_state["nticks_y"]
+grid_layer = "below traces" if st.session_state["grid_layer_select"] == "Detrás de barras" else "above traces"
+st.session_state["grid_layer"] = grid_layer
+grid_color_rgba = hex_a_rgba(grid_color, grid_opacidad, grid_color)
+
 # --- 7. GRÁFICO FINAL CON CONFIGURACIÓN DE GRID ---
 if not st.session_state.data.empty:
     
@@ -2552,7 +2424,7 @@ if not st.session_state.data.empty:
                 with col_bs6:
                     st.color_picker("% SOM banda 2", key="banda_texto_2")
 
-            # --- EDICIÓN DEL RESTO DEL GRÁFICO (espejo de los controles del sidebar) ---
+            # --- EDICIÓN DEL GRÁFICO (diseño, letras, grid y colores) ---
             render_edicion_grafico()
 
             ord_oca = {"BITES": 1, "INDIVIDUAL": 2, "HAMBRE": 3, "COMPARTIR": 4, "FAMILIAR": 5,"REUNIÓN":6, "FIESTA":7,"TRANSFORMADOR":8}
@@ -2925,7 +2797,7 @@ if not st.session_state.data.empty:
                             st.rerun()
 
         elif modo == "Price Pack" and "Canal" in st.session_state.data.columns:
-            # --- EDICIÓN DEL GRÁFICO (espejo de los controles del sidebar) ---
+            # --- EDICIÓN DEL GRÁFICO (diseño, letras, grid y colores) ---
             render_edicion_grafico()
 
             ord_can = {"INSTITUCIONALES": 1, "MAYOREO": 2, "CLUBES": 3, "DETALLE": 4, "AUTOSERVICIOS": 5, "CONVENIENCIA": 6}
