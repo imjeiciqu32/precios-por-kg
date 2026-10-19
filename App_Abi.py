@@ -2472,10 +2472,7 @@ if not st.session_state.data.empty:
             labels_precios = []
             for _, row in df_p.iterrows():
                 p = row["Precio ($)"]
-                if p < 10:
-                    labels_precios.append(f"{simbolo_moneda}{p:.1f}")
-                else:
-                    labels_precios.append(f"{simbolo_moneda}{int(p)}")
+                labels_precios.append(f"{simbolo_moneda}{p:.2f}")
 
             # Crear un trace por cada producto con alto ajustable
             for idx, (i, row) in enumerate(df_p.iterrows()):
@@ -2568,7 +2565,7 @@ if not st.session_state.data.empty:
                         if r_desde <= p <= r_hasta:
                             dec_r = 0 if float(r_desde).is_integer() and float(r_hasta).is_integer() else 2
                             return f"R{n_r}", f"{simbolo_moneda}{_fmt_banda(r_desde, dec_r)}–{_fmt_banda(r_hasta, dec_r)}"
-                    return f"P{p}", (f"{simbolo_moneda}{p:.1f}" if p < 10 else f"{simbolo_moneda}{int(p)}")
+                    return f"P{p}", f"{simbolo_moneda}{p:.2f}"
 
                 rangos_por_fila = df_p["Precio ($)"].apply(_rango_de_precio)
                 df_p["_llave_banda"] = df_p["O_Oca"].astype(str) + "|" + rangos_por_fila.str[0]
@@ -2606,7 +2603,7 @@ if not st.session_state.data.empty:
                 idx_ini, idx_fin = fila_tier["idx_ini"], fila_tier["idx_fin"]
                 center_tier = (idx_ini + idx_fin) / 2
                 p_val = fila_tier["precio"]
-                precio_txt_tier = fila_tier["etiqueta"] if "etiqueta" in fila_tier.index else (f"{simbolo_moneda}{p_val:.1f}" if p_val < 10 else f"{simbolo_moneda}{int(p_val)}")
+                precio_txt_tier = fila_tier["etiqueta"] if "etiqueta" in fila_tier.index else f"{simbolo_moneda}{p_val:.2f}"
 
                 banda = bandas_tier[n_tier % 2]
                 color_fondo_tier = banda["fondo"]
