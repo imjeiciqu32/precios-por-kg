@@ -2518,7 +2518,7 @@ if not st.session_state.data.empty:
                 
                 fig.add_annotation(
                     x=i, y=y_badge_pkg_fijo,  # ⭐ MISMA altura fija para todos los badges, proporcional a la escala de precios
-                    text=f"<b>{simbolo_moneda}{int(row['Precio por Kg ($)'])}</b>",
+                    text=f"<b>{simbolo_moneda}{row['Precio por Kg ($)']:.1f}</b>",
                     showarrow=False, 
                     font=dict(size=t_pkg, color=color_texto_pkg),
                     bgcolor=color_fondo_pkg,
