@@ -307,6 +307,7 @@ CLAVES_PERSONALIZACION = {
     "t_oca_nombre": 16,
     "t_oca_som": 18,
     "banda_modo": "Precio exacto",
+    "som_vista": "Total canal",
     "banda_t_precio": 12,
     "banda_t_som": 13,
     "banda_fondo_1": "#F2F2F2",
@@ -2385,6 +2386,13 @@ if not st.session_state.data.empty:
                 col_bm1, col_bm2 = st.columns([1, 2])
                 with col_bm1:
                     st.radio("Agrupar banda por", ["Precio exacto", "Rangos"], key="banda_modo", horizontal=True)
+                    st.radio(
+                        "SOM",
+                        ["Total canal", "Dentro de ocasión"],
+                        key="som_vista",
+                        horizontal=True,
+                        help="Dentro de ocasión: cada ocasión suma 100% y se muestra cuánto pesa cada producto dentro de ella. Aplica a los recuadros de SOM y a la banda de desembolso."
+                    )
                     st.toggle(
                         "✏️ Editar colores con clic en la barra",
                         key="click_editar_barras",
@@ -2433,13 +2441,22 @@ if not st.session_state.data.empty:
             df_p = df_p.sort_values(by=["O_Oca", "Precio ($)", "Precio por Kg ($)"]).reset_index(drop=True)
             som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
+            # --- SOM A MOSTRAR: total canal (tal cual) o re-base 100% dentro de cada ocasión ---
+            # La etiqueta de cada ocasión (abajo) sigue usando som_por_ocasion = peso sobre total canal.
+            som_dentro_ocasion = st.session_state.get("som_vista", "Total canal") == "Dentro de ocasión"
+            if som_dentro_ocasion:
+                _som_total_oca = df_p.groupby("Ocasión")["SOM (%)"].transform("sum")
+                df_p["SOM_vista"] = (df_p["SOM (%)"] / _som_total_oca.where(_som_total_oca != 0) * 100).fillna(0).round(1)
+            else:
+                df_p["SOM_vista"] = df_p["SOM (%)"]
+
             fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=espacio_v, row_heights=[0.13, 0.09, 0.78])
 
             fig.add_trace(go.Scatter(
-                x=df_p["Producto"], y=df_p["SOM (%)"], mode="lines+markers+text", 
+                x=df_p["Producto"], y=df_p["SOM_vista"], mode="lines+markers+text", 
                 line=dict(color="#BBBBBB", width=1.5), 
                 marker=dict(size=30, color=st.session_state.get("som_color_fondo", "#E5E5E5"), symbol="square", line=dict(color="#CCCCCC", width=1)), 
-                text=[f"<b>{row['SOM (%)']}%</b>" for _, row in df_p.iterrows()],
+                text=[f"<b>{row['SOM_vista']}%</b>" for _, row in df_p.iterrows()],
                 textposition="middle center", textfont=dict(size=t_som, color=st.session_state.get("som_color_texto", "#000000")),
                 unselected=dict(marker=dict(opacity=1)),
                 showlegend=False,
@@ -2573,7 +2590,7 @@ if not st.session_state.data.empty:
                 df_p["_grupo_precio"] = (df_p["Precio ($)"] != df_p["Precio ($)"].shift()).cumsum()
             agg_tiers = dict(
                 precio=("Precio ($)", "first"),
-                som_total=("SOM (%)", "sum"),
+                som_total=("SOM_vista", "sum"),
             )
             if "_etiqueta_banda" in df_p.columns:
                 agg_tiers["etiqueta"] = ("_etiqueta_banda", "first")
