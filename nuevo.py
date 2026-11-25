@@ -2540,6 +2540,10 @@ if not st.session_state.data.empty:
             _vis_dif = st.session_state.get("resaltar_intensidad", 0.3)
             difuminar = [(_hay_resaltado and str(p_d) not in _resaltados) for p_d in df_p["Producto"]]
             _gris_texto = hex_a_rgba(_color_dif, round(min(1.0, _vis_dif + 0.15), 2), "rgba(160,160,160,0.45)")
+            # Barras difuminadas: la transparencia va en el RELLENO (rgba) y no en marker_opacity,
+            # porque marker_opacity también aclara el contorno y lo hace casi invisible.
+            _relleno_dif = hex_a_rgba(_color_dif, _vis_dif, "rgba(191,191,191,0.3)")
+            _contorno_dif = hex_a_rgba(st.session_state.get("color_contorno_barras", "#000000"), round(min(1.0, _vis_dif + 0.3), 2), "rgba(0,0,0,0.6)")
 
             fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=espacio_v, row_heights=[0.13, 0.09, 0.78])
 
@@ -2588,14 +2592,14 @@ if not st.session_state.data.empty:
                 fig.add_trace(go.Bar(
                     x=[row["Producto"]], 
                     y=[row["Precio ($)"] * alto_barras],  # ⭐ APLICAR MULTIPLICADOR DE ALTO
-                    marker_color=_color_dif if difuminar[idx] else bar_colors[idx],
-                    marker_opacity=_vis_dif if difuminar[idx] else opacidad_barras, 
-                    marker_line=dict(color=_gris_texto, width=estilo_contorno_barras()["width"]) if difuminar[idx] else estilo_contorno_barras(),
+                    marker_color=_relleno_dif if difuminar[idx] else bar_colors[idx],
+                    marker_opacity=1 if difuminar[idx] else opacidad_barras, 
+                    marker_line=dict(color=_contorno_dif, width=estilo_contorno_barras()["width"]) if difuminar[idx] else estilo_contorno_barras(),
                     width=ancho_barras,
                     text=[f"<b>{labels_precios[idx]}</b>"],
                     textposition="outside", 
                     textfont=dict(size=t_precios, color=_gris_texto if difuminar[idx] else label_colors_desembolso[idx]),
-                    unselected=dict(marker=dict(opacity=_vis_dif if difuminar[idx] else opacidad_barras)),
+                    unselected=dict(marker=dict(opacity=1 if difuminar[idx] else opacidad_barras)),
                     showlegend=False,
                     hovertemplate=f"{row['Producto']}<br>Precio: ${row['Precio ($)']}<extra></extra>"
                 ), row=3, col=1)
