@@ -12,7 +12,7 @@
 #        2.4 Glosario técnico
 #        2.5 Funciones core (cálculo de PKG, pirámide, datos macro, historial)
 #        2.6 Configuraciones guardadas (guardar/cargar/exportar/importar/eliminar/duplicar)
-#   3. NAVEGACIÓN, MONEDA (RAC+LAC) Y LÓGICA DE MODOS
+#   3. CONSTANTES Y CONFIGURACIÓN GLOBAL (Banxico, series macro)
 #   4. CARGA DE PLANTILLAS Y ARQUITECTURA (archivos externos del repo)
 #   5. INICIALIZACIÓN DE SESSION STATE (sliders, colores, comentarios, etc.)
 #   6. EJECUCIÓN: modo presentación + logo
@@ -40,6 +40,7 @@ import streamlit as st
 import pandas as pd
 import base64
 import plotly.graph_objects as go
+import requests
 from plotly.subplots import make_subplots
 import os
 import io
@@ -257,6 +258,65 @@ def procesar_datos_piramide(df):
     df_py["Tier"] = df_py["Idx_P"].apply(definir_tier)
     return df_py
 
+# --- FUNCIÓN DE CONSULTA POR BLOQUES ---
+@st.cache_data(ttl=86400)
+def importar_datos_macro(token, series_lista):
+    headers = {"Accept": "application/json", "Bmx-Token": token}
+    mapeo_nombres = {id_serie: nombre for id_serie, nombre in series_lista}
+    ids_totales = list(mapeo_nombres.keys())
+    
+    # Tamaño máximo de series por petición para evitar el error 413
+    TAMANO_BLOQUE = 10
+    lista_dfs = []
+
+    # Dividir la lista total en sublistas de máximo 10 elementos
+    for i in range(0, len(ids_totales), TAMANO_BLOQUE):
+        bloque_ids = ids_totales[i : i + TAMANO_BLOQUE]
+        ids_concatenados = ",".join(bloque_ids)
+        
+        url = f"https://www.banxico.org.mx/SieAPIRest/service/v1/series/{ids_concatenados}/datos"
+        
+        try:
+            response = requests.get(url, headers=headers, timeout=15)
+            response.raise_for_status()
+            
+            series_data = response.json()['bmx']['series']
+            
+            for s in series_data:
+                id_serie = s['idSerie']
+                nombre_columna = mapeo_nombres.get(id_serie, id_serie)
+                
+                if 'datos' in s:
+                    df_temp = pd.DataFrame(s['datos'])
+                    df_temp['fecha'] = pd.to_datetime(df_temp['fecha'], dayfirst=True)
+                    df_temp['dato'] = pd.to_numeric(df_temp['dato'].str.replace(',', ''), errors='coerce')
+                    
+                    df_temp = df_temp.rename(columns={'fecha': 'Fecha', 'dato': nombre_columna})
+                    df_temp = df_temp.set_index('Fecha').resample('ME').last()
+                    lista_dfs.append(df_temp)
+                    
+        except Exception as e:
+            # Si un bloque falla, lo reportamos pero permitimos revisar qué pasó
+            st.error(f"Error en el bloque que inicia con {bloque_ids[0]}: {e}")
+            continue
+
+    # Unir todos los dataframes recolectados de los distintos bloques
+    if lista_dfs:
+        df_final = pd.concat(lista_dfs, axis=1).sort_index()
+        
+        # Filtrar por rango de fechas
+        df_final = df_final.loc[FECHA_INICIO_FILTRO:FECHA_FIN_FILTRO]
+        
+        # Rellenar las expectativas (Exp_) hacia adelante si existen
+        cols_exp = [c for c in df_final.columns if c.startswith("Exp_")]
+        if cols_exp:
+            df_final[cols_exp] = df_final[cols_exp].ffill()
+            
+        return df_final
+
+    return None
+
+
 # --- FUNCIÓN PARA REGISTRAR CAMBIOS EN HISTORIAL ---
 def registrar_cambio(producto, campo, valor_anterior, valor_nuevo, modo_app):
     if valor_anterior != valor_nuevo:
@@ -307,13 +367,15 @@ CLAVES_PERSONALIZACION = {
     "t_oca_nombre": 16,
     "t_oca_som": 18,
     "banda_modo": "Precio exacto",
-    "som_vista": "Total canal",
     "banda_t_precio": 12,
     "banda_t_som": 13,
     "banda_fondo_1": "#F2F2F2",
     "banda_texto_1": "#666666",
     "banda_fondo_2": "#F1EAF9",
     "banda_texto_2": "#6A3E9B",
+    "resaltar_productos": [],
+    "resaltar_color": "#BFBFBF",
+    "resaltar_intensidad": 0.3,
 }
 
 def obtener_personalizacion():
@@ -405,7 +467,7 @@ def aplicar_preset_estilo(nombre_preset):
         st.session_state["slider_precios"] = 22
         st.session_state["slider_pkg"] = 18
         st.session_state["slider_som"] = 16
-        st.session_state["slider_ancho"] = 0.90
+        st.session_state["slider_ancho"] = 0.85
         st.session_state["slider_alto"] = 1050
         st.session_state["slider_margen_b"] = 480
         st.session_state["grid_color"] = "#4A4A4A"
@@ -770,12 +832,79 @@ def duplicar_configuracion(nombre_original, nombre_nuevo):
 
 
 # ============================================================================
+# 3. CONSTANTES Y CONFIGURACIÓN GLOBAL
+# ============================================================================
+    
+TOKEN_BANXICO = "08d1b98b48cd9bb05d95b88e3fd37886ec747aa5e563b562b7bef9de21cde974"
+FECHA_INICIO_FILTRO = "2020-01-01"
+FECHA_FIN_FILTRO = "2027-12-31"
+
+SERIES_A_CONSULTAR = [
+    # =====================================================================
+    # 1. INPC / INPP Y MACRO (Originales)
+    # =====================================================================
+    ("SP30577", "INPC_Inflacion_Mensual"), ("SP30579", "INPC_Inflacion_Acumulada"),
+    ("SP30578", "INPC_Inflacion_Anual"), ("SP1", "INPC_Nivel_Historico"),
+    ("SP6", "INPP_Mercancias_Servicios_ExPetroleo"), ("SP5", "INPP_Mercancias_Servicios_ConPetroleo"),
+    
+    # Mercado Cambiario y Monetario
+    ("SF17890", "TipoCambio_Cotizacion_Minima"), ("SF17891", "TipoCambio_Cotizacion_Maxima"),
+    ("SF331450", "TIIE_Fondeo_1Dia"),
+    
+    # Mercado Laboral
+    ("SL11298", "Salario_Minimo_General"), ("SL1", "Tasa_Desocupacion_Nacional"),
+
+    # Expectativas de la Encuesta de Especialistas (Medias y Extremos)
+    ("SR14222", "Exp_Inflacion_Media"), ("SR14226", "Exp_Inflacion_Minima"),
+    ("SR14227", "Exp_Inflacion_Maxima"), ("SR14790", "Exp_TipoCambio_Media"),
+    ("SR14794", "Exp_TipoCambio_Minima"), ("SR14795", "Exp_TipoCambio_Maxima"),
+
+    ("SR14658", "Exp_TasaFondeo_Media"), ("SR14662", "Exp_TasaFondeo_Minima"),
+    ("SR14663", "Exp_TasaFondeo_Maxima"), ("SR14902", "Exp_TasaDesocupacion_Media"),
+    ("SR14906", "Exp_TasaDesocupacion_Minima"), ("SR14907", "Exp_TasaDesocupacion_Maxima"),
+
+    # =====================================================================
+    # 2. NUEVAS SERIES AGREGADAS (Clima de Negocios, Billetes y Monedas)
+    # =====================================================================
+
+    # Encuesta de Expectativas de Clima de Negocios
+    ("SR15028", "Exp_ClimaNegocios_Mejorara"),     # Clima de negocios próximos 6 meses: Mejorará
+    ("SR15029", "Exp_ClimaNegocios_Igual"),        # Clima de negocios próximos 6 meses: Permanecerá igual
+    ("SR15030", "Exp_ClimaNegocios_Empeorara"),    # Clima de negocios próximos 6 meses: Empeorará
+    ("SR16207", "Exp_ClimaNegocios_NumRespuestas"), # Número de respuestas
+    
+    # Encuesta de Expectativas de Situación Económica Actual
+    ("SR15031", "Exp_EconActual_Mejor"),           # Economía mejor que hace un año: Sí
+    ("SR15032", "Exp_EconActual_Peor"),            # Economía mejor que hace un año: No
+    ("SR16208", "Exp_EconActual_NumRespuestas"),  # Número de respuestas
+
+    # Billetes en Circulación (Totales, Millones de Pesos)
+    ("SM1472", "Billete_20_Circulacion"),
+    ("SM1478", "Billete_50_Circulacion"),
+    ("SM1479", "Billete_100_Circulacion"),
+    ("SM1480", "Billete_200_Circulacion"),
+    ("SM1481", "Billete_500_Circulacion"),
+    ("SM1482", "Billete_1000_Circulacion"),
+
+    # Monedas en Circulación (Totales, Millones de Pesos)
+    ("SM9", "Moneda_05C_Circulacion"),
+    ("SM10", "Moneda_10C_Circulacion"),
+    ("SM11", "Moneda_20C_Circulacion"),
+    ("SM12", "Moneda_50C_Circulacion"),
+    ("SM13", "Moneda_1_Circulacion"),
+    ("SM14", "Moneda_2_Circulacion"),
+    ("SM15", "Moneda_5_Circulacion"),
+    ("SM16", "Moneda_10_Circulacion"),
+    ("SM17", "Moneda_20_Circulacion")
+]
+
+# ============================================================================
 # 4. CARGA DE PLANTILLAS Y ARQUITECTURA
 # ============================================================================
 
 # --- 1. CONFIGURACIÓN Y CARGA DE PLANTILLAS ---
 try:
-    from Escaleras_RAC import PLANTILLAS 
+    from plantillas import PLANTILLAS 
 except ImportError:
     PLANTILLAS = {}
 
@@ -890,8 +1019,8 @@ if "banda_rangos_ver" not in st.session_state:
 aplicar_modo_presentacion()
 
 try:
-    # Asegúrate de que 'logo_row.png' esté en tu carpeta del repositorio
-    bin_str = get_base64_of_bin_file('logo_ro.png')
+    # Asegúrate de que 'logo_barcel.png' esté en tu carpeta del repositorio
+    bin_str = get_base64_of_bin_file('logo_barcel.png')
     st.markdown(
         f"""
         <style>
@@ -900,13 +1029,13 @@ try:
             }}
             .logo-container {{
                 position: fixed;
-                top: 1px;
-                right: 2px;
+                top: 10px;
+                right: 20px;
                 z-index: 999999;
             }}
         </style>
         <div class="logo-container">
-            <img src="data:image/png;base64,{bin_str}" width="190">
+            <img src="data:image/png;base64,{bin_str}" width="100">
         </div>
         """,
         unsafe_allow_html=True
@@ -928,7 +1057,7 @@ with st.sidebar:
     # Agregamos el nuevo modo a la lista de radio
     modo = st.radio(
         "Seleccionar Herramienta:", 
-        ["Price Ladder", "Price Pack"], 
+        ["Price Ladder", "Price Pack", "Indicadores Macro"], 
         label_visibility="collapsed"
     )
     
@@ -938,65 +1067,6 @@ with st.sidebar:
             mostrar_glosario()
         else:
             st.info("Función de glosario no definida aún.")
-
-    # --- SELECTOR DE MONEDA (RAC + LAC: Guatemala, El Salvador, Honduras, Nicaragua,
-    #     Panamá, Costa Rica, Colombia, Ecuador, Venezuela) ---
-    # NOTA: la conversión se aplica a los dos gráficos principales (Price Ladder / Price Pack).
-    # El resto de la app (tablas, formularios, simulador, etc.) sigue mostrando el valor
-    # tal como está guardado en los datos, en la moneda que se indique como "moneda de los datos".
-    MONEDAS_DISPONIBLES = ["USD", "GTQ", "HNL", "NIO", "CRC", "COP", "VES"]
-    SIMBOLOS_MONEDA = {
-        "USD": "$", "GTQ": "Q", "HNL": "L", "NIO": "C$",
-        "CRC": "₡", "COP": "$", "VES": "Bs",
-    }
-    # Tasas de referencia respecto a USD (EDITABLES abajo). Son aproximadas y deben
-    # actualizarse periódicamente — las divisas de la región, sobre todo VES, son volátiles.
-    TASAS_CAMBIO_DEFAULT = {
-        "USD": 1.0, "GTQ": 7.75, "HNL": 24.7, "NIO": 36.6,
-        "CRC": 520.0, "COP": 4100.0, "VES": 45.0,
-    }
-
-    with st.expander("💱 Moneda"):
-        col_mon1, col_mon2 = st.columns(2)
-        with col_mon1:
-            moneda_datos = st.selectbox(
-                "Moneda de los datos cargados",
-                MONEDAS_DISPONIBLES,
-                index=MONEDAS_DISPONIBLES.index(st.session_state.get("moneda_datos", "USD")),
-                key="moneda_datos",
-                help="En qué moneda están los precios tal como los cargaste/editaste."
-            )
-        with col_mon2:
-            moneda_mostrar = st.selectbox(
-                "Mostrar precios en",
-                MONEDAS_DISPONIBLES,
-                index=MONEDAS_DISPONIBLES.index(st.session_state.get("moneda_mostrar", "USD")),
-                key="moneda_mostrar",
-                help="Moneda en la que se ven los gráficos (Price Ladder y Price Pack)."
-            )
-
-        st.caption("Tasas de cambio (respecto a USD) — edítalas si cambian:")
-        if "tasas_cambio" not in st.session_state:
-            st.session_state["tasas_cambio"] = TASAS_CAMBIO_DEFAULT.copy()
-
-        cols_tasas = st.columns(3)
-        for idx_moneda, cod_moneda in enumerate(MONEDAS_DISPONIBLES):
-            if cod_moneda == "USD":
-                continue
-            with cols_tasas[idx_moneda % 3]:
-                st.session_state["tasas_cambio"][cod_moneda] = st.number_input(
-                    f"{cod_moneda}/USD",
-                    min_value=0.0001,
-                    value=float(st.session_state["tasas_cambio"].get(cod_moneda, TASAS_CAMBIO_DEFAULT[cod_moneda])),
-                    step=0.01,
-                    key=f"tasa_{cod_moneda}",
-                    format="%.4f"
-                )
-
-    tasas_actuales = st.session_state.get("tasas_cambio", TASAS_CAMBIO_DEFAULT)
-    tasas_actuales["USD"] = 1.0
-    factor_moneda = tasas_actuales.get(moneda_mostrar, 1.0) / tasas_actuales.get(moneda_datos, 1.0)
-    simbolo_moneda = SIMBOLOS_MONEDA.get(moneda_mostrar, "$")
 
 # --- BOTÓN MODO PRESENTACIÓN (FUERA DEL SIDEBAR) ---
 if "modo_presentacion" in st.session_state and st.session_state["modo_presentacion"]:
@@ -1023,12 +1093,19 @@ if modo == "Price Ladder":
     fuente_plantillas = PLANTILLAS if 'PLANTILLAS' in globals() else {}
     columnas_tabla = ["Producto", "Fabricante", "Ocasión", "Precio ($)", "Gramaje (g)", "SOM (%)"]
 
-else:  # MODO: Price Pack (fallback de seguridad, ya que solo hay 2 modos en esta versión ROW)
+elif modo == "Price Pack":
     DB_FILE = "historico_price_pack.csv"
     label_agru = "Canal"
     opciones_agru = ["INSTITUCIONALES", "MAYOREO", "CLUBES", "DETALLE", "AUTOSERVICIOS", "CONVENIENCIA"]
     fuente_plantillas = PLANTILLAS_PP if 'PLANTILLAS_PP' in globals() else {}
     columnas_tabla = ["Producto", "Familia", "Canal", "Precio ($)", "Gramaje (g)"]
+
+else: # MODO: Indicadores Macro
+    DB_FILE = None
+    label_agru = None
+    opciones_agru = []
+    fuente_plantillas = {}
+    columnas_tabla = []
         
 
 
@@ -1036,6 +1113,8 @@ else:  # MODO: Price Pack (fallback de seguridad, ya que solo hay 2 modos en est
 if "data" not in st.session_state or st.session_state.get("last_modo") != modo:
     if DB_FILE is not None and os.path.exists(DB_FILE):
         st.session_state.data = calcular_pkg(pd.read_csv(DB_FILE), modo)
+    elif modo == "Indicadores Macro":
+        st.session_state.data = pd.DataFrame() 
     else:
         st.session_state.data = pd.DataFrame(columns=columnas_tabla)
     
@@ -1286,10 +1365,14 @@ if modo in ["Price Ladder", "Price Pack"]:
         # Importar escenarios desde archivo
         st.markdown("---")
         st.markdown("**📂 Importar Escenarios:**")
+        if "upload_escenarios_ver" not in st.session_state:
+            st.session_state["upload_escenarios_ver"] = 0
+        if st.session_state.get("_msg_import_escenarios"):
+            st.success(st.session_state.pop("_msg_import_escenarios"))
         uploaded_json = st.file_uploader(
             "Subir archivo JSON de escenarios",
             type=['json'],
-            key="upload_escenarios",
+            key=f"upload_escenarios_{st.session_state['upload_escenarios_ver']}",
             help="Importar escenarios desde un archivo JSON descargado previamente"
         )
         
@@ -1310,7 +1393,9 @@ if modo in ["Price Ladder", "Price Pack"]:
                     }
                 
                 guardar_escenarios_a_disco()
-                st.success(f"✅ {len(escenarios_importados)} escenarios importados!")
+                # Cambiar la key del uploader lo vacía: así el mismo archivo no se reimporta en cada rerun
+                st.session_state["upload_escenarios_ver"] += 1
+                st.session_state["_msg_import_escenarios"] = f"✅ {len(escenarios_importados)} escenarios importados!"
                 st.rerun()
             except Exception as e:
                 st.error(f"❌ Error importando: {e}")
@@ -1939,7 +2024,7 @@ if modo in ["Price Ladder", "Price Pack"]:
             f_nom = col1.text_input("Nombre del Producto").upper()
             
             if modo == "Price Ladder":
-                f_fab = col2.selectbox("Fabricante", ["BARCEL", "SABRITAS", "PEPSICO", "OTROS", "PROPUESTA"])
+                f_fab = col2.selectbox("Fabricante", ["BARCEL", "SABRITAS", "OTROS", "PROPUESTA"])
                 f_cat = col3.selectbox("Ocasión de Consumo", opciones_agru)
                 col4, col5, col6 = st.columns(3)
                 f_pre = col4.number_input("Precio ($)", min_value=0.0, step=0.5)
@@ -2352,7 +2437,6 @@ grid_estilo = st.session_state["grid_estilo"]
 nticks_y = st.session_state["nticks_y"]
 grid_layer = "below traces" if st.session_state["grid_layer_select"] == "Detrás de barras" else "above traces"
 st.session_state["grid_layer"] = grid_layer
-grid_color_rgba = hex_a_rgba(grid_color, grid_opacidad, grid_color)
 
 # --- 7. GRÁFICO FINAL CON CONFIGURACIÓN DE GRID ---
 if not st.session_state.data.empty:
@@ -2372,11 +2456,6 @@ if not st.session_state.data.empty:
         if sel_prod_pp:
             df_p = df_p[df_p["Producto"].isin(sel_prod_pp)]
 
-    # --- CONVERSIÓN DE MONEDA (solo para lo que se muestra en estos 2 gráficos) ---
-    for _col_moneda in ["Precio ($)", "Precio por Kg ($)"]:
-        if _col_moneda in df_p.columns:
-            df_p[_col_moneda] = (df_p[_col_moneda] * factor_moneda).round(2)
-
     if df_p.empty:
         st.warning("⚠️ No hay datos que coincidan con los filtros seleccionados.")
     else:
@@ -2386,21 +2465,34 @@ if not st.session_state.data.empty:
                 col_bm1, col_bm2 = st.columns([1, 2])
                 with col_bm1:
                     st.radio("Agrupar banda por", ["Precio exacto", "Rangos"], key="banda_modo", horizontal=True)
-                    st.radio(
-                        "SOM",
-                        ["Total canal", "Dentro de ocasión"],
-                        key="som_vista",
-                        horizontal=True,
-                        help="Dentro de ocasión: cada ocasión suma 100% y se muestra cuánto pesa cada producto dentro de ella. Aplica a los recuadros de SOM y a la banda de desembolso."
-                    )
                     st.toggle(
                         "✏️ Editar colores con clic en la barra",
                         key="click_editar_barras",
                         help="Da clic en una barra (o selecciona varias con caja/lazo) y personaliza su color abajo de la gráfica."
                     )
+                # --- RESALTAR PRODUCTOS: los no elegidos se difuminan en gris ---
+                st.markdown("**🔦 Resaltar productos:**")
+                _opciones_resaltar = sorted(df_p["Producto"].astype(str).unique().tolist())
+                st.session_state["resaltar_productos"] = [
+                    p_r for p_r in st.session_state.get("resaltar_productos", []) if p_r in _opciones_resaltar
+                ]
+                col_rz1, col_rz2, col_rz3 = st.columns([3, 1, 1])
+                with col_rz1:
+                    st.multiselect(
+                        "Productos a destacar",
+                        _opciones_resaltar,
+                        key="resaltar_productos",
+                        placeholder="Elige uno o más productos (vacío = sin efecto)",
+                        help="Los productos elegidos conservan sus colores; el resto de la escalera se pinta gris y semitransparente."
+                    )
+                with col_rz2:
+                    st.color_picker("Color del difuminado", key="resaltar_color")
+                with col_rz3:
+                    st.slider("Visibilidad del resto", 0.05, 0.9, step=0.05, key="resaltar_intensidad",
+                              help="Más bajo = el resto se ve más transparente.")
                 with col_bm2:
                     if st.session_state["banda_modo"] == "Rangos":
-                        st.caption(f"Rangos en {moneda_mostrar} (la moneda que se ve en la gráfica). Productos fuera de cualquier rango se muestran por precio exacto. Los rangos no cruzan ocasiones.")
+                        st.caption("Rangos en $ (precio desembolso). Productos fuera de cualquier rango se muestran por precio exacto. Los rangos no cruzan ocasiones.")
                         with st.form("form_banda_rangos"):
                             df_rangos_editado = st.data_editor(
                                 pd.DataFrame(st.session_state["banda_rangos_data"], columns=["Desde", "Hasta"]),
@@ -2441,23 +2533,22 @@ if not st.session_state.data.empty:
             df_p = df_p.sort_values(by=["O_Oca", "Precio ($)", "Precio por Kg ($)"]).reset_index(drop=True)
             som_por_ocasion = df_p.groupby("Ocasión")["SOM (%)"].sum().to_dict()
 
-            # --- SOM A MOSTRAR: total canal (tal cual) o re-base 100% dentro de cada ocasión ---
-            # La etiqueta de cada ocasión (abajo) sigue usando som_por_ocasion = peso sobre total canal.
-            som_dentro_ocasion = st.session_state.get("som_vista", "Total canal") == "Dentro de ocasión"
-            if som_dentro_ocasion:
-                _som_total_oca = df_p.groupby("Ocasión")["SOM (%)"].transform("sum")
-                df_p["SOM_vista"] = (df_p["SOM (%)"] / _som_total_oca.where(_som_total_oca != 0) * 100).fillna(0).round(1)
-            else:
-                df_p["SOM_vista"] = df_p["SOM (%)"]
+            # --- RESALTAR PRODUCTOS: True = se difumina (no está entre los elegidos) ---
+            _resaltados = set(st.session_state.get("resaltar_productos", []))
+            _hay_resaltado = bool(_resaltados & set(df_p["Producto"].astype(str)))
+            _color_dif = st.session_state.get("resaltar_color", "#BFBFBF")
+            _vis_dif = st.session_state.get("resaltar_intensidad", 0.3)
+            difuminar = [(_hay_resaltado and str(p_d) not in _resaltados) for p_d in df_p["Producto"]]
+            _gris_texto = hex_a_rgba(_color_dif, round(min(1.0, _vis_dif + 0.15), 2), "rgba(160,160,160,0.45)")
 
             fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=espacio_v, row_heights=[0.13, 0.09, 0.78])
 
             fig.add_trace(go.Scatter(
-                x=df_p["Producto"], y=df_p["SOM_vista"], mode="lines+markers+text", 
+                x=df_p["Producto"], y=df_p["SOM (%)"], mode="lines+markers+text", 
                 line=dict(color="#BBBBBB", width=1.5), 
-                marker=dict(size=30, color=st.session_state.get("som_color_fondo", "#E5E5E5"), symbol="square", line=dict(color="#CCCCCC", width=1)), 
-                text=[f"<b>{row['SOM_vista']}%</b>" for _, row in df_p.iterrows()],
-                textposition="middle center", textfont=dict(size=t_som, color=st.session_state.get("som_color_texto", "#000000")),
+                marker=dict(size=30, color=st.session_state.get("som_color_fondo", "#E5E5E5"), symbol="square", line=dict(color="#CCCCCC", width=1), opacity=[_vis_dif if d else 1 for d in difuminar]), 
+                text=[f"<b>{row['SOM (%)']}%</b>" for _, row in df_p.iterrows()],
+                textposition="middle center", textfont=dict(size=t_som, color=[_gris_texto if d else st.session_state.get("som_color_texto", "#000000") for d in difuminar]),
                 unselected=dict(marker=dict(opacity=1)),
                 showlegend=False,
             ), row=1, col=1)
@@ -2470,7 +2561,7 @@ if not st.session_state.data.empty:
             ), row=2, col=1)
 
             # --- TRACE 2: BARRAS DE PRECIO CON PERSONALIZACIÓN Y ALTO AJUSTABLE ---
-            colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "PEPSICO": "#F5C400", "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"}
+            colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D","PROPUESTA":"#4B207E"}
 
             bar_colors = []
             label_colors_desembolso = []
@@ -2481,36 +2572,35 @@ if not st.session_state.data.empty:
                     bar_colors.append(st.session_state["custom_colors"][row["Producto"]]["barra"])
                     label_colors_desembolso.append(st.session_state["custom_colors"][row["Producto"]].get("texto_desembolso", "black"))
                 else:
-                    bar_colors.append(color_por_regla(row["Producto"], row["Fabricante"]) or colors.get(str(row["Fabricante"]).upper(), colors["OTROS"]))
+                    bar_colors.append(color_por_regla(row["Producto"], row["Fabricante"]) or colors.get(str(row["Fabricante"]).upper(), "#999"))
                     label_colors_desembolso.append("black")
 
             labels_precios = []
             for _, row in df_p.iterrows():
                 p = row["Precio ($)"]
-                labels_precios.append(f"{simbolo_moneda}{p:.2f}")
+                if p < 10:
+                    labels_precios.append(f"${p:.1f}")
+                else:
+                    labels_precios.append(f"${int(p)}")
 
             # Crear un trace por cada producto con alto ajustable
             for idx, (i, row) in enumerate(df_p.iterrows()):
                 fig.add_trace(go.Bar(
                     x=[row["Producto"]], 
                     y=[row["Precio ($)"] * alto_barras],  # ⭐ APLICAR MULTIPLICADOR DE ALTO
-                    marker_color=bar_colors[idx],
-                    marker_opacity=opacidad_barras, 
-                    marker_line=estilo_contorno_barras(),
+                    marker_color=_color_dif if difuminar[idx] else bar_colors[idx],
+                    marker_opacity=_vis_dif if difuminar[idx] else opacidad_barras, 
+                    marker_line=dict(color=_gris_texto, width=estilo_contorno_barras()["width"]) if difuminar[idx] else estilo_contorno_barras(),
                     width=ancho_barras,
                     text=[f"<b>{labels_precios[idx]}</b>"],
                     textposition="outside", 
-                    textfont=dict(size=t_precios, color=label_colors_desembolso[idx]),
-                    unselected=dict(marker=dict(opacity=opacidad_barras)),
+                    textfont=dict(size=t_precios, color=_gris_texto if difuminar[idx] else label_colors_desembolso[idx]),
+                    unselected=dict(marker=dict(opacity=_vis_dif if difuminar[idx] else opacidad_barras)),
                     showlegend=False,
-                    hovertemplate=f"{row['Producto']}<br>Precio: {simbolo_moneda}{row['Precio ($)']}<extra></extra>"
+                    hovertemplate=f"{row['Producto']}<br>Precio: ${row['Precio ($)']}<extra></extra>"
                 ), row=3, col=1)
 
             # Anotaciones de Precio por Kg dentro de las barras - CON PERSONALIZACIÓN
-            # Altura FIJA para todos los badges: 30% de la barra MÁS CHICA del gráfico,
-            # así todos quedan a la misma altura, pegados a la base, sin importar el precio de cada uno.
-            y_badge_pkg_fijo = df_p["Precio ($)"].min() * alto_barras * 0.30
-
             for i, row in df_p.iterrows():
                 # Obtener colores personalizados o usar defaults
                 if row["Producto"] in st.session_state["custom_colors"]:
@@ -2527,10 +2617,16 @@ if not st.session_state.data.empty:
                     color_texto_pkg = "white" if row["Fabricante"] == "BARCEL" else "black"
                     color_fondo_pkg = "rgba(70, 130, 180, 0.8)" if row["Fabricante"] == "BARCEL" else "rgba(255,255,255,0.8)"
                     color_borde_pkg = "#444" if row["Fabricante"] != "BARCEL" else None
+
+                # RESALTAR PRODUCTOS: badge difuminado para los no elegidos
+                if difuminar[i]:
+                    color_texto_pkg = _gris_texto
+                    color_fondo_pkg = f"rgba(255,255,255,{_vis_dif})"
+                    color_borde_pkg = _gris_texto
                 
                 fig.add_annotation(
-                    x=i, y=y_badge_pkg_fijo,  # ⭐ MISMA altura fija para todos los badges de esta barra
-                    text=f"<b>{simbolo_moneda}{int(row['Precio por Kg ($)'])}</b>",
+                    x=i, y=2.5 * alto_barras,  # ⭐ AJUSTAR POSICIÓN SEGÚN ALTO DE BARRAS
+                    text=f"<b>${int(row['Precio por Kg ($)'])}</b>",
                     showarrow=False, 
                     font=dict(size=t_pkg, color=color_texto_pkg),
                     bgcolor=color_fondo_pkg,
@@ -2579,8 +2675,8 @@ if not st.session_state.data.empty:
                     for n_r, (r_desde, r_hasta) in enumerate(rangos_validos):
                         if r_desde <= p <= r_hasta:
                             dec_r = 0 if float(r_desde).is_integer() and float(r_hasta).is_integer() else 2
-                            return f"R{n_r}", f"{simbolo_moneda}{_fmt_banda(r_desde, dec_r)}–{_fmt_banda(r_hasta, dec_r)}"
-                    return f"P{p}", f"{simbolo_moneda}{p:.2f}"
+                            return f"R{n_r}", f"${_fmt_banda(r_desde, dec_r)}–{_fmt_banda(r_hasta, dec_r)}"
+                    return f"P{p}", (f"${p:.1f}" if p < 10 else f"${int(p)}")
 
                 rangos_por_fila = df_p["Precio ($)"].apply(_rango_de_precio)
                 df_p["_llave_banda"] = df_p["O_Oca"].astype(str) + "|" + rangos_por_fila.str[0]
@@ -2590,7 +2686,7 @@ if not st.session_state.data.empty:
                 df_p["_grupo_precio"] = (df_p["Precio ($)"] != df_p["Precio ($)"].shift()).cumsum()
             agg_tiers = dict(
                 precio=("Precio ($)", "first"),
-                som_total=("SOM_vista", "sum"),
+                som_total=("SOM (%)", "sum"),
             )
             if "_etiqueta_banda" in df_p.columns:
                 agg_tiers["etiqueta"] = ("_etiqueta_banda", "first")
@@ -2618,7 +2714,7 @@ if not st.session_state.data.empty:
                 idx_ini, idx_fin = fila_tier["idx_ini"], fila_tier["idx_fin"]
                 center_tier = (idx_ini + idx_fin) / 2
                 p_val = fila_tier["precio"]
-                precio_txt_tier = fila_tier["etiqueta"] if "etiqueta" in fila_tier.index else f"{simbolo_moneda}{p_val:.2f}"
+                precio_txt_tier = fila_tier["etiqueta"] if "etiqueta" in fila_tier.index else (f"${p_val:.1f}" if p_val < 10 else f"${int(p_val)}")
 
                 banda = bandas_tier[n_tier % 2]
                 color_fondo_tier = banda["fondo"]
@@ -2653,11 +2749,11 @@ if not st.session_state.data.empty:
             # Trazas "fantasma" (sin datos reales) solo para que aparezcan en la leyenda.
             # Las barras reales siguen con showlegend=False, así que esto no las duplica.
             fabricantes_presentes = df_p["Fabricante"].astype(str).str.upper().unique().tolist()
-            for fab in ["BARCEL", "SABRITAS", "PEPSICO", "OTROS", "PROPUESTA"]:
+            for fab in ["BARCEL", "SABRITAS", "OTROS", "PROPUESTA"]:
                 if fab in fabricantes_presentes:
                     fig.add_trace(go.Bar(
                         x=[None], y=[None],
-                        marker_color=colors.get(fab, colors["OTROS"]),
+                        marker_color=colors.get(fab, "#999"),
                         marker_line=estilo_contorno_barras(),
                         name=fab.title(),
                         showlegend=True,
@@ -2680,7 +2776,7 @@ if not st.session_state.data.empty:
                 tickfont=dict(size=t_nombres, color="black"),
                 showline=False,
                 showgrid=grid_x_visible,
-                gridcolor=grid_color_rgba,
+                gridcolor=grid_color,
                 gridwidth=grid_grosor,
                 griddash=grid_estilo,
                 row=3, col=1
@@ -2690,11 +2786,11 @@ if not st.session_state.data.empty:
             fig.update_yaxes(showticklabels=False, showgrid=False, zeroline=False, row=2, col=1)
             fig.update_yaxes(
                 showgrid=grid_y_visible,
-                gridcolor=grid_color_rgba,
+                gridcolor=grid_color,
                 gridwidth=grid_grosor,
                 griddash=grid_estilo,
                 nticks=nticks_y,
-                tickprefix=simbolo_moneda, 
+                tickprefix="$", 
                 tickfont=dict(size=14), 
                 row=3, col=1
             )
@@ -2763,7 +2859,7 @@ if not st.session_state.data.empty:
                         with col_ck1:
                             ck_barra = st.color_picker(
                                 "Color de barra",
-                                value=_hex_valido(custom_ref.get("barra") or color_por_regla(prod_ref, fab_ref) or colors.get(fab_ref, colors["OTROS"]), "#7F8C8D"),
+                                value=_hex_valido(custom_ref.get("barra") or color_por_regla(prod_ref, fab_ref) or colors.get(fab_ref, "#7F8C8D"), "#7F8C8D"),
                                 key=f"ck_barra_{sufijo_click}"
                             )
                         with col_ck2:
@@ -2807,7 +2903,7 @@ if not st.session_state.data.empty:
                                     }
                                 else:
                                     st.session_state["custom_colors"].pop(prod_ck, None)
-                                # Limpia los pickers del sidebar de ese producto para que no sobrescriban el cambio
+                                # Limpia los pickers del panel de ese producto para que no sobrescriban el cambio
                                 for pref_ck in ["color_barra_", "color_texto_desembolso_", "color_fondo_desembolso_",
                                                 "color_texto_pkg_", "color_fondo_pkg_", "color_borde_desembolso_", "color_borde_pkg_"]:
                                     st.session_state.pop(f"{pref_ck}{prod_ck}", None)
@@ -2851,10 +2947,6 @@ if not st.session_state.data.empty:
                 ) 
 
             # Iteración para etiquetas y anotaciones - CON PERSONALIZACIÓN COMPLETA
-            # Altura FIJA para el badge de "Precio Desembolso": 30% de la barra ($/Kg) más chica,
-            # así todos quedan a la misma altura, pegados a la base, sin importar el precio de cada uno.
-            y_badge_desembolso_fijo = df_p["Precio por Kg ($)"].min() * alto_barras * 0.30
-
             for i, r in df_p.iterrows():
                 # Obtener colores personalizados
                 if r["Producto"] in st.session_state["custom_colors"]:
@@ -2879,7 +2971,7 @@ if not st.session_state.data.empty:
                 
                 # ETIQUETAS PARA $/KG
                 val_pkg_pp = r['Precio por Kg ($)']
-                txt_pkg_pp = f"{simbolo_moneda}{val_pkg_pp:,.0f}"
+                txt_pkg_pp = f"${val_pkg_pp:,.0f}"
 
                 fig.add_annotation(
                     x=i, y=r["Precio por Kg ($)"] * alto_barras,  # ⭐ AJUSTAR SEGÚN ALTO
@@ -2894,10 +2986,10 @@ if not st.session_state.data.empty:
                 
                 # ETIQUETAS PARA PRECIO DESEMBOLSO
                 p_pp = r['Precio ($)']
-                txt_p_pp = f"{simbolo_moneda}{p_pp:.2f}"
+                txt_p_pp = f"${p_pp:.1f}" if p_pp < 10 else f"${int(p_pp)}"
 
                 fig.add_annotation(
-                    x=i, y=y_badge_desembolso_fijo,  # ⭐ MISMA altura fija para todos (30% de la barra más chica)
+                    x=i, y=15 * alto_barras,  # ⭐ AJUSTAR SEGÚN ALTO
                     text=f"<b>{txt_p_pp}</b>", 
                     showarrow=False, 
                     font=dict(size=t_precios, color=color_texto_desembolso),
@@ -2936,14 +3028,14 @@ if not st.session_state.data.empty:
                     tickangle=angulo_nombres,
                     tickfont=dict(color="#000000", size=t_nombres, family="Verdana"),
                     showgrid=grid_x_visible,
-                    gridcolor=grid_color_rgba,
+                    gridcolor=grid_color,
                     gridwidth=grid_grosor,
                     griddash=grid_estilo,
                 ),
                 yaxis=dict(
-                    tickprefix=simbolo_moneda, 
+                    tickprefix="$", 
                     showgrid=grid_y_visible,
-                    gridcolor=grid_color_rgba,
+                    gridcolor=grid_color,
                     gridwidth=grid_grosor,
                     griddash=grid_estilo,
                     nticks=nticks_y,
@@ -4352,7 +4444,7 @@ if modo == "Price Ladder":
             
                 # === CONSTRUCCIÓN DEL GRÁFICO ===
                 fig = go.Figure()
-                colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "PEPSICO": "#F5C400", "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"}
+                colors = {"BARCEL": "#0B3C8C", "SABRITAS": "#F5C400", "OTROS": "#7F8C8D", "PROPUESTA": "#4B207E"}
                 
                 x_ptr = 0
                 max_h = df_viz['Alto (cm)'].max()
@@ -4570,3 +4662,1252 @@ if modo == "Price Ladder":
                     - "Ultra Grande" para proyector
                     - Los ajustes se mantienen al agregar SKUs
                     """)
+
+
+# --- APARTADO DE VISUALIZACIÓN: INDICADORES MACRO ---
+if modo == "Indicadores Macro":
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    import datetime
+    
+    st.caption("Datos oficiales del Banco de México actualizados en tiempo real")
+    
+    with st.spinner("Consultando API de Banxico..."):
+        df_macro = importar_datos_macro(TOKEN_BANXICO, SERIES_A_CONSULTAR)
+        
+    if df_macro is not None:
+        df_macro = df_macro[(df_macro.index >= FECHA_INICIO_FILTRO) & (df_macro.index <= FECHA_FIN_FILTRO)]
+        df_macro = df_macro.dropna(axis=1, how='all')
+        
+        if df_macro.empty:
+            st.warning("No hay datos disponibles para el rango seleccionado.")
+        else:
+            # ==================== FILTRO DE FECHAS PRO ====================
+            # ==================== FILTRO DE FECHAS ====================
+            st.markdown("### 📅 Filtro de Fechas")
+            
+            # 1. Definir los límites reales según tu DataFrame
+            min_date_df = df_macro.index.min().date()
+            max_date_df = df_macro.index.max().date()
+            
+            # 2. Definir tus fechas deseadas
+            FECHA_INICIO_OBJETIVO = pd.to_datetime("2020-01-01").date()
+            FECHA_FIN_OBJETIVO = pd.to_datetime("2025-12-31").date()
+            
+            # 3. Ajuste automático para evitar errores de rango
+            # Esto asegura que: min_date <= value <= max_date
+            default_inicio = max(FECHA_INICIO_OBJETIVO, min_date_df)
+            default_fin = min(FECHA_FIN_OBJETIVO, max_date_df)
+            
+            col_f1, col_f2 = st.columns(2)
+            
+            with col_f1:
+                fecha_inicio = st.date_input(
+                    "Fecha Inicio", 
+                    value=default_inicio,
+                    min_value=min_date_df, 
+                    max_value=max_date_df
+                )
+            
+            with col_f2:
+                fecha_fin = st.date_input(
+                    "Fecha Fin", 
+                    value=default_fin,
+                    min_value=min_date_df, 
+                    max_value=max_date_df
+                )
+            
+            # 4. Aplicar el filtro al DataFrame
+            df_macro = df_macro[(df_macro.index.date >= fecha_inicio) & (df_macro.index.date <= fecha_fin)]
+            
+            st.divider()
+            
+            # ==================== KPIs CORPORATIVOS ====================
+            st.markdown("### 📊 Indicadores Clave")
+            
+            kpi_data = []
+            
+            if "INPC_Inflacion_Anual" in df_macro.columns:
+                serie = df_macro["INPC_Inflacion_Anual"].dropna()
+                if len(serie) >= 2:
+                    val, prev = serie.iloc[-1], serie.iloc[-2]
+                    delta = val - prev
+                    kpi_data.append({'titulo': 'Inflación Anual', 'valor': f'{val:.2f}%', 
+                                   'delta': f'{"↑" if delta > 0 else "↓"} {abs(delta):.2f} pp', 'icon': '📈'})
+            
+            if "TipoCambio_Cotizacion_Maxima" in df_macro.columns:
+                serie = df_macro["TipoCambio_Cotizacion_Maxima"].dropna()
+                if len(serie) >= 2:
+                    val, prev = serie.iloc[-1], serie.iloc[-2]
+                    delta = val - prev
+                    kpi_data.append({'titulo': 'Tipo de Cambio', 'valor': f'${val:.2f}', 
+                                   'delta': f'{"↑" if delta > 0 else "↓"} {abs(delta):.2f} MXN', 'icon': '💱'})
+            
+            if "TIIE_Fondeo_1Dia" in df_macro.columns:
+                serie = df_macro["TIIE_Fondeo_1Dia"].dropna()
+                if len(serie) >= 2:
+                    val, prev = serie.iloc[-1], serie.iloc[-2]
+                    delta = val - prev
+                    kpi_data.append({'titulo': 'Tasa de Interés (1 día)', 'valor': f'{val:.2f}%', 
+                                   'delta': f'{"↑" if delta > 0 else "↓"} {abs(delta):.2f} pp', 'icon': '💰'})
+            
+            if "Exp_TasaDesocupacion_Media" in df_macro.columns:
+                serie = df_macro["Exp_TasaDesocupacion_Media"].dropna()
+                if len(serie) >= 2:
+                    val, prev = serie.iloc[-1], serie.iloc[-2]
+                    delta = val - prev
+                    kpi_data.append({'titulo': 'Desocupación', 'valor': f'{val:.2f}%', 
+                                   'delta': f'{"↑" if delta > 0 else "↓"} {abs(delta):.2f} pp', 'icon': '👥'})
+            
+            if "Salario_Minimo_General" in df_macro.columns:
+                serie = df_macro["Salario_Minimo_General"].dropna()
+                if len(serie) >= 2:
+                    val, prev = serie.iloc[-1], serie.iloc[-2]
+                    delta = val - prev
+                    kpi_data.append({'titulo': 'Salario Mínimo', 'valor': f'${val:.2f}', 
+                                   'delta': f'{"↑" if delta > 0 else "↓"} ${abs(delta):.2f}', 'icon': '💵'})
+            
+            kpi_html = """<style>
+.kpi-container {display: flex; gap: 16px; margin-bottom: 30px; flex-wrap: wrap;}
+.kpi-card {flex: 1; min-width: 180px; background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: all 0.3s ease;}
+.kpi-card:hover {box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-color: #667eea;}
+.kpi-icon {font-size: 28px; margin-bottom: 8px;}
+.kpi-titulo {color: #666; font-size: 12px; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;}
+.kpi-valor {color: #1a1a1a; font-size: 32px; font-weight: 700; margin-bottom: 8px; line-height: 1;}
+.kpi-delta {font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 4px; display: inline-block; background: #f5f5f5; color: #666;}
+</style><div class="kpi-container">"""
+            
+            for kpi in kpi_data:
+                kpi_html += f'<div class="kpi-card"><div class="kpi-icon">{kpi["icon"]}</div><div class="kpi-titulo">{kpi["titulo"]}</div><div class="kpi-valor">{kpi["valor"]}</div><div class="kpi-delta">{kpi["delta"]}</div></div>'
+            
+            kpi_html += "</div>"
+            st.markdown(kpi_html, unsafe_allow_html=True)
+            st.divider()
+            
+            # ==================== INFLACIÓN ====================
+            st.markdown("### 📈 Análisis de Inflación")
+            tab_inf1, tab_inf2 = st.tabs(["📊 Evolución Histórica", "🔮 Expectativas"])
+            
+            with tab_inf1:
+                st.markdown("**INPC - Inflación Anual y Nivel Histórico**")
+                if "INPC_Inflacion_Anual" in df_macro.columns and "INPC_Nivel_Historico" in df_macro.columns:
+                    df_plot = df_macro[["INPC_Inflacion_Anual", "INPC_Nivel_Historico"]].dropna()
+                    fig = make_subplots(specs=[[{"secondary_y": True}]])
+                    fig.add_trace(go.Bar(
+                        x=df_plot.index, 
+                        y=df_plot["INPC_Inflacion_Anual"], 
+                        name="Inflación Anual (%)",
+                        marker_color='rgba(102, 126, 234, 0.7)', 
+                        text=[f"{v:.1f}%" for v in df_plot["INPC_Inflacion_Anual"]],
+                        textposition='outside', 
+                        textfont=dict(size=10),
+                        hovertemplate='%{x}<br>%{y:.2f}%<extra></extra>'
+                    ), secondary_y=False)
+                    fig.add_trace(go.Scatter(
+                        x=df_plot.index, 
+                        y=df_plot["INPC_Nivel_Historico"], 
+                        name="Nivel Histórico",
+                        line=dict(color='rgb(255, 75, 75)', width=3), 
+                        hovertemplate='%{x}<br>%{y:.2f}<extra></extra>'
+                    ), secondary_y=True)
+                    fig.update_xaxes(title_text="Fecha")
+                    fig.update_yaxes(title_text="Inflación (%)", secondary_y=False)
+                    fig.update_yaxes(title_text="Nivel (Base 2018)", secondary_y=True)
+                    fig.update_layout(
+                        hovermode='x unified', 
+                        height=450, 
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="center",
+                            x=0.5
+                        )
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                # Tarjetas mejoradas
+                st.markdown("#### 📌 Métricas Complementarias")
+                col1, col2, col3 = st.columns(3)
+                if "INPC_Inflacion_Mensual" in df_macro.columns:
+                    val = df_macro['INPC_Inflacion_Mensual'].dropna().iloc[-1]
+                    col1.markdown(f"""
+                    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;'>
+                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>💠 Mensual</div>
+                        <div style='font-size: 28px; font-weight: bold;'>{val:.2f}%</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                if "INPC_Inflacion_Acumulada" in df_macro.columns:
+                    val = df_macro['INPC_Inflacion_Acumulada'].dropna().iloc[-1]
+                    col2.markdown(f"""
+                    <div style='background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;'>
+                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>💠 Acumulada</div>
+                        <div style='font-size: 28px; font-weight: bold;'>{val:.2f}%</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                if "INPC_Nivel_Historico" in df_macro.columns:
+                    val = df_macro['INPC_Nivel_Historico'].dropna().iloc[-1]
+                    col3.markdown(f"""
+                    <div style='background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;'>
+                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>💠 Nivel</div>
+                        <div style='font-size: 28px; font-weight: bold;'>{val:.2f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.caption("Fuente: Banco de México")
+            
+            with tab_inf2:
+                st.markdown("**Expectativas de Inflación - Media**")
+                if "Exp_Inflacion_Media" in df_macro.columns:
+                    df_plot = df_macro[["Exp_Inflacion_Media"]].dropna()
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=df_plot.index, 
+                        y=df_plot["Exp_Inflacion_Media"], 
+                        name='Media',
+                        line=dict(color='rgb(102, 126, 234)', width=3), 
+                        fill='tozeroy',
+                        fillcolor='rgba(102, 126, 234, 0.3)',
+                        hovertemplate='%{x}<br>%{y:.2f}%<extra></extra>'
+                    ))
+                    fig.update_layout(
+                        hovermode='x', 
+                        height=450, 
+                        yaxis_title="(%)", 
+                        xaxis_title="Fecha",
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="center",
+                            x=0.5
+                        )
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                st.markdown("#### 📌 Rango de Expectativas")
+                col1, col2, col3 = st.columns(3)
+                if "Exp_Inflacion_Media" in df_macro.columns:
+                    val = df_macro['Exp_Inflacion_Media'].dropna().iloc[-1]
+                    col1.markdown(f"""
+                    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;'>
+                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>📊 Media</div>
+                        <div style='font-size: 28px; font-weight: bold;'>{val:.2f}%</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                if "Exp_Inflacion_Minima" in df_macro.columns:
+                    val = df_macro['Exp_Inflacion_Minima'].dropna().iloc[-1]
+                    col2.markdown(f"""
+                    <div style='background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;'>
+                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>📉 Mínima</div>
+                        <div style='font-size: 28px; font-weight: bold;'>{val:.2f}%</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                if "Exp_Inflacion_Maxima" in df_macro.columns:
+                    val = df_macro['Exp_Inflacion_Maxima'].dropna().iloc[-1]
+                    col3.markdown(f"""
+                    <div style='background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;'>
+                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>📈 Máxima</div>
+                        <div style='font-size: 28px; font-weight: bold;'>{val:.2f}%</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.caption("Fuente: Encuesta de Expectativas - Banxico")
+            
+            st.divider()
+            
+            # ==================== MERCADO CAMBIARIO ====================
+            st.markdown("### 💱 Mercado Cambiario y Tasas")
+            tab1, tab2 = st.tabs(["💵 Tipo de Cambio", "📊 Tasas"])
+            
+            with tab1:
+                st.markdown("**Tipo de Cambio USD/MXN**")
+                if "TipoCambio_Cotizacion_Minima" in df_macro.columns:
+                    df_plot = df_macro[["TipoCambio_Cotizacion_Minima", "TipoCambio_Cotizacion_Maxima"]].dropna()
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=df_plot.index, 
+                        y=df_plot["TipoCambio_Cotizacion_Minima"], 
+                        name="Mínima",
+                        line=dict(color='rgb(67, 233, 123)', width=2), 
+                        mode='lines+markers',
+                        marker=dict(size=4),
+                        hovertemplate='%{x}<br>$%{y:.2f}<extra></extra>'
+                    ))
+                    fig.add_trace(go.Scatter(
+                        x=df_plot.index, 
+                        y=df_plot["TipoCambio_Cotizacion_Maxima"], 
+                        name="Máxima",
+                        line=dict(color='rgb(255, 75, 75)', width=2), 
+                        mode='lines+markers',
+                        marker=dict(size=4),
+                        hovertemplate='%{x}<br>$%{y:.2f}<extra></extra>'
+                    ))
+                    fig.update_layout(
+                        hovermode='x unified', 
+                        height=450, 
+                        yaxis_title="MXN/USD", 
+                        xaxis_title="Fecha", 
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="center",
+                            x=0.5
+                        )
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                st.markdown("#### 📌 Expectativas de Tipo de Cambio")
+                col1, col2, col3 = st.columns(3)
+                if "Exp_TipoCambio_Media" in df_macro.columns:
+                    val = df_macro['Exp_TipoCambio_Media'].dropna().iloc[-1]
+                    col1.markdown(f"""
+                    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;'>
+                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>📊 Media Esperada</div>
+                        <div style='font-size: 28px; font-weight: bold;'>${val:.2f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                if "Exp_TipoCambio_Minima" in df_macro.columns:
+                    val = df_macro['Exp_TipoCambio_Minima'].dropna().iloc[-1]
+                    col2.markdown(f"""
+                    <div style='background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;'>
+                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>📉 Mínima Esperada</div>
+                        <div style='font-size: 28px; font-weight: bold;'>${val:.2f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                if "Exp_TipoCambio_Maxima" in df_macro.columns:
+                    val = df_macro['Exp_TipoCambio_Maxima'].dropna().iloc[-1]
+                    col3.markdown(f"""
+                    <div style='background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;'>
+                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>📈 Máxima Esperada</div>
+                        <div style='font-size: 28px; font-weight: bold;'>${val:.2f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.caption("Fuente: Banco de México")
+            
+            with tab2:
+                st.markdown("**TIIE 1 Día**")
+                if "TIIE_Fondeo_1Dia" in df_macro.columns:
+                    df_plot = df_macro[["TIIE_Fondeo_1Dia"]].dropna()
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=df_plot.index, 
+                        y=df_plot["TIIE_Fondeo_1Dia"], 
+                        name="TIIE",
+                        line=dict(color='rgb(102, 126, 234)', width=3), 
+                        fill='tozeroy',
+                        fillcolor='rgba(102, 126, 234, 0.3)',
+                        hovertemplate='%{x}<br>%{y:.2f}%<extra></extra>'
+                    ))
+                    fig.update_layout(
+                        hovermode='x', 
+                        height=450, 
+                        yaxis_title="(%)", 
+                        xaxis_title="Fecha",
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="center",
+                            x=0.5
+                        )
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                st.markdown("#### 📌 Expectativas de Tasa de Fondeo")
+                col1, col2, col3 = st.columns(3)
+                if "Exp_TasaFondeo_Media" in df_macro.columns:
+                    val = df_macro['Exp_TasaFondeo_Media'].dropna().iloc[-1]
+                    col1.markdown(f"""
+                    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;'>
+                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>📊 Media Esperada</div>
+                        <div style='font-size: 28px; font-weight: bold;'>{val:.2f}%</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                if "Exp_TasaFondeo_Minima" in df_macro.columns:
+                    val = df_macro['Exp_TasaFondeo_Minima'].dropna().iloc[-1]
+                    col2.markdown(f"""
+                    <div style='background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;'>
+                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>📉 Mínima Esperada</div>
+                        <div style='font-size: 28px; font-weight: bold;'>{val:.2f}%</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                if "Exp_TasaFondeo_Maxima" in df_macro.columns:
+                    val = df_macro['Exp_TasaFondeo_Maxima'].dropna().iloc[-1]
+                    col3.markdown(f"""
+                    <div style='background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;'>
+                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>📈 Máxima Esperada</div>
+                        <div style='font-size: 28px; font-weight: bold;'>{val:.2f}%</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.caption("Fuente: Banco de México")
+            
+            st.divider()
+
+            
+            # ==================== CLIMA NEGOCIOS ====================
+            st.markdown("### 🏢 Expectativas y Clima de Negocios")
+            
+            st.markdown("**Clima de Negocios - Próximos 6 Meses**")
+            series = ["Exp_ClimaNegocios_Mejorara", "Exp_ClimaNegocios_Igual", "Exp_ClimaNegocios_Empeorara"]
+            if all(s in df_macro.columns for s in series):
+                df_plot = df_macro[series].dropna()
+                fig = go.Figure()
+                fig.add_trace(go.Bar(
+                    x=df_plot.index, 
+                    y=df_plot[series[0]], 
+                    name='Mejorará', 
+                    marker_color='rgba(76, 201, 240, 0.8)',
+                    text=[f"{v:.0f}%" if v > 5 else "" for v in df_plot[series[0]]], 
+                    textposition='inside',
+                    textfont=dict(size=10, color='white'),
+                    hovertemplate='Mejorará<br>%{x}<br>%{y:.1f}%<extra></extra>'
+                ))
+                fig.add_trace(go.Bar(
+                    x=df_plot.index, 
+                    y=df_plot[series[1]], 
+                    name='Igual', 
+                    marker_color='rgba(155, 135, 245, 0.8)',
+                    text=[f"{v:.0f}%" if v > 5 else "" for v in df_plot[series[1]]], 
+                    textposition='inside',
+                    textfont=dict(size=10, color='white'),
+                    hovertemplate='Igual<br>%{x}<br>%{y:.1f}%<extra></extra>'
+                ))
+                fig.add_trace(go.Bar(
+                    x=df_plot.index, 
+                    y=df_plot[series[2]], 
+                    name='Empeorará', 
+                    marker_color='rgba(255, 154, 162, 0.8)',
+                    text=[f"{v:.0f}%" if v > 5 else "" for v in df_plot[series[2]]], 
+                    textposition='inside',
+                    textfont=dict(size=10, color='white'),
+                    hovertemplate='Empeorará<br>%{x}<br>%{y:.1f}%<extra></extra>'
+                ))
+                fig.update_layout(
+                    barmode='stack', 
+                    height=450, 
+                    hovermode='x unified', 
+                    yaxis_title="(%)", 
+                    xaxis_title="Fecha", 
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="center",
+                        x=0.5
+                    )
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                st.caption("Fuente: Encuesta de Expectativas - Banxico")
+            
+            st.markdown("")
+            
+            st.markdown("**Situación Económica vs Hace un Año**")
+            series = ["Exp_EconActual_Mejor", "Exp_EconActual_Peor"]
+            if all(s in df_macro.columns for s in series):
+                df_plot = df_macro[series].dropna()
+                fig = go.Figure()
+                fig.add_trace(go.Bar(
+                    x=df_plot.index, 
+                    y=df_plot[series[0]], 
+                    name='Mejor', 
+                    marker_color='rgba(76, 201, 240, 0.8)',
+                    text=[f"{v:.0f}%" if v > 5 else "" for v in df_plot[series[0]]], 
+                    textposition='inside',
+                    textfont=dict(size=10, color='white'),
+                    hovertemplate='Mejor<br>%{x}<br>%{y:.1f}%<extra></extra>'
+                ))
+                fig.add_trace(go.Bar(
+                    x=df_plot.index, 
+                    y=df_plot[series[1]], 
+                    name='Peor', 
+                    marker_color='rgba(255, 154, 162, 0.8)',
+                    text=[f"{v:.0f}%" if v > 5 else "" for v in df_plot[series[1]]], 
+                    textposition='inside',
+                    textfont=dict(size=10, color='white'),
+                    hovertemplate='Peor<br>%{x}<br>%{y:.1f}%<extra></extra>'
+                ))
+                fig.update_layout(
+                    barmode='stack', 
+                    height=450, 
+                    hovermode='x unified', 
+                    yaxis_title="(%)", 
+                    xaxis_title="Fecha", 
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="center",
+                        x=0.5
+                    )
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                st.caption("Fuente: Encuesta de Expectativas - Banxico")
+            
+            st.divider()
+            # ==================== BILLETES Y MONEDAS ====================
+            st.markdown("### 💵 Circulante: Billetes y Monedas")
+            tab1, tab2 = st.tabs(["💵 Billetes", "🪙 Monedas"])
+            
+            with tab1:
+                st.markdown("**Evolución de Billetes en Circulación**")
+                series = [c for c in df_macro.columns if "Billete_" in c]
+                if series:
+                    df_plot = df_macro[series].dropna()
+                    fig = go.Figure()
+                    colors = {
+                        'Billete_20_Circulacion': 'rgba(255, 224, 130, 0.8)', 
+                        'Billete_50_Circulacion': 'rgba(255, 128, 171, 0.8)', 
+                        'Billete_100_Circulacion': 'rgba(128, 128, 255, 0.8)', 
+                        'Billete_200_Circulacion': 'rgba(128, 222, 234, 0.8)',
+                        'Billete_500_Circulacion': 'rgba(165, 214, 167, 0.8)', 
+                        'Billete_1000_Circulacion': 'rgba(206, 147, 216, 0.8)'
+                    }
+                    for col in series:
+                        denom = col.replace("Billete_", "").replace("_Circulacion", "")
+                        fig.add_trace(go.Scatter(
+                            x=df_plot.index, 
+                            y=df_plot[col], 
+                            name=f"${denom}",
+                            line=dict(color=colors.get(col, 'blue'), width=0), 
+                            stackgroup='one',
+                            fillcolor=colors.get(col, 'blue'),
+                            hovertemplate=f'${denom}<br>%{{x}}<br>%{{y:,.0f}} MDP<extra></extra>'
+                        ))
+                    fig.update_layout(
+                        hovermode='x unified', 
+                        height=450, 
+                        yaxis_title="Millones de Pesos", 
+                        xaxis_title="Fecha", 
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="center",
+                            x=0.5
+                        )
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                st.markdown("#### 📌 Billetes en Circulación (MDP)")
+                cols = st.columns(6)
+                denoms_info = [
+                    ("20", "#FFE082", "💵"),
+                    ("50", "#FF80AB", "💵"),
+                    ("100", "#8080FF", "💵"),
+                    ("200", "#80DEEA", "💵"),
+                    ("500", "#A5D6A7", "💵"),
+                    ("1000", "#CE93D8", "💵")
+                ]
+                for i, (denom, color, icon) in enumerate(denoms_info):
+                    s = f"Billete_{denom}_Circulacion"
+                    if s in df_macro.columns:
+                        val = df_macro[s].dropna().iloc[-1]
+                        cols[i].markdown(f"""
+                        <div style='background: {color}; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                            <div style='font-size: 24px; font-weight: bold; color: #333; margin-bottom: 5px;'>{icon} ${denom}</div>
+                            <div style='font-size: 18px; color: #555; font-weight: 600;'>{val:,.0f}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                st.caption("Fuente: Banco de México | Millones de Pesos")
+            
+            with tab2:
+                st.markdown("**Evolución de Monedas en Circulación**")
+                series = [c for c in df_macro.columns if "Moneda_" in c]
+                if series:
+                    df_plot = df_macro[series].dropna()
+                    fig = go.Figure()
+                    palette = [
+                        'rgba(255, 183, 77, 0.8)',
+                        'rgba(255, 138, 101, 0.8)',
+                        'rgba(174, 213, 129, 0.8)',
+                        'rgba(100, 181, 246, 0.8)',
+                        'rgba(149, 117, 205, 0.8)',
+                        'rgba(244, 143, 177, 0.8)',
+                        'rgba(129, 212, 250, 0.8)',
+                        'rgba(206, 147, 216, 0.8)',
+                        'rgba(165, 214, 167, 0.8)',
+                        'rgba(255, 224, 130, 0.8)',
+                        'rgba(128, 222, 234, 0.8)'
+                    ]
+                    for idx, col in enumerate(series):
+                        denom = col.replace("Moneda_", "").replace("_Circulacion", "")
+                        label = f"{denom}¢" if "C" in denom else f"${denom}"
+                        fig.add_trace(go.Scatter(
+                            x=df_plot.index, 
+                            y=df_plot[col], 
+                            name=label, 
+                            stackgroup='one',
+                            line=dict(width=0),
+                            fillcolor=palette[idx % len(palette)],
+                            hovertemplate=f'{label}<br>%{{x}}<br>%{{y:,.0f}} MDP<extra></extra>'
+                        ))
+                    fig.update_layout(
+                        hovermode='x unified', 
+                        height=450, 
+                        yaxis_title="Millones de Pesos", 
+                        xaxis_title="Fecha", 
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="center",
+                            x=0.5
+                        )
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                st.markdown("#### 📌 Monedas en Circulación (MDP)")
+                denoms = [
+                    ("1", "$1", "🪙", "#9575CD"),
+                    ("2", "$2", "🪙", "#F48FB1"),
+                    ("5", "$5", "🪙", "#81D4FA"),
+                    ("10", "$10", "🪙", "#A5D6A7"),
+                    ("20", "$20", "🪙", "#FFE082")
+                ]
+                cols = st.columns(len(denoms))
+                for i, (key, label, icon, color) in enumerate(denoms):
+                    s = f"Moneda_{key}_Circulacion"
+                    if s in df_macro.columns:
+                        val = df_macro[s].dropna().iloc[-1]
+                        cols[i].markdown(f"""
+                        <div style='background: {color}; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                            <div style='font-size: 24px; font-weight: bold; color: #333; margin-bottom: 5px;'>{icon} {label}</div>
+                            <div style='font-size: 18px; color: #555; font-weight: 600;'>{val:,.0f}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                st.caption("Fuente: Banco de México | Millones de Pesos")
+            
+            st.divider()
+            
+            # ==================== MERCADO LABORAL ====================
+            st.markdown("### 👥 Mercado Laboral")
+            tab1, tab2 = st.tabs(["💰 Salario Mínimo", "📊 Desocupación"])
+            
+            with tab1:
+                st.markdown("**Salario Mínimo General**")
+                if "Salario_Minimo_General" in df_macro.columns:
+                    df_plot = df_macro[["Salario_Minimo_General"]].dropna()
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=df_plot.index, 
+                        y=df_plot["Salario_Minimo_General"], 
+                        name="Salario Mínimo",
+                        line=dict(color='rgb(102, 126, 234)', width=3), 
+                        mode='lines+markers',
+                        marker=dict(size=5),
+                        fill='tozeroy',
+                        fillcolor='rgba(102, 126, 234, 0.3)',
+                        hovertemplate='%{x}<br>$%{y:.2f}<extra></extra>'
+                    ))
+                    fig.update_layout(
+                        hovermode='x', 
+                        height=450, 
+                        yaxis_title="Pesos Diarios", 
+                        xaxis_title="Fecha",
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="center",
+                            x=0.5
+                        )
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    val = df_plot["Salario_Minimo_General"].iloc[-1]
+                    st.markdown("#### 📌 Proyecciones de Salario")
+                    col1, col2, col3 = st.columns(3)
+                    col1.markdown(f"""
+                    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;'>
+                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>💰 Diario</div>
+                        <div style='font-size: 28px; font-weight: bold;'>${val:.2f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    col2.markdown(f"""
+                    <div style='background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;'>
+                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>📅 Mensual</div>
+                        <div style='font-size: 28px; font-weight: bold;'>${val * 30:,.2f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    col3.markdown(f"""
+                    <div style='background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 20px; border-radius: 10px; color: white; text-align: center;'>
+                        <div style='font-size: 14px; opacity: 0.9; margin-bottom: 5px;'>📆 Anual</div>
+                        <div style='font-size: 28px; font-weight: bold;'>${val * 365:,.2f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.caption("Fuente: Banco de México")
+            
+            with tab2:
+                st.markdown("**Tasa de Desocupación Nacional**")
+                if "Exp_TasaDesocupacion_Media" in df_macro.columns:
+                    df_plot = df_macro[["Exp_TasaDesocupacion_Media"]].dropna()
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=df_plot.index, 
+                        y=df_plot["Exp_TasaDesocupacion_Media"], 
+                        name="Desocupación",
+                        line=dict(color='rgb(255, 75, 75)', width=3), 
+                        mode='lines+markers',
+                        marker=dict(size=5),
+                        fill='tozeroy',
+                        fillcolor='rgba(255, 75, 75, 0.3)',
+                        hovertemplate='%{x}<br>%{y:.1f}%<extra></extra>'
+                    ))
+                    fig.update_layout(
+                        hovermode='x', 
+                        height=450, 
+                        yaxis_title="(%) de PEA", 
+                        xaxis_title="Fecha",
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="center",
+                            x=0.5
+                        )
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    st.markdown("#### 📌 Indicadores de Desocupación")
+                    col1, col2, col3, col4 = st.columns(4)
+                    if "Exp_TasaDesocupacion_Media" in df_macro.columns:
+                        val = df_macro['Exp_TasaDesocupacion_Media'].dropna().iloc[-1]
+                        col1.markdown(f"""
+                        <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 18px; border-radius: 10px; color: white; text-align: center;'>
+                            <div style='font-size: 12px; opacity: 0.9; margin-bottom: 5px;'>📊 Actual</div>
+                            <div style='font-size: 24px; font-weight: bold;'>{val:.2f}%</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    if "Exp_TasaDesocupacion_Media" in df_macro.columns:
+                        val = df_macro['Exp_TasaDesocupacion_Media'].dropna().iloc[-1]
+                        col2.markdown(f"""
+                        <div style='background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 18px; border-radius: 10px; color: white; text-align: center;'>
+                            <div style='font-size: 12px; opacity: 0.9; margin-bottom: 5px;'>🔮 Media</div>
+                            <div style='font-size: 24px; font-weight: bold;'>{val:.2f}%</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    if "Exp_TasaDesocupacion_Minima" in df_macro.columns:
+                        val = df_macro['Exp_TasaDesocupacion_Minima'].dropna().iloc[-1]
+                        col3.markdown(f"""
+                        <div style='background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); padding: 18px; border-radius: 10px; color: white; text-align: center;'>
+                            <div style='font-size: 12px; opacity: 0.9; margin-bottom: 5px;'>📉 Mínima</div>
+                            <div style='font-size: 24px; font-weight: bold;'>{val:.2f}%</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    if "Exp_TasaDesocupacion_Maxima" in df_macro.columns:
+                        val = df_macro['Exp_TasaDesocupacion_Maxima'].dropna().iloc[-1]
+                        col4.markdown(f"""
+                        <div style='background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); padding: 18px; border-radius: 10px; color: white; text-align: center;'>
+                            <div style='font-size: 12px; opacity: 0.9; margin-bottom: 5px;'>📈 Máxima</div>
+                            <div style='font-size: 24px; font-weight: bold;'>{val:.2f}%</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    st.caption("Fuente: Banco de México")
+            
+            st.divider()
+            
+            # ==================== EXPLORADOR AVANZADO ====================
+            with st.expander("🔍 **Explorador Avanzado de Series**", expanded=False):
+                st.markdown("""
+                <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px;'>
+                    <h3 style='color: white; margin: 0;'>📊 Análisis Personalizado</h3>
+                    <p style='color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 14px;'>Selecciona las series que deseas analizar y compara múltiples indicadores</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                col1, col2 = st.columns([7, 3])
+                with col1:
+                    selected = st.multiselect(
+                        "Selecciona las series a visualizar:", 
+                        df_macro.columns.tolist(), 
+                        default=[df_macro.columns[0]] if len(df_macro.columns) > 0 else [],
+                        help="Puedes seleccionar múltiples series para compararlas"
+                    )
+                    if selected:
+                        fig = go.Figure()
+                        colors_custom = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#38f9d7']
+                        for idx, s in enumerate(selected):
+                            fig.add_trace(go.Scatter(
+                                x=df_macro.index, 
+                                y=df_macro[s], 
+                                name=s, 
+                                mode='lines+markers',
+                                line=dict(width=2.5, color=colors_custom[idx % len(colors_custom)]),
+                                marker=dict(size=4),
+                                hovertemplate='%{x}<br>%{y:.2f}<extra></extra>'
+                            ))
+                        fig.update_layout(
+                            hovermode='x unified', 
+                            height=450, 
+                            legend=dict(
+                                orientation="h",
+                                yanchor="bottom",
+                                y=1.02,
+                                xanchor="center",
+                                x=0.5
+                            ),
+                            plot_bgcolor='rgba(0,0,0,0)',
+                            paper_bgcolor='rgba(0,0,0,0)'
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                
+                with col2:
+                    if selected:
+                        st.markdown("""
+                        <div style='background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 15px; border-radius: 10px; margin-bottom: 15px;'>
+                            <h4 style='color: white; margin: 0 0 10px 0;'>📈 Estadísticas</h4>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        for s in selected:
+                            data = df_macro[s].dropna()
+                            if not data.empty:
+                                st.markdown(f"""
+                                <div style='background: white; border: 2px solid #667eea; border-radius: 8px; padding: 12px; margin-bottom: 12px;'>
+                                    <div style='font-weight: bold; color: #667eea; margin-bottom: 8px; font-size: 13px;'>{s}</div>
+                                    <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;'>
+                                        <div><span style='color: #888;'>Último:</span> <b>{data.iloc[-1]:.2f}</b></div>
+                                        <div><span style='color: #888;'>Prom:</span> <b>{data.mean():.2f}</b></div>
+                                        <div><span style='color: #888;'>Máx:</span> <b style='color: #43e97b;'>{data.max():.2f}</b></div>
+                                        <div><span style='color: #888;'>Mín:</span> <b style='color: #f5576c;'>{data.min():.2f}</b></div>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                
+                st.markdown("---")
+                st.markdown("#### 📋 Datos Tabulares")
+                df_visual = df_macro.copy()
+                df_visual.index = df_visual.index.date
+                st.dataframe(
+                    df_visual, 
+                    use_container_width=True, 
+                    height=400
+                )
+                
+                col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 2])
+                with col_btn1:
+                    st.download_button(
+                        "📥 Descargar CSV", 
+                        df_visual.to_csv(), 
+                        "datos_macro.csv", 
+                        "text/csv",
+                        use_container_width=True
+                    )
+                with col_btn2:
+                    st.download_button(
+                        "📊 Descargar Excel", 
+                        df_visual.to_csv(), 
+                        "datos_macro.xlsx", 
+                        "text/csv",
+                        use_container_width=True
+                    )
+    else:
+        st.error("❌ Error al conectar con Banxico")
+
+
+    # ============================================================================
+    # CÓDIGO FINAL CON DEBUG - COPIAR Y PEGAR AL FINAL DE TU APARTADO MACRO
+    # ============================================================================
+    
+    from io import BytesIO
+    import re
+    import plotly.graph_objects as go
+    
+    def descargar_y_procesar_expectativas(url_github):
+        try:
+            response = requests.get(url_github, timeout=30)
+            response.raise_for_status()
+            
+            df = pd.read_excel(BytesIO(response.content), engine='openpyxl')
+            
+            if 'NombreAbsolutoLargo' not in df.columns or 'Dato' not in df.columns:
+                return None, None, "Error: Columnas no encontradas"
+            
+            # Obtener fecha de encuesta
+            fecha_encuesta = None
+            if 'FechaEncuesta' in df.columns:
+                df['FechaEncuesta'] = pd.to_datetime(df['FechaEncuesta'], format='%m/%d/%Y', errors='coerce')
+                fecha_encuesta = df['FechaEncuesta'].max()
+            
+            # Filtrar SOLO las variables necesarias
+            df_filtrado = df[
+                df['NombreAbsolutoLargo'].str.contains(
+                    'Inflación general para|Inflación general al cierre de|Inflación subyacente para|' +
+                    'tipo de cambio promedio|tipo de cambio al cierre|desocupación al cierre|' +
+                    'cete a 28 días al cierre|clima de negocios|economía del país',
+                    case=False, na=False, regex=True
+                )
+            ].copy()
+            
+            # Excluir probabilidades
+            df_filtrado = df_filtrado[~df_filtrado['NombreAbsolutoLargo'].str.contains('probabilidad', case=False, na=False)]
+            
+            if len(df_filtrado) == 0:
+                return None, None, "No se encontraron variables"
+            
+            df_filtrado = df_filtrado[['NombreAbsolutoLargo', 'Dato']].copy()
+            df_filtrado.columns = ['Variable', 'Valor']
+            df_filtrado['Valor'] = pd.to_numeric(df_filtrado['Valor'], errors='coerce')
+            df_agrupado = df_filtrado.groupby('Variable')['Valor'].mean().reset_index()
+            
+            def categorizar(variable):
+                v = variable.lower()
+                
+                # Inflación mensual (tiene meses)
+                if 'inflación general para' in v and any(mes in v for mes in ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']):
+                    return 'Inflación General - Mensual'
+                # Inflación anual (al cierre de)
+                elif 'inflación general al cierre de' in v:
+                    return 'Inflación General - Anual'
+                elif 'inflación subyacente para' in v:
+                    return 'Inflación Subyacente - Mensual'
+                elif 'tipo de cambio promedio durante' in v:
+                    return 'Tipo de Cambio - Mensual'
+                elif 'tipo de cambio al cierre de' in v:
+                    return 'Tipo de Cambio - Anual'
+                elif 'desocupación al cierre de' in v:
+                    return 'Desempleo - Anual'
+                elif 'cete a 28 días al cierre de' in v:
+                    return 'CETE 28 - Anual'
+                elif 'clima de negocios' in v and 'mejor' in v and 'permanecerá' not in v and 'empeorará' not in v:
+                    return 'Clima de Negocios - Mejorará'
+                elif 'clima de negocios' in v and 'permanecerá igual' in v:
+                    return 'Clima de Negocios - Igual'
+                elif 'clima de negocios' in v and 'empeorará' in v:
+                    return 'Clima de Negocios - Empeorará'
+                elif 'economía del país' in v and 'mejor' in v and 'sí' in v:
+                    return 'Economía del País - Mejor'
+                elif 'economía del país' in v and 'mejor' in v and 'no' in v:
+                    return 'Economía del País - Peor'
+                else:
+                    return 'Otros'
+            
+            def extraer_periodo(variable):
+                v = variable.lower()
+                
+                # Para percepciones, no hay periodo
+                if 'percepción' in v or 'clima de negocios' in v or 'economía del país' in v:
+                    return 'PERCEPCION'
+                
+                # Buscar año
+                match_anio = re.search(r'(202[5-9]|20[3-9]\d)', variable)
+                if match_anio:
+                    anio = match_anio.group(1)
+                    meses = {'enero':'01','febrero':'02','marzo':'03','abril':'04','mayo':'05','junio':'06',
+                            'julio':'07','agosto':'08','septiembre':'09','octubre':'10','noviembre':'11','diciembre':'12'}
+                    
+                    for mes_nombre, mes_num in meses.items():
+                        if mes_nombre in v:
+                            return f"{anio}-{mes_num}"
+                    
+                    return f"{anio}-12"
+                
+                return "N/A"
+            
+            df_agrupado['Categoria'] = df_agrupado['Variable'].apply(categorizar)
+            df_agrupado['Proyeccion_Para'] = df_agrupado['Variable'].apply(extraer_periodo)
+            df_agrupado = df_agrupado[df_agrupado['Categoria'] != 'Otros']
+            df_agrupado = df_agrupado.sort_values(['Categoria', 'Proyeccion_Para'])
+            
+            proyecciones = {}
+            for categoria in df_agrupado['Categoria'].unique():
+                df_cat = df_agrupado[df_agrupado['Categoria'] == categoria]
+                proyecciones[categoria] = df_cat[['Proyeccion_Para', 'Valor', 'Variable']].to_dict('records')
+            
+            debug_msg = f"Categorías encontradas: {list(proyecciones.keys())}"
+            return proyecciones, fecha_encuesta, debug_msg
+            
+        except Exception as e:
+            import traceback
+            return None, None, f"Error: {str(e)}\n{traceback.format_exc()}"
+    
+    st.markdown("---")
+    st.markdown("### 🔮 Proyecciones y Expectativas Futuras")
+    
+    URL_GITHUB_EXPECTATIVAS = "https://raw.githubusercontent.com/imjeiciqu32/precios-por-kg/main/micro.xlsx"
+    
+    @st.cache_data(ttl=3600)
+    def cargar_proyecciones():
+        proyecciones, fecha, msg = descargar_y_procesar_expectativas(URL_GITHUB_EXPECTATIVAS)
+        return proyecciones, fecha, msg
+    
+    with st.spinner("📥 Cargando proyecciones..."):
+        proyecciones, fecha_encuesta, debug_msg = cargar_proyecciones()
+    
+    # Mostrar debug
+    if debug_msg:
+        with st.expander("🔍 Debug Info"):
+            st.code(debug_msg)
+    
+    if fecha_encuesta:
+        meses_es = {1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',
+                    7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'}
+        mes_nombre = meses_es[fecha_encuesta.month]
+        st.caption(f"Datos de la Encuesta de Expectativas de Banxico - {mes_nombre} {fecha_encuesta.year}")
+    else:
+        st.caption("Datos de la Encuesta de Expectativas de Banxico - Actualización Mensual")
+    
+    if proyecciones:
+        tab_p1, tab_p2, tab_p3, tab_p4 = st.tabs(["📈 Inflación", "💱 Tipo de Cambio", "👥 Desempleo", "🏢 Economía"])
+        
+        with tab_p1:
+            st.markdown("#### 📊 Proyecciones de Inflación General 2026")
+            if 'Inflación General - Mensual' in proyecciones:
+                df_infl = pd.DataFrame(proyecciones['Inflación General - Mensual'])
+                df_infl['Proyeccion_Para'] = pd.to_datetime(df_infl['Proyeccion_Para'])
+                df_infl = df_infl.sort_values('Proyeccion_Para')
+                
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=df_infl['Proyeccion_Para'], y=df_infl['Valor'], name='Proyección',
+                    line=dict(color='rgb(102, 126, 234)', width=3, dash='dot'), mode='lines+markers',
+                    marker=dict(size=8), fill='tozeroy', fillcolor='rgba(102, 126, 234, 0.2)',
+                    hovertemplate='%{x|%b %Y}<br>%{y:.2f}%<extra></extra>'))
+                fig.update_layout(title="Inflación General Proyectada (Mensual 2026)", hovermode='x', height=400,
+                    yaxis_title="Inflación (%)", xaxis_title="Periodo",
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5))
+                st.plotly_chart(fig, use_container_width=True)
+            
+            st.markdown("---")
+            
+            if 'Inflación Subyacente - Mensual' in proyecciones:
+                st.markdown("#### 📊 Inflación Subyacente 2026")
+                df_sub = pd.DataFrame(proyecciones['Inflación Subyacente - Mensual'])
+                df_sub['Proyeccion_Para'] = pd.to_datetime(df_sub['Proyeccion_Para'])
+                df_sub = df_sub.sort_values('Proyeccion_Para')
+                
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=df_sub['Proyeccion_Para'], y=df_sub['Valor'], name='Subyacente',
+                    line=dict(color='rgb(155, 135, 245)', width=3, dash='dot'), mode='lines+markers',
+                    marker=dict(size=8), fill='tozeroy', fillcolor='rgba(155, 135, 245, 0.2)',
+                    hovertemplate='%{x|%b %Y}<br>%{y:.2f}%<extra></extra>'))
+                fig.update_layout(title="Inflación Subyacente Proyectada (Mensual 2026)", hovermode='x', height=400,
+                    yaxis_title="Inflación (%)", xaxis_title="Periodo",
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5))
+                st.plotly_chart(fig, use_container_width=True)
+
+
+             # INFLACIÓN AL CIERRE - SUBMÓDULO SEPARADO
+            if 'Inflación General - Anual' in proyecciones:
+                st.markdown("---")
+                st.markdown("#### 📅 Inflación General al Cierre de Año")
+                df_anual = pd.DataFrame(proyecciones['Inflación General - Anual'])
+                df_anual = df_anual.sort_values('Proyeccion_Para')
+                
+                cols = st.columns(len(df_anual))
+                for idx, (_, row) in enumerate(df_anual.iterrows()):
+                    year = row['Proyeccion_Para'][:4]
+                    valor = row['Valor']
+                    color = "#43e97b" if valor < 3 else "#FFE082" if valor < 4 else "#f5576c"
+                    emoji = "🟢" if valor < 3 else "🟡" if valor < 4 else "🔴"
+                    with cols[idx]:
+                        st.markdown(f"""<div style='background:{color};padding:20px;border-radius:8px;text-align:center;
+                            box-shadow:0 2px 4px rgba(0,0,0,0.1);'>
+                            <div style='font-size:16px;font-weight:bold;color:#333;margin-bottom:8px;'>{emoji} Cierre {year}</div>
+                            <div style='font-size:32px;font-weight:bold;color:#1a1a1a;'>{valor:.2f}%</div>
+                        </div>""", unsafe_allow_html=True)
+            else:
+                st.warning("⚠️ No se encontraron datos de Inflación General al Cierre")
+            
+            st.caption("Fuente: Encuesta de Expectativas - Banxico")
+        
+        with tab_p2:
+            st.markdown("#### 💱 Proyecciones de Tipo de Cambio USD/MXN")
+            if 'Tipo de Cambio - Mensual' in proyecciones:
+                df_tc = pd.DataFrame(proyecciones['Tipo de Cambio - Mensual'])
+                df_tc['Proyeccion_Para'] = pd.to_datetime(df_tc['Proyeccion_Para'])
+                df_tc = df_tc.sort_values('Proyeccion_Para')
+                
+                fig = go.Figure()
+                fig.add_trace(go.Bar(
+                    x=df_tc['Proyeccion_Para'], 
+                    y=df_tc['Valor'], 
+                    marker_color='rgba(255, 75, 75, 0.7)',
+                    text=[f'${v:.2f}' for v in df_tc['Valor']], 
+                    textposition='outside',
+                    textfont=dict(size=11, color='#333'),
+                    hovertemplate='%{x|%b %Y}<br>$%{y:.2f} MXN<extra></extra>'
+                ))
+                fig.update_layout(
+                    title="Tipo de Cambio Proyectado (Mensual 2026)", 
+                    hovermode='x', 
+                    height=450,
+                    yaxis_title="MXN por USD", 
+                    xaxis_title="Periodo",
+                    showlegend=False
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            
+            if 'Tipo de Cambio - Anual' in proyecciones:
+                st.markdown("##### 📅 Proyección al Cierre de Año")
+                df_tc_anual = pd.DataFrame(proyecciones['Tipo de Cambio - Anual'])
+                df_tc_anual = df_tc_anual.sort_values('Proyeccion_Para')
+                cols = st.columns(len(df_tc_anual))
+                for idx, (_, row) in enumerate(df_tc_anual.iterrows()):
+                    year = row['Proyeccion_Para'][:4]
+                    valor = row['Valor']
+                    with cols[idx]:
+                        st.markdown(f"""<div style='background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);
+                            padding:20px;border-radius:10px;color:white;text-align:center;'>
+                            <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>💱 {year}</div>
+                            <div style='font-size:32px;font-weight:bold;'>${valor:.2f}</div>
+                            <div style='font-size:12px;opacity:0.8;margin-top:5px;'>MXN/USD</div>
+                        </div>""", unsafe_allow_html=True)
+            
+            # CETES
+            if 'CETE 28 - Anual' in proyecciones:
+                st.markdown("##### 💰 Tasa CETE 28 días al Cierre de Año")
+                df_cete = pd.DataFrame(proyecciones['CETE 28 - Anual'])
+                df_cete = df_cete.sort_values('Proyeccion_Para')
+                cols = st.columns(len(df_cete))
+                for idx, (_, row) in enumerate(df_cete.iterrows()):
+                    year = row['Proyeccion_Para'][:4]
+                    valor = row['Valor']
+                    with cols[idx]:
+                        st.markdown(f"""<div style='background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+                            padding:20px;border-radius:10px;color:white;text-align:center;'>
+                            <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>📊 {year}</div>
+                            <div style='font-size:32px;font-weight:bold;'>{valor:.2f}%</div>
+                            <div style='font-size:12px;opacity:0.8;margin-top:5px;'>CETE 28d</div>
+                        </div>""", unsafe_allow_html=True)
+            else:
+                st.warning("⚠️ No se encontraron datos de CETE 28 días")
+            
+            st.caption("Fuente: Encuesta de Expectativas - Banxico")
+        
+        with tab_p3:
+            st.markdown("#### 👥 Proyecciones de Tasa de Desempleo")
+            if 'Desempleo - Anual' in proyecciones:
+                df_desemp = pd.DataFrame(proyecciones['Desempleo - Anual'])
+                df_desemp = df_desemp.sort_values('Proyeccion_Para')
+                
+                fig = go.Figure()
+                colors = ['rgba(102, 126, 234, 0.8)' if v < 3 else 
+                         'rgba(155, 135, 245, 0.8)' if v < 3.5 else 
+                         'rgba(186, 104, 200, 0.8)' for v in df_desemp['Valor']]
+                
+                fig.add_trace(go.Bar(
+                    x=[row['Proyeccion_Para'][:4] for _, row in df_desemp.iterrows()],
+                    y=df_desemp['Valor'], 
+                    marker_color=colors,
+                    text=[f"{v:.2f}%" for v in df_desemp['Valor']], 
+                    textposition='outside',
+                    textfont=dict(size=12, color='#333'),
+                    hovertemplate='%{x}<br>%{y:.2f}%<extra></extra>'
+                ))
+                fig.update_layout(
+                    title="Tasa de Desocupación Proyectada", 
+                    height=400,
+                    yaxis_title="(%) de la PEA", 
+                    xaxis_title="Año", 
+                    showlegend=False
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+                st.markdown("##### 📊 Detalle por Año")
+                cols = st.columns(len(df_desemp))
+                gradients = [
+                    "linear-gradient(135deg,#667eea 0%,#764ba2 100%)",
+                    "linear-gradient(135deg,#9b87f5 0%,#7e57c2 100%)",
+                    "linear-gradient(135deg,#ba68c8 0%,#9c27b0 100%)"
+                ]
+                for idx, (_, row) in enumerate(df_desemp.iterrows()):
+                    year = row['Proyeccion_Para'][:4]
+                    valor = row['Valor']
+                    gradient = gradients[idx % len(gradients)]
+                    with cols[idx]:
+                        st.markdown(f"""<div style='background:{gradient};padding:20px;border-radius:8px;text-align:center;
+                            box-shadow:0 4px 8px rgba(0,0,0,0.15);'>
+                            <div style='font-size:14px;font-weight:bold;color:white;'>{year}</div>
+                            <div style='font-size:32px;font-weight:bold;color:white;'>{valor:.2f}%</div>
+                            <div style='font-size:11px;color:rgba(255,255,255,0.8);margin-top:5px;'>de la PEA</div>
+                        </div>""", unsafe_allow_html=True)
+            
+            st.caption("Fuente: Encuesta de Expectativas - Banxico")
+        
+        with tab_p4:
+            st.markdown("#### 🏢 Percepciones Económicas")
+            
+            # Clima de negocios - SIN NORMALIZAR
+            val_mejora = val_igual = val_empeora = None
+            if 'Clima de Negocios - Mejorará' in proyecciones:
+                val_mejora = proyecciones['Clima de Negocios - Mejorará'][0]['Valor']
+            if 'Clima de Negocios - Igual' in proyecciones:
+                val_igual = proyecciones['Clima de Negocios - Igual'][0]['Valor']
+            if 'Clima de Negocios - Empeorará' in proyecciones:
+                val_empeora = proyecciones['Clima de Negocios - Empeorará'][0]['Valor']
+            
+            if val_mejora is not None and val_igual is not None and val_empeora is not None:
+                st.markdown("##### Clima de Negocios (Próximos 6 Meses)")
+                fig = go.Figure(data=[go.Pie(
+                    labels=['Mejorará', 'Permanecerá Igual', 'Empeorará'],
+                    values=[val_mejora, val_igual, val_empeora], 
+                    hole=.4,
+                    marker_colors=['#43e97b', '#667eea', '#f5576c'], 
+                    textinfo='label+percent',
+                    textfont_size=14, 
+                    hovertemplate='<b>%{label}</b><br>%{value:.1f}%<extra></extra>'
+                )])
+                fig.update_layout(height=350, showlegend=True,
+                    legend=dict(orientation="h", yanchor="bottom", y=-0.1, xanchor="center", x=0.5))
+                st.plotly_chart(fig, use_container_width=True)
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.markdown(f"""<div style='background:linear-gradient(135deg,#43e97b 0%,#38f9d7 100%);
+                        padding:20px;border-radius:10px;color:white;text-align:center;'>
+                        <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>📈 Mejorará</div>
+                        <div style='font-size:36px;font-weight:bold;'>{val_mejora:.1f}%</div>
+                    </div>""", unsafe_allow_html=True)
+                with col2:
+                    st.markdown(f"""<div style='background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+                        padding:20px;border-radius:10px;color:white;text-align:center;'>
+                        <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>➡️ Igual</div>
+                        <div style='font-size:36px;font-weight:bold;'>{val_igual:.1f}%</div>
+                    </div>""", unsafe_allow_html=True)
+                with col3:
+                    st.markdown(f"""<div style='background:linear-gradient(135deg,#fa709a 0%,#fee140 100%);
+                        padding:20px;border-radius:10px;color:white;text-align:center;'>
+                        <div style='font-size:14px;opacity:0.9;margin-bottom:5px;'>📉 Empeorará</div>
+                        <div style='font-size:36px;font-weight:bold;'>{val_empeora:.1f}%</div>
+                    </div>""", unsafe_allow_html=True)
+            else:
+                st.warning("⚠️ No se encontraron datos de Clima de Negocios")
+            
+            # Economía del país - SIN NORMALIZAR
+            val_si = val_no = None
+            if 'Economía del País - Mejor' in proyecciones:
+                val_si = proyecciones['Economía del País - Mejor'][0]['Valor']
+            if 'Economía del País - Peor' in proyecciones:
+                val_no = proyecciones['Economía del País - Peor'][0]['Valor']
+            
+            if val_si is not None and val_no is not None:
+                st.markdown("##### Situación Económica vs Hace un Año")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"""<div style='background:linear-gradient(135deg,#43e97b 0%,#38f9d7 100%);
+                        padding:25px;border-radius:10px;color:white;text-align:center;'>
+                        <div style='font-size:16px;opacity:0.9;margin-bottom:10px;'>✅ Mejor que Hace un Año</div>
+                        <div style='font-size:42px;font-weight:bold;'>{val_si:.1f}%</div>
+                    </div>""", unsafe_allow_html=True)
+                with col2:
+                    st.markdown(f"""<div style='background:linear-gradient(135deg,#fa709a 0%,#fee140 100%);
+                        padding:25px;border-radius:10px;color:white;text-align:center;'>
+                        <div style='font-size:16px;opacity:0.9;margin-bottom:10px;'>❌ Peor que Hace un Año</div>
+                        <div style='font-size:42px;font-weight:bold;'>{val_no:.1f}%</div>
+                    </div>""", unsafe_allow_html=True)
+            else:
+                st.warning("⚠️ No se encontraron datos de Economía del País")
+            
+            st.caption("Fuente: Encuesta de Expectativas - Banxico")
+        
+        st.markdown("---")
+        st.info("💡 **Nota:** Estas proyecciones se actualizan automáticamente desde la Encuesta de Expectativas de Banxico. Los valores son promedios de las respuestas de expertos.")
+    else:
+        st.error("❌ No se pudieron cargar las proyecciones. Revisa el mensaje de debug arriba.")
