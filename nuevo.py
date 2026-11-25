@@ -376,6 +376,7 @@ CLAVES_PERSONALIZACION = {
     "resaltar_productos": [],
     "resaltar_color": "#BFBFBF",
     "resaltar_intensidad": 0.3,
+    "resaltar_estilo": "Gris",
 }
 
 def obtener_personalizacion():
@@ -2486,7 +2487,16 @@ if not st.session_state.data.empty:
                         help="Los productos elegidos conservan sus colores; el resto de la escalera se pinta gris y semitransparente."
                     )
                 with col_rz2:
-                    st.color_picker("Color del difuminado", key="resaltar_color")
+                    st.radio(
+                        "Difuminar en",
+                        ["Gris", "Su color"],
+                        key="resaltar_estilo",
+                        help="Gris: el resto se pinta del color elegido abajo. Su color: cada barra conserva su color (amarillo, azul...) pero transparente."
+                    )
+                    st.color_picker(
+                        "Color del difuminado" if st.session_state.get("resaltar_estilo", "Gris") == "Gris" else "Color de textos difuminados",
+                        key="resaltar_color"
+                    )
                 with col_rz3:
                     st.slider("Visibilidad del resto", 0.05, 0.9, step=0.05, key="resaltar_intensidad",
                               help="Más bajo = el resto se ve más transparente.")
@@ -2543,6 +2553,8 @@ if not st.session_state.data.empty:
             # Barras difuminadas: la transparencia va en el RELLENO (rgba) y no en marker_opacity,
             # porque marker_opacity también aclara el contorno y lo hace casi invisible.
             _relleno_dif = hex_a_rgba(_color_dif, _vis_dif, "rgba(191,191,191,0.3)")
+            # "Su color": cada barra difuminada conserva su color original con transparencia
+            _estilo_dif = st.session_state.get("resaltar_estilo", "Gris")
             _contorno_dif = hex_a_rgba(st.session_state.get("color_contorno_barras", "#000000"), round(min(1.0, _vis_dif + 0.3), 2), "rgba(0,0,0,0.6)")
 
             fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=espacio_v, row_heights=[0.13, 0.09, 0.78])
@@ -2592,7 +2604,10 @@ if not st.session_state.data.empty:
                 fig.add_trace(go.Bar(
                     x=[row["Producto"]], 
                     y=[row["Precio ($)"] * alto_barras],  # ⭐ APLICAR MULTIPLICADOR DE ALTO
-                    marker_color=_relleno_dif if difuminar[idx] else bar_colors[idx],
+                    marker_color=(
+                        (hex_a_rgba(bar_colors[idx], _vis_dif, _relleno_dif) if _estilo_dif == "Su color" else _relleno_dif)
+                        if difuminar[idx] else bar_colors[idx]
+                    ),
                     marker_opacity=1 if difuminar[idx] else opacidad_barras, 
                     marker_line=dict(color=_contorno_dif, width=estilo_contorno_barras()["width"]) if difuminar[idx] else estilo_contorno_barras(),
                     width=ancho_barras,
